@@ -25,3 +25,65 @@ subscriptions:
     stage: A
     diff_threshold_pct: 15
   keyword_recall_mode: or
+  intent_profiles:
+    - tag: dcn-comm
+      description: 数据中心网络、集合通信
+      enabled: true
+      paper_sources:
+        - arxiv
+      keywords:
+        - keyword: data center networks
+          keyword_cn: 数据中心网络
+          query: data center network architectures and communication mechanisms for large-scale clusters
+        - keyword: collective communication
+          keyword_cn: 集合通信
+          query: collective communication protocols and primitives for distributed systems
+        - keyword: collective communication algorithms
+          keyword_cn: 集合通信算法
+          query: algorithms for efficient collective communication operations in distributed environments
+        - keyword: remote direct memory access
+          keyword_cn: 远程直接内存访问
+          query: remote direct memory access transport for low-latency data center communication
+        - keyword: topology-aware routing
+          keyword_cn: 拓扑感知路由
+          query: topology-aware routing algorithms for data center network efficiency
+        - keyword: distributed training communication
+          keyword_cn: 分布式训练通信
+          query: communication optimization for distributed training workloads in data center networks
+      intent_queries:
+        - query: How to design collective communication algorithms for data center networks
+          query_cn: 如何为数据中心网络设计集合通信算法
+          enabled: true
+          source: manual
+          note: ''
+        - query: What network scheduling and congestion control techniques improve collective communication performance
+          query_cn: 哪些网络调度与拥塞控制技术能提升集合通信性能
+          enabled: true
+          source: manual
+          note: ''
+        - query: How to optimize communication overhead in distributed training over data center fabrics
+          query_cn: 如何优化数据中心网络下分布式训练的通信开销
+          enabled: true
+          source: manual
+          note: ''
+        - query: What topology aware routing and in network aggregation methods support scalable collective communication
+          query_cn: 哪些拓扑感知路由与网内聚合方法支持可扩展的集合通信
+          enabled: true
+          source: manual
+          note: ''
+      updated_at: '2026-10-20T11:01:02.851Z'
+source_backends:
+  arxiv:
+    papers_table: arxiv_papers
+    use_vector_rpc: true
+    vector_rpc: match_arxiv_papers
+    vector_rpc_exact: match_arxiv_papers_exact
+    use_bm25_rpc: true
+    bm25_rpc: match_arxiv_papers_bm25
+    sync_table: arxiv_sync_status
+    sync_success_value: success
+    schema: public
+    kind: supabase
+    enabled: true
+    url: https://lyucdwgefyfbmaiopjbk.supabase.co
+    anon_key: sb_publishable_lX-oi64Uxyd7SIVv3_w2Uw_MTOojeKq
