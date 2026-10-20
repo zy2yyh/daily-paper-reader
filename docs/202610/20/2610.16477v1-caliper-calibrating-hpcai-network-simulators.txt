@@ -1,0 +1,643 @@
+Title: CALIPER: Calibrating HPC/AI Network Simulators
+
+URL Source: https://arxiv.org/pdf/2610.16477v1
+
+Published Time: Wed, 14 Oct 2026 02:49:16 GMT
+
+Number of Pages: 18
+
+Markdown Content:
+# CALIPER: C ALIBRATING HPC/AI N ETWORK SIMULATORS 
+
+A P REPRINT 
+
+Seyyidahmed Lahmer 
+
+imec Leuven, Belgium 
+
+seyyidahmed.lahmer@imec.be 
+
+Daniel Seibel 
+
+Forschungszentrum Jülich (FZJ) Jülich, Germany 
+
+d.seibel@fz-juelich.de 
+
+Srijeet Basu 
+
+imec Leuven, Belgium 
+
+Srijeet.Basu@imec.be 
+
+Arno Troch 
+
+University of Antwerp – imec Antwerp, Belgium 
+
+Arno.Troch@imec.be 
+
+Jayesh Badwaik 
+
+Forschungszentrum Jülich (FZJ) Jülich, Germany 
+
+j.badwaik@fz-juelich.de 
+
+Subhomoy Bhattacharyya 
+
+imec Leuven, Belgium 
+
+Subhomoy.Bhattacharyya@imec.be 
+
+Abubakr Nada 
+
+imec Leuven, Belgium 
+
+Abubakr.Nada@imec.be 
+
+Debjyoti Bhattacharjee 
+
+imec Leuven, Belgium 
+
+Debjyoti.Bhattacharjee@imec.be 
+
+Vinay Kumar Baapanapalli Yadaiah 
+
+imec Leuven, Belgium 
+
+Vinay.Kumar.BaapanapalliYadaiah@imec.be 
+
+Michael Peeters 
+
+imec Leuven, Belgium 
+
+michael.peeters@imec.be 
+
+Andreas Herten 
+
+Forschungszentrum Jülich (FZJ) Jülich, Germany 
+
+a.herten@fz-juelich.de 
+
+Darayus Adil Patel 
+
+imec Leuven, Belgium 
+
+DarayusAdil.Patel@imec.be 
+
+## ABSTRACT 
+
+Network simulation plays an important role in HPC/AI system research by enabling exploration of network architectures, communication strategies, and system configurations at scales that may be impractical to study experimentally. Existing approaches to network simulator calibration and validation lack a principled methodology that combines parameter alignment, constrained infer-ence, and independent validation for collective-centric HPC/AI networks. We present CALIPER, a methodology for systematic calibration and validation of HPC/AI network simulators. CALIPER distinguishes directly observable system parameters from auxiliary parameters which are configured via calibration and constrains the latter to feasible domains consistent with the target system. We evaluate CALIPER’s hierarchical, scale-aware calibration and its effects on parameter identifiability and generalization using collective communication benchmarks on a reference system with up to 64-nodes at the Jülich Supercomputing Centre. Validation results show that the calibrated parameter configurations identified by CALIPER predict system performance with less than 5% mean errors across scale-up and scale-out network domains. CALIPER demonstrates that hierarchical, con-strained calibration can produce simulator configurations whose predictive accuracy persists beyond the observations used for fitting. 
+
+Keywords High-Performance Computing · AI Networks · Network Simulation · Simulator Calibration · Collective Communication arXiv:2610.16477v1 [cs.NI] 12 Oct 2026 CALIPER: HPC/AI Network Simulator Calibration A P REPRINT 
+
+## 1 Introduction 
+
+The continued scaling of artificial intelligence (AI) and high-performance computing (HPC) workloads is transforming network performance from a secondary consideration into a first-order system-design constraint [1–3]. Contemporary systems distribute computation and model state across large numbers of compute nodes, making application performance dependent on the interplay between computation and communication. Collective communication primitives [4] are widely used to exchange data among compute nodes in workloads such as distributed training, model serving, and other communication-intensive applications. Consequently, network design is a key consideration in large-scale systems and must be evaluated under realistic workloads and configurations. However, direct hardware experimentation alone cannot support this evaluation. Representative systems are costly to construct and operate whereas available production installations may be unavailable for controlled experiments. Therefore, simulation provides a practical means to evaluate network architectures including implementation of collective algorithms, communication policies, etc. [5–8]. It also provides repeatable and configurable experimental environments in which individual design variables can be isolated [9, 10]. Because measurements on real HPC systems consume scarce compute and network resources, one of the requirements to have an effective methodology to configure and evaluate a network simulator is that it must be based on a deliberately selected, compact benchmark set. Modern HPC/AI simulation studies increasingly report close correspondence with real systems, which establishes that accurate and scalable prediction is achievable [11–16]. However, the methodological path from system measurement to calibrated configuration is not described consistently across the literature [17, 18]. Calibration determines parameter values that reduce misalignment between simulation and selected reference measurements, whereas validation evaluates whether the resulting model provides an acceptable level of accuracy for its intended use and domain of applicability. This distinction is consequential: alignment with the measurements used for calibration demonstrates fit to the calibration data, but does not establish predictive validity. A specific instance of parameters of the simulator may achieve respectable accuracy for one benchmark while failing for a different workload or system scale. Calibration accuracy must consequently be evaluated along several generalization dimensions: unseen message sizes, held-out collectives, alternative workload configurations, and larger system scales [19, 20]. Simulator parameters can be broadly classified into two categories namely, direct parameters that are set based on the target hardware information (e.g. the number of compute nodes) and auxiliary parameters cannot be directly associated with target hardware or are specific to the simulator abstraction (e.g. link latency). During calibration, direct parameters 
+
+must not be tuned to reduce simulation error, as doing so would effectively model a non-existent system. Auxiliary parameters may be tuned during the calibration process and therefore define the calibration search space. Furthermore, the calibrated simulator must be explicitly validated under conditions systematically excluded from calibration, such as different collectives, message sizes, or system scales to assess its predictive capability on unseen workload scenarios. Existing approaches (Refer Section 6) to tune and evaluate network simulators typically do not jointly address simulator independence, generalization, constrained parameter inference, and system validation as shown in Table 1. In this paper, we introduce CALIPER methodology for calibrating network simulators for large scale HPC/AI systems. Specifically, this paper makes the following contributions. • We propose CALIPER, a methodology that combines explicit parameter classification, bounded optimization, and independent validation to calibrate and evaluate network simulators for large scale AI/HPC systems. • We apply CALIPER for calibrating the SST simulator [5] to simulate state-of-the-art network configura-tions (with up-to 64 GPUs) from Jülich Supercomputing Centre. • We show that CALIPER’s hierarchical, scale-aware calibration produces simulator configurations that achieve less than 5% mean completion-time error validated across the evaluated scale-up and scale-out network domains. The reported results demonstrate that employing the proposed CALIPER methodology enables a simulator configuration to retain its accuracy beyond the calibration conditions across collective measurements spanning message sizes, communicator scales, and physical placements. The rest of this paper is organized as follows. Section 2 provides the necessary background. Section 3 presents the CALIPER model and its design. Section 4 presents the experimental setup and evaluation results. Section 5 discusses the potential extensions of CALIPER that can be undertaken in future work. Section 6 reviews related work, while Section 7 concludes the paper. 2CALIPER: HPC/AI Network Simulator Calibration A P REPRINT 
+
+Table 1: Comparison of state-of-the-art calibration works with CALIPER.                       
+
+> Simulator agnostic Generalization Constrained calibration System validation
+> Mehta et al. (2016) [20] ✓✓–✓
+> Sargent (2020) [19] ✓✓–✓
+> McDonald et al. (2024) [17] ✓–✓–Davoudzade et al. (2024) [18] –✓–✓
+> CALIPER ✓✓✓✓
+
+Table 2: Taxonomy of network simulator types. 
+
+## Analytical Flow/Event-based Cycle-accurate Approach Mathematical models Discrete-event, packet-based Cycle/flit-level 
+
+## Speed High Medium Low 
+
+## Scalability High Medium Low 
+
+## Strengths Fast, interpretable Speed/accuracy balance Accuracy, realism 
+
+## Weaknesses High abstraction level Needs calibration Costly at scale 
+
+## Simulators [11–13, 16, 21, 26–28] [6, 9, 14, 15, 22–25, 29, 30] [5, 7, 8] 
+
+## 2 Background 
+
+Contemporary standalone network simulators as well as distributed AI system simulators compare predicted communi-cation or application performance with measurements from accelerator clusters and supercomputing systems, in some cases at large system scales [9, 11–16, 21–26]. These studies show that useful predictive accuracy can be achieved using a variety of modeling strategies at different abstraction levels, from analytical models to cycle-accurate simulation, each offering a distinct balance between execution speed, scalability, and fidelity of network representation. Table 2 summarizes the taxonomy of simulator types and highlights their respective trade-offs. Analytical models [11–13, 16, 21, 26–28] prioritize speed and scalability at the expense of modelling granularity. Flow/event-based simulators [6, 9, 14, 15, 22–25, 29, 30] explicitly model communication operations and resource sharing while abstracting some packet- or cycle-level behaviour. Cycle-accurate network simulators [5, 7, 8] model router pipelines, buffers, arbitration, links, and flit movement at or near individual clock cycles. However, abstraction level alone does not determine predictive accuracy. A more detailed simulator can represent mechanisms that a coarser model omits, but its predictions remain meaningful only if the simulated workload and model parameters correspond to the target system. Conversely, a compact model can provide accurate predictions within an operating regime in which its assumptions and parameters are appropriate. Predictive accuracy is therefore not an intrinsic property of a simulator category but depends on the calibration and validation of a specific model for its target system and workload. Validation is increasingly reported across both distributed AI simulators [11–16, 26–28, 30–32] and standalone network simulators [5–9, 21–25, 29]. However, calibration procedures are often only partially described or omitted altogether. This lack of information limits the ability to assess, reproduce, and transfer simulation models across system configurations, motivating the need for more systematic calibration methodologies. There also exists considerable diversity in how calibration is performed [13–16, 24, 26, 31]. Consequently, reported prediction accuracy on a selected validation set does not necessarily imply that the calibrated model will retain its predictive fidelity when applied to different calibration parameters, workloads or system configurations. The resulting gap is therefore not an absence of calibration or validation, but rather the fragmented methodological treatment of how calibration should be designed, executed, and evaluated so that the resulting model is both accurate and demonstrably transferable beyond the observations used to fit it. A fundamental limitation of calibration based solely on quality of fit is that different parameter configurations can explain the same finite set of measurements, and low fitting error does not imply that the inferred parameters capture reusable system behavior. Automated search can make this process faster and reduce the effort of manual tuning [17], but optimization alone cannot determine whether a low-error configuration is physically meaningful or whether its apparent accuracy results from compensating errors. This makes simulator configuration consequential. Some simulator inputs correspond directly to properties of the target system, such as topology, nominal link rate, job, or routing 3CALIPER: HPC/AI Network Simulator Calibration A P REPRINT Simulation 
+
+Execution Engine        
+
+> Exhaustive Parameter Set: DP + AP
+> Updated
+> Simulation
+> Parameters
+> (DP + AP)
+> Result from
+> Updated
+> Simulation
+> Parameters
+> Calibrated
+> Output
+> Direct Parameters
+> +
+> Calibrated
+> Auxiliary
+> Parameters
+> 9Simulation framework
+> SW SW
+> GPU GPU GPU GPU
+> Dataset from HW system
+> (Collective communication)
+> GPU GPU
+> GPU GPU
+> All-Reduce
+> All-Gather
+> Reduce-Scatter
+> ...
+> \(\mathcal{D}_{\mathrm{val}}\) \(\mathcal{D}_{\mathrm{cal}}\)
+> Simulation Parameters
+> Auxiliary
+> parameters
+> (AP)
+> 2
+> Direct
+> parameters
+> (DP)
+> 1
+> Hardware Parameters
+> Unmodeled
+> Parameters
+> 3
+> Modeled
+> Parameters
+> 1
+
+CALIPER 
+
+Calibration  Loop  
+
+> Optimizer
+> Loss function
+> 4
+> 6
+> 5
+> 8
+> 7
+
+Figure 1: CALIPER overview. Direct parameters (DP) remain aligned with the target system, while auxiliary parameters (AP) are iteratively optimized against the calibration dataset Dcal ; the resulting configuration is fixed before evaluation on the validation dataset Dval 
+
+constraints. These quantities should, whenever possible, be obtained from the hardware platform and held fixed. Other parameters represent effective quantities that cannot be measured directly at the simulator interface and must instead be inferred from observations. Finally, some real-system behavior may not be modeled by the simulator at all. These cases require different treatment, although a sufficiently flexible optimizer can make them appear indistinguishable if every performance-sensitive parameter is allowed to vary. The methodological issue is therefore not whether simulation parameters can be adjusted to improve error; 1 with measurements. The harder question is how to determine which 
+
+quantities should be adjusted, under what constraints , and what evidence is sufficient to show that the resulting configuration remains predictive beyond the measurements used to obtain it. CALIPER addresses this gap by separating three sources of simulator discrepancy that tuning would otherwise conflate. First, directly observable properties and execution choices are aligned between the target system and the simulation. Second, only explicitly uncertain auxiliary parameters are exposed to calibration. Third, the resulting configuration is frozen and evaluated on structured, held-out workloads [19] and system scales. Residual discrepancies that persist after these stages are not automatically absorbed through further tuning; instead, they provide evidence of workload-representation, implementation, or model fidelity limitations. This separation makes calibration interpretable while providing stronger confidence that the calibrated simulator can generalize beyond calibrated dataset. 
+
+## 3 CALIPER 
+
+In this section, we introduce the CALIPER methodology, shown in Figure 1. CALIPER partitions the simulator configuration into three parameter classes. Direct parameters (DP) 1 , correspond to observable or specified properties of the target system 1 , such as GPU count, link bandwidth, topology, etc. and are aligned with the hardware configuration rather than optimized. Auxiliary parameters (AP) 2 , are simulator-specific, non-directly measurable parameters whose values are inferred through calibration to reproduce target-system behavior. Auxiliary parameters lack one-to-one correspondence with the target system or exist primarily within the simulator abstraction; these constitute the calibration search space. System characteristics that are not represented in the simulator, i.e., parameters unmodeled in simulation 3 , are classified as model gaps and require refinement of the underlying model or implementation rather than parameter adjustment. CALIPER executes equivalent collective communication benchmarks 4 on the target system and simulation frame-work 5 . The Simulation Execution Engine 6 provides a simulator-agnostic interface for configuring and executing the target simulation framework and comparing its outputs against hardware measurements partitioned into calibration 
+
+Dcal and validation Dval datasets. During calibration, direct parameters remain fixed at their hardware-aligned values, while the CALIPER optimizer 7 iteratively updates the auxiliary parameters based on the loss function 8 between simulated results and Dcal . The resulting calibrated output 9 combines the fixed direct parameters with the optimized auxiliary parameters. 
+
+> 1
+
+error, loss, and agreement are used interchangeably throughout the manuscript 
+
+4CALIPER: HPC/AI Network Simulator Calibration A P REPRINT 
+
+Table 3: Notation used in the CALIPER methodology. 
+
+Category Symbol Meaning 
+
+System H Target real system from which performance measurements are collected. System S Simulator used to predict the behavior of the target system. Experiment X Space of benchmarks and system configurations considered for calibration. Experiment x ∈ X One experiment, including its workload and system configuration. Experiment (c, n, m, p, τ ) Collective operation, number of participating accelerators, message size, accelerator placement, and topology or system configuration. Observation y(x) Performance measured on the target system for experiment x. In this paper, it is collective completion time. Prediction ˆy(x; ϕ, θ ) Simulator prediction for experiment x under direct parameters ϕ and auxiliary parameters θ.Parameter ϕ Directly observable or confidently known simulator parameters. These parameters remain fixed during calibration. Parameter θ = ( θ1, . . . , θ d) Vector of d auxiliary parameters that the calibration procedure is allowed to modify. Parameter domain Θi Feasible domain of auxiliary parameter θi.Parameter domain Θ Joint feasible parameter space, Θ = Θ 1 × · · · × Θd.Dataset Dcal Measurements used to infer the auxiliary parameters. Dataset Dval Independent measurements used only to evaluate the calibrated configuration. Experiment group Gcal Set of experiment groups included in calibration. Within one group, the collective, communicator size, placement, and execution configuration remain fixed while message size varies. Experiment group Dk Calibration observations belonging to experiment group k.Loss Lk (θ) Root-mean-square completion-time error over the observations in experiment group k.Loss L(θ) Overall calibration objective. For multiple experiment groups, it is the maximum group-level loss. Result θ⋆ Auxiliary parameter vector that minimizes the calibration objective. Validation Ei(θ⋆) Absolute relative prediction error for validation observation i.
+
+Although we use collective communication [4] throughout the paper as a concrete example, the formulation is independent of a specific simulator, workload, or performance metric. Table 3 summarizes the notation used in the CALIPER methodology elaborated in sub-sections 3.1–3.8. 
+
+3.1 Experiments and Metric Definition 
+
+Let H denote the target system and S denote a simulator intended to model H. We define an experiment by a configuration 
+
+x ∈ X , (1) where X is the space of workloads and system configurations of interest. For collective communication, x includes 
+
+x = ( c, n, m, p, τ, . . . ), (2) where c is the collective operation, n is the number of participating accelerators, m is the message size, p describes process or accelerator placement, and τ identifies the relevant topology or configuration. The formulation naturally extends to additional dimensions. Executing x on the target system produces a performance observation 
+
+y(x) = H(x). (3) In this paper, y(x) is the collective completion time , defined as the elapsed time from the invocation of the collective operation until the last participating rank completes it. We also report algorithmic bandwidth , defined as 
+
+Balg (x) = my(x) . (4) 5CALIPER: HPC/AI Network Simulator Calibration A P REPRINT 
+
+Following the definition used by nccl-tests [33], algorithmic bandwidth does not include a correction for the number of participating ranks. Factors that depend on n are used only to derive NCCL bus bandwidth. For AllReduce, bus bandwidth is obtained by multiplying algorithmic bandwidth by 2( n − 1) /n . For AllGather and ReduceScatter, it is obtained by multiplying algorithmic bandwidth by (n − 1) /n . We report algorithmic bandwidth and do not use bus bandwidth as a separate evaluation metric. 
+
+3.2 Simulator Parameters 
+
+The simulator parameters are partitioned into two sets. The vector ϕ contains direct parameters : quantities that can be mapped from the target system or experiment with sufficiently high confidence. They are fixed during calibration. The vector 
+
+θ = ( θ1, . . . , θ d) (5) contains the auxiliary parameters that CALIPER is allowed to tune. Each auxiliary parameter belongs to a feasible domain Θi, yielding 
+
+θ ∈ Θ = Θ 1 × · · · × Θd. (6) The domains may contain continuous, integer, or categorical values. Bounds encode simulator constraints and prior engineering knowledge and prevent the optimizer from producing meaningless simulator configurations. For a given simulator S parameters and input workload, we represent the corresponding performance predicted by the simulator as 
+
+ˆy(x; ϕ, θ ) = S(x; ϕ, θ ). (7) 
+
+3.3 Calibration Dataset 
+
+Let 
+
+Dcal = {(xi, y i)}Ni=1 (8) denote the calibration dataset, where i indexes one measured experiment, xi is its experiment configuration, and 
+
+yi = H(xi). (9) is its measured collective completion time. The calibration problem is 
+
+min  
+
+> θ∈Θ
+
+L (Dcal , θ ) . (10) Let Gcal denote the set of experiment groups included in calibration. An experiment group fixes the collective operation, communicator size, placement, and execution configuration while varying message size. For each group g ∈ G cal , let Dg ⊆ D cal denote its calibration observations. CALIPER calculates the root-mean-square completion-time error (RMSE) 
+
+Lg (θ) = 
+
+vuut 1
+
+|D g |
+
+X
+
+> (xi,y i)∈D g
+
+[S(xi; ϕ, θ ) − yi]2. (11) When several groups (i.e., different collectives, placements, etc..) are calibrated jointly, CALIPER uses the minimax objective 
+
+L(θ) = max 
+
+> g∈G cal
+
+Lg (θ). (12) The minimax objective, therefore, minimizes the error of the worst-fitting experiment group. It prevents a large improvement for one group from hiding poor accuracy for another group. When calibration contains one group, Equation (12) reduces to that group’s RMSE. 6CALIPER: HPC/AI Network Simulator Calibration A P REPRINT 
+
+3.4 Calibration Vs Validation 
+
+A low error on Dcal only shows that a parameter configuration explains the observations used during fitting. It does not show that the configuration remains accurate for other observations. The final validation dataset is denoted by Dval . It is not used for parameter fitting, wheres 
+
+Dval ∩ D cal = ∅. (13) For each validation observation (xi, y i) ∈ D val , we calculate the absolute relative completion-time error 
+
+Ei = S(xi; ϕ, θ ⋆) − yi
+
+yi
+
+. (14) We report the distribution, mean, and selected percentiles of Ei over Dval . Algorithmic bandwidth Eq. 4 is derived from the same completion-time observations and is used to interpret curve shape rather than as an independent validation metric. 
+
+3.5 Experiment Representation 
+
+Caliper represents each measured experiment as 
+
+ri = ( xi, q i, y i), (15) where xi describes the logical experiment, yi is the measured performance, and qi describes how the experiment was realized on the target system. The distinction between xi and qi is important. A logical workload does not always determine a unique execution. Software layers can select different algorithms, decompose work differently, or expose different levels of parallelism. Two executions can therefore have the same high-level workload xi while producing different low-level behavior. CALIPER records the execution information required to reproduce the relevant behavior in simulation. We denote this execution information by qi.The exact contents of qi depend on the simulator and workload. CALIPER does not impose a specific representation. 
+
+3.6 Experiment Mapping 
+
+The experiment mapper converts a measured experiment into a simulator workload: 
+
+zi = M(xi, q i). (16) The goal of M is to preserve the properties of the real execution that affect the simulated metric. CALIPER therefore requires the simulator workload to be equivalent to the measured execution with respect to the modeled behavior: 
+
+qreal  
+
+> i
+
+≡ qsim  
+
+> i
+
+. (17) We refer to this property as execution equivalence . Execution equivalence prevents the optimizer from correcting workload mismatch through unrelated simulator parameters. For example, if the simulated workload exposes less parallelism than the real execution, an optimizer could compensate by increasing the simulated bandwidth. Such a configuration may reduce calibration error while producing poor predictions for other workloads. CALIPER therefore constructs zi before optimization and keeps it fixed for all candidate parameter vectors. 
+
+3.7 Calibration Loop 
+
+Given a calibration set 
+
+Dcal = {ri}Ni=1 , (18) Caliper first constructs the corresponding simulator workloads 
+
+zi = M(xi, q i). (19) 7CALIPER: HPC/AI Network Simulator Calibration A P REPRINT 
+
+Algorithm 1 Caliper calibration 
+
+Require: Calibration set Dcal 
+
+Require: Direct parameters ϕ
+
+Require: Auxiliary parameter space Θ
+
+Require: Search budget B 
+
+> 1:
+
+for all ri = ( xi, q i, y i) ∈ D cal do  
+
+> 2:
+
+zi ← M (xi, q i) 
+
+> 3:
+
+end for  
+
+> 4:
+
+Initialize optimizer over Θ 
+
+> 5:
+
+for b = 1 , . . . , B do  
+
+> 6:
+
+θb ← PROPOSE ()  
+
+> 7:
+
+for all ri ∈ D cal do  
+
+> 8:
+
+ˆyi,b ← S (zi; ϕi, θ b) 
+
+> 9:
+
+end for  
+
+> 10:
+
+Lb ← L (Dcal , θ b) 
+
+> 11:
+
+OBSERVE (θb, L b) 
+
+> 12:
+
+end for  
+
+> 13:
+
+return θ⋆ = arg min θb Lb
+
+The optimizer then proposes a candidate auxiliary parameter vector θb. Caliper evaluates the simulator for every calibration experiment: 
+
+ˆyi,b = S (zi; ϕi, θ b) . (20) The predictions are compared with the measured targets using the calibration loss from Section 3: 
+
+Lb = L (Dcal , θ b) . (21) The optimizer uses Lb to select the next candidate. After the search budget is exhausted, CALIPER returns 
+
+θ⋆ = arg min 
+
+> θb
+
+Lb. (22) Algorithm 1 summarizes the process. 
+
+3.8 Optimizer 
+
+CALIPER treats the optimizer as a replaceable component. It exposes two operations: • P ROPOSE returns a candidate parameter vector • O BSERVE reports the corresponding objective value for the parameter vector. This separation is useful because simulator calibration is naturally a black-box optimization problem. Simulator evaluations may contain discrete events, integer parameters, categorical choices, and discontinuities. They also do not generally expose useful gradients. CALIPER therefore does not depend on a specific optimization algorithm. The simulator and optimizer configuration used in the evaluation is described in Section 4.3.1. Evaluating one candidate parameter vector requires executing the simulator for all experiments in Dcal . These executions are independent and can be evaluated in parallel. system also caches simulator results using 
+
+(zi, ϕ i, θ ) → ˆyi. (23) If the same configuration is requested again, CALIPER reuses the cached result rather than invoking the simulator. 
+
+## 4 Experimental Evaluation 
+
+In this section, we evaluate the CALIPER methodology to calibrate and validate a network simulator to faithfully represent target hardware platforms. 8CALIPER: HPC/AI Network Simulator Calibration A P REPRINT 
+
+> (a) Platform used for quantitative evaluation.
+
+Parameter Value 
+
+Platform JUWELS Booster GPUs 4–64 Accelerators/node 4× A100-SXM4 Scale-up topology NVLink3 full mesh Scale-out topology Dragonfly+ Interfaces/node 4× ConnectX-6 HDR200  
+
+> (b) Different placements on the JUWELS Booster Dragonfly+ topology. Placement A
+> Placement B
+> Server
+> Group
+> Switch
+> NIC
+> GPU
+> GPU GPU
+> GPU
+> NIC
+> NIC NIC
+> Scaleup Domain
+
+Figure 2: Experimental platform and evaluated process placements. The CALIPER workflow was quantitatively evaluated on JUWELS Booster. 
+
+4.1 Target Hardware Platforms 
+
+We assessed CALIPER’s measurement and calibration workflow on GPU-accelerated JUWELS Booster system at the Jülich Supercomputing Centre [34], as shown in Figure 2. We refer to the two JUWELS Booster topological placement allocations as Placement A and Placement B. At 64 GPUs, as depicted in Figure 2b, Placement A crosses two adjacent Dragonfly+ groups, whereas Placement B remains within one group. The scale-up parameter and scale-out is calibrated using Placement A. Placement B is used only for scale-out validation. 
+
+4.2 Benchmarks and Ground-truth Measurements 
+
+We use NCCL Ring/Simple collective communication benchmark executions with captured channel assignments [35]. The evaluated collective operations are AllGather, AllReduce, and ReduceScatter. All four GPUs of one node participate in the scale-up experiments. The scale-out experiments use 8, 16, 32, or 64 GPUs. The four-GPU executions use 24 NCCL channels. Executions at larger scales use eight channels. For each collective and GPU count, the dataset contains 1,024 operation sizes between 0.5 MiB and 512 MiB. Our primary evaluation metric is collective completion time, which is defined as the average in-place operation time reported by nccl-tests over 20 timed iterations following one warm-up iteration. We also track algorithmic bandwidth as defined in Equation 4. Algorithmic bandwidth is derived from completion time and is used to explain the shape of the performance curves. 
+
+4.3 Simulation Execution Engine Instantiation 4.3.1 Simulation Framework 
+
+We modeled the Dragonfly+ topology of the JUWELS Booster network in SST/Merlin [34, 36]. The model preserves cell hierarchy, local and global links, link capacities, and measured node placement. The default ASTRA-sim collective implementation derives a communication pattern from the collective type and communicator size. This is not sufficient when a measured NCCL execution uses a specific communication plan. We therefore modified astrasim to enable it to read the captured NCCL log (i.e., selected algorithm, channels, chunking, GPU-to-NIC placement) and to approximately reproduce the corresponding communication plan. The simulations run on a server equipped with two Intel Xeon E5-2699 v3 processors (36 physical cores, 72 hardware threads) running Ubuntu 22.04. The optimizer processes are batched sequentially. We parallelize the execution of simulator runs across 72 processes, which results in each iteration taking a median 84.5s of wall-clock time. Each 9CALIPER: HPC/AI Network Simulator Calibration A P REPRINT         
+
+> 0510 15 20 25 30 05·10 −2
+> 0.10.15 0.20.25 0.30.35
+> Iteration Loss
+
+Figure 3: completion-time RMSE as function each iteration. Table 4: Calibration and validation benchmarks used in the scale-up and scale-out experiments. Calibration uses only AllReduce measurements targeting Placement A topology. All other listed measurements are evaluated after the corresponding configuration has been fixed. − indicates the configuration was not used for calibration, and only employed for validation.                                           
+
+> Stage Collective Placement GPUs Calibration Validation max(RMSE)
+> Scale-up AllReduce A4389 635 0.0139 Scale-up AllGather A4−1,024 0.0131 Scale-up ReduceScatter A4−1,024 0.0105 Scale-out AllReduce,AllGather,ReduceScatter A64 389 635 0.0784 Scale-out AllReduce,AllGather,ReduceScatter A8, 16, 32 −1,024 0.3349 Scale-out AllReduce,AllGather,ReduceScatter B8, 16, 32, 64 −1,024 0.2134
+
+calibration is assigned 30 iterations as a fixed budget (see Figure. 3), where each iteration can consist of up to 512 independent simulator executions. 
+
+4.3.2 Tracked Simulator Output Metrics 
+
+The simulator output primarily tracked is the completion time of the simulated collective. This is used to determine the loss compared to the ground truth from real hardware measurement, as described in subsection 4.2. For each simulation, the simulator reproduces the recorded GPU placement, GPU-to-NIC affinity, collective algorithm, protocol, channel count, channel order, and message partitioning. This prevents calibration from compensating for differences between the measured NCCL execution and the simulated collective communication benchmarks. 
+
+4.3.3 Benchmark Partitioning for Calibration and Validation 
+
+Each collective communication benchmark contains 1,024 operation sizes. During calibration, 389 distinct sizes are utilized while the remaining 635 sizes are used for validation, as shown in Table 4. For scale-up (i.e. n = 4 ) stage of calibration, we use only a subset of the four-GPU AllReduce benchmarks targetting Placement A topology, whereas the rest of the collectives (AllGather and ReduceScatter) are entirely used for validation. For scale-out calibration (i.e. n > = 8 ), we retain the fixed scale-up configuration and use only a subset of the 64-GPU AllReduce measurements from Placement A. The resulting configuration is validated in three ways. We first evaluate the remaining 64-GPU operation sizes from Placement A. We then evaluate the complete 8, 16, and 32-GPU AllReduce benchmarks targeting Placement A to test generalization across communicator size. Finally, we validate the complete 8, 16, 32, and 64-GPU AllReduce benchmarks targeting Placement B to test generalization across physical allocation, since Placement B topology was not used during calibration. 
+
+4.4 Calibration Optimizer 
+
+We choose batch Bayesian optimization implemented with BoTorch [37]. A Gaussian-process surrogate models the relationship between auxiliary parameters and completion-time RMSE. The input parameters are normalized, and the observed losses are standardized. 10 CALIPER: HPC/AI Network Simulator Calibration A P REPRINT 
+
+Table 5: Representative subset of the most relevant direct (DP) and auxiliary (AP) parameters. Checkmark ( ✓) indicates applicability of the corresponding parameter to scale-up and scale-out communication. The final value of the DP refers to value set based on target hardware platform whereas for AP, it refers to the value obtained at the end of calibration. 
+
+Type Component Parameter Scale-up Scale-out Domain Final value 
+
+> Direct (DP)
+
+Scale-up network GPU-to-GPU link bandwidth ✓ – 100 GB/s per peer Scale-out network GPU-to-NIC bandwidth ✓ – 200 Gbit/s per NIC Scale-out network Network-link bandwidth ✓ – 200 Gbit/s Dragonfly+ Intra-group link delay ✓ – 0.5 μsDragonfly+ Inter-group global-link delay ✓ – 1 μs
+
+> Auxiliary (AP)
+
+Collective Collective startup overhead ✓ ✓ 0–300 μs 32 .78 μsCollective Per-loop overhead ✓ ✓ 0–50 μs 6.36 μsScale-up Per-send scale-up delay ✓ 1–50 μs 5.36 μsScale-out Per-send scale-out delay ✓ 0.5–30 μs 18 .31 μsReduction Kernel throughput ✓ ✓ 60 –300 GB/s 240 .73 GB/s 
+
+The default 2 baseline configuration includes points distributed across the allowed parameter space. Subsequent iterations use logarithmic expected improvement [38] to propose batches of two configurations. 
+
+4.5 Scale-up Domain Calibration 
+
+The scale-up configuration is calibrated using only four-GPU AllReduce measurements from Placement A. Because all four GPUs are located in one node, these measurements expose the scale-up network fabric without introducing scale-out communication. After calibration, all scale-up parameters are fixed. We first evaluate the calibrated parameter configuration on the 635 AllReduce operation sizes from Placement A that did not influence calibration. We then apply the same configuration to the complete AllGather and ReduceScatter curves. These collectives were not used during fitting or configuration selection. Finally, we repeat the three collective experiments on Placement B. Figure 4 compares the error distributions of the default and calibrated configurations. The default configuration produces mean errors of 39.0% for AllGather, 29.9% for AllReduce, and 23.5% for ReduceScatter. Using the configuration calibrated only on AllReduce, the corresponding mean validation errors are 0.77%, 0.94%, and 1.05%. The 95th-percentile errors are 2.02%, 2.74%, and 2.27%, respectively. 0 20 40 60 80           
+
+> Error (%)
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> Cumulative distribution function
+> AllGather
+> 020 40 60 80
+> Error (%)
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> AllReduce
+> 020 40 60 80
+> Error (%)
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> ReduceScatter
+> Default Calibration Validation
+
+Figure 4: Distribution of absolute relative completion-time error for four GPUs. The simulator is calibrated using only a subset of the AllReduce measurements from Placement A. AllGather, ReduceScatter, Placement B, and the remaining AllReduce operation sizes are used only for validation. Figure 5 shows the measured, default, and calibrated completion-time and algorithmic-bandwidth curves. The calibrated configuration corrects the message size trend and the large message size bandwidth plateau. The same parameter configuration also follows the AllGather and ReduceScatter curves even though neither collective was used during calibration. 
+
+> 2
+
+The default configuration uses manually selected auxiliary parameter (AP) values based on our best understanding of the system. 
+
+11 CALIPER: HPC/AI Network Simulator Calibration A P REPRINT 0.0 0.5 1.0 1.5 2.0                                             
+
+> Time (ms)
+> AllGather (4 GPUs)
+> 80 160 240 320 400 0.5 1.0 1.5
+> 01234
+> AllReduce (4 GPUs)
+> 80 160 240 320 400 123
+> 0.0 0.5 1.0 1.5 2.0
+> ReduceScatter (4 GPUs)
+> 80 160 240 320 400 0.5 1.0 1.5
+> 0100 200 300 400 500
+> Message size (MiB)
+> 0100 200 300 400
+> Algo BW (GB/s)
+> 160 240 320 400 480 225 250
+> 0100 200 300 400 500
+> Message size (MiB)
+> 050 100 150 200
+> 160 240 320 400 480 130 140
+> 0100 200 300 400 500
+> Message size (MiB)
+> 0100 200 300 400
+> 160 240 320 400 480 240 260
+> Real Default Calibrated
+
+Figure 5: Measured, default, and calibrated scale-up performance for 4 GPUs. Only AllReduce from Placement A is used for calibration. The AllGather and ReduceScatter results test cross-collective generalization without retuning. 
+
+Key takeaway 1: Using CALIPER, a subset of collective communication benchmark data (in this case AllReduce) is sufficient to effectively calibrate the evaluated scale-up model. The calibrated parameter configuration is observed to preserve simulation accuracy on other AllReduce operation sizes, two other collectives, and a different placement within the scale-up domain. 
+
+4.6 Scale-out Domain Calibration 
+
+After scale-up calibration, the complete set scale-up paramters is fixed. Scale-out calibration uses only a subset of the 64-GPU AllReduce measurements from Placement A. At this scale, the collective crosses two Dragonfly+ groups. The collective communication benchmark used for scale-out calibration must expose the parameter being estimated strongly enough to separate it from other costs. A simplified timing expression for ring AllReduce is: 
+
+TAR (n, m ) ≈ αAR + 2( n − 1) δsend + R(n, m )δloop + V (n, m )
+
+B . (24) The collective startup term αAR is paid once, whereas the scale-out send delay δsend is paid during each of the 2( n − 1) 
+
+ring steps. At small communicator sizes, different combinations of startup and send delay can therefore produce similar completion times. As the communicator grows, the repeated send-delay contribution becomes larger and easier to distinguish from the one-time startup cost. In particular, its contribution is 21 times larger at 64 GPUs than at 4 GPUs. The same reasoning applies to other ring collectives, although AllGather and ReduceScatter each contain n − 1
+
+communication steps rather than 2( n − 1) .We therefore estimate the scale-out send delay using the 64-GPU AllReduce execution from Placement A. As shown in Figure 6, the calibrated 64-GPU configuration achieves a mean absolute relative error of 1.29% over the 635 held-out message sizes. 
+
+Key takeaway 2: Collective communication with large communicator sizes makes repeated per-send costs easier to distinguish from one-time collective startup costs. This reduces the ability of one parameter to compensate for another during calibration. 
+
+4.7 Validating different Communicator Sizes and Collectives 
+
+After the scale-out system calibration employing 64 GPUs, the complete parameter configuration for the simulator is finalized. We first validate the efficacy of calibration on system scales of 8, 16, and 32 GPUs from Placement A. No parameter is retuned for these communicator sizes. Figure 6 summarizes the corresponding error distributions for AllReduce. The mean relative errors are 4.77% at 8 GPUs, 4.34% at 16 GPUs, and 3.17% at 32 GPUs. At 64 GPUs, the mean error on operation sizes excluded from 12 CALIPER: HPC/AI Network Simulator Calibration A P REPRINT 
+
+calibration is 1.29%.The relative error for the calibrated parameter configuration is larger at smaller communicator sizes because the calibrated scale-out delay is incurred fewer times. Costs paid once per collective and remaining scale-up errors therefore represent a larger fraction of the total completion time. 8 16 32 64 
+
+GPU Count 
+
+0510 15 20      
+
+> Mean Error (%)  [95% CI]
+> 9.7 9.7 10.8 12.3 4.8 4.3 3.2 1.3
+
+Placement A 
+
+8 16 32 64 
+
+GPU Count 
+
+0510 15 20      
+
+> 8.4 9.1 10.6 19.9 3.7 4.0 3.4 2.2
+
+Placement B 
+
+Default Calibrated 
+
+Figure 6: Distribution of AllReduce prediction error across communicator sizes on Placement A. Scale-out calibration uses a subset of the 64-GPU measurements. The 8, 16, and 32 GPU system configurations are validated without parameter retuning. Figure 7 compares the measured, default, and calibrated AllReduce results. The calibrated parameter configuration is observed to preserve the trends for completion-time trend and algorithmic-bandwidth across evaluated GPU counts. 0510                                                       
+
+> Time (ms)
+> 8 GPUs
+> 80 160 240 320 400 05
+> 0510
+> 16 GPUs
+> 80 160 240 320 400 2.5 5.0 7.5
+> 0510
+> 32 GPUs
+> 80 160 240 320 400 2.5 5.0 7.5
+> 0510
+> 64 GPUs
+> 80 160 240 320 400 2.5 5.0 7.5
+> 0100 200 300 400 500
+> Message size (MiB)
+> 020 40 60
+> Algo BW (GB/s)
+> 160 240 320 400 480 40 50
+> 0100 200 300 400 500
+> Message size (MiB)
+> 020 40
+> 160 240 320 400 480 40 50
+> 0100 200 300 400 500
+> Message size (MiB)
+> 020 40
+> 160 240 320 400 480 40 50
+> 0100 200 300 400 500
+> Message size (MiB)
+> 020 40
+> 160 240 320 400 480 30 40 50
+> Real Default Calibrated
+
+Figure 7: Measured, default, and calibrated AllReduce performance from 8 to 64 GPUs on Placement A. Only a subset of the 64-GPU AllReduce curve is used for scale-out calibration. 
+
+Key takeaway 3: Using CALIPER, parameters calibrated only with AllReduce measurement data from one topological placement are observed to retain validation accuracy for different topological placements & system scales. 
+
+## 5 Discussion 
+
+In this section, we discuss the directions that can be taken to extend CALIPER methodology and to adopt it to other scenarios than those presented in the previous section. 
+
+5.1 Setting up Calibration Budgets and Stopping Criteria 
+
+In the reported set of experiments, we setup a fixed iteration budget specified at the start of each calibration run. This approach could be extended to a combination of a maximum resource budget (expressed in number of iterations, simulator execution runs, or wall-clock time), with an early stopping criterion (in terms of target RMSE) tracking calibration progress. Also, if the RMSE does not change across a set of multiple consecutive iterations (without reaching 13 CALIPER: HPC/AI Network Simulator Calibration A P REPRINT 
+
+the target RMSE), it may be used as a stopping criteria, indicating errors in the simulator which cannot be fixed by calibrating the simulator parameters. 
+
+5.2 Adapting to different network simulator 
+
+CALIPER separates its calibration logic from simulator-specific input files, commands, and output formats through the simulator interface, as shown in the Fig. 1. This freedom allows a new network simulator to be calibrated using CALIPER by means of an adapter specific to that simulator to attach the simulation execution engine and report the simulator outputs in the requried format. 
+
+5.3 From Collectives to End-to-End Workloads 
+
+Distributed ML training and inference serving simulators rely on network simulators for forecasting performance of AI workloads [13, 14, 16, 27, 28, 30, 32]. These simulators deal with a large variety of parameters to model including distribution strategy of data, computation time, dependencies between phases, concurrent communication, and overlap between computation and communication. By using the CALIPER methodology, these simulators can pre-calibrate their network simulators to represent target hardware systems faithfully, thereby enabling more reliable performance prediction of ML workloads. 
+
+## 6 Related Work 
+
+High-fidelity simulation studies commonly assess accuracy by comparing simulated and observed performance under a selected set of conditions. However, a close fit alone is insufficient evidence that a simulator represents the target system correctly: errors in workload mapping, uncertain hardware parameters, and omissions in the model can compensate for each other and yield accurate predictions for incorrect underlying reasons. Prior work has developed principles for simulation credibility and validation [10, 19, 20, 39], techniques for simulator calibration [17, 18, 40–42], and increasingly sophisticated network and distributed-AI simulators [13–16]. However, these strands do not consistently distinguish three conceptually different activities: aligning simulator inputs with directly measurable system properties and inferring auxiliary parameters that account for unresolved or abstracted behavior. CALIPER makes this separation explicit and uses it to structure the calibration and validation of AI/HPC network simulators. 
+
+Simulation credibility, verification, and validation. Simulation credibility requires more than a close match between simulated and observed results for a limited set of experiments. Verification and validation distinguish correct implementation from whether a simulator, its assumptions, and its inputs adequately represent the target system [19, 20]. In network simulation, concerns about credibility also include the quality of experimental methodology and statistical analysis [39], while attempts to invalidate a model can expose flaws that remain hidden when evaluation reports only successful cases [10]. CALIPER translates these general principles into a concrete workflow for AI/HPC network simulators: it separates hardware alignment, parameter inference, and model diagnosis, then uses structured validation on withheld workloads and scales to test whether a calibrated configuration is credible beyond the observations used for fitting. 
+
+Automated calibration. Automated calibration reduces the effort of manually selecting simulator parameters by searching for configurations that minimize the difference between simulated and measured behavior [17]. This is valuable because calibration becomes increasingly difficult as the number of parameters and their interactions grow [43]. Techniques such as Bayesian optimization have been used to tune HPC network models across message regimes [41, 42], while other work combines calibration with network model optimization and evaluates configurations across message lengths and router models [18]. However, automatic calibration has also shown that an inaccurate baseline can substantially distort prediction quality [40]. CALIPER differs by treating optimization as one stage of a broader method. It separates parameters that should be measured directly from those that must be inferred, constrains inferred values using system knowledge, and uses independent validation to determine whether residual error comes from parameter choices, workload mapping, or missing model behavior. 
+
+Simulation accuracy and transferability. Simulation accuracy depends on both the chosen network abstraction and the communication conditions being modeled. Flow level models can support faster simulation than packet level models, but their accuracy varies across operating regimes and may become unacceptable when their abstraction omits relevant behavior [44]. Incorporating network topology and contention can improve predictive accuracy across real application benchmarks [45], while broad evaluations of distributed system simulators show that accuracy and scalability must be assessed across various different workloads and platforms rather than assumed from a single setting [9, 46]. CALIPER addresses transferability by comparing cross collective, and scale generalizing calibration strategies, then evaluating each resulting configuration on workloads and scales that were not used during fitting. 14 CALIPER: HPC/AI Network Simulator Calibration A P REPRINT 
+
+## 7 Conclusion 
+
+We presented CALIPER, a principled methodology for calibrating AI/HPC network simulators that moves beyond fitting simulation outputs to hardware measurements. CALIPER explicitly separates direct parameter alignment, auxiliary-parameter inference, and independent validation, preventing optimization from compensating for known system properties, workload mismatches, or model-form limitations. Our evaluation demonstrates the importance of identifiability-aware calibration, where network domains are calibrated hierarchically and calibration experiments are selected to sufficiently expose the parameters being inferred. By calibrating the simulator configuration and evaluating it across held-out message sizes, system scales, and physical placements, CALIPER distinguishes goodness-of-fit from predictive validity. More broadly, our results show that simulator credibility cannot be established by low calibration error alone: it requires evidence that the inferred configuration captures system behavior that persists beyond the observations used for fitting. CALIPER provides a systematic foundation for obtaining such evidence and for making simulator calibration more interpretable and scientifically defensible. 
+
+## References 
+
+[1] Virgo network: Megascale data center fabric. URL https://cloud.google.com/blog/products/ networking/introducing-virgo-megascale-data-center-fabric .[2] Nvlink for custom silicon integration. URL https://nvidianews.nvidia.com/news/ nvidia-opens-nvlink-for-custom-silicon-integration .[3] Ualink 200g 1.0 specification. URL https://ualinkconsortium.org/specification/ ualink-200g-1-0-specification/ .[4] Ernie Chan, Marcel Heimlich, Avi Purkayastha, and Robert van de Geijn. Collective communication: Theory, practice, and experience. Concurrency and Computation: Practice and Experience , 19(13):1749–1783, 2007. doi:10.1002/cpe.1206. [5] A. F. Rodrigues, K. S. Hemmert, B. W. Barrett, C. Kersey, R. Oldfield, M. Weston, R. Risen, J. Cook, P. Rosenfeld, E. Cooper-Balis, and B. Jacob. The structural simulation toolkit. ACM SIGMETRICS Per-formance Evaluation Review , 38(4):37–42, March 2011. doi:10.1145/1964218.1964225. URL https: //doi.org/10.1145/1964218.1964225 .[6] nsnam. ns-3. URL https://www.nsnam.org/ .[7] Niket Agarwal, Tushar Krishna, Li-Shiuan Peh, and Niraj K. Jha. GARNET: A detailed on-chip network model inside a full-system simulator. In 2009 IEEE International Symposium on Performance Analysis of Systems and Software , pages 33–42, 2009. doi:10.1109/ISPASS.2009.4919636. URL https://doi.org/10.1109/ISPASS. 2009.4919636 .[8] Nan Jiang, Daniel U. Becker, George Michelogiannakis, James Balfour, Brian Towles, D. E. Shaw, John Kim, and William J. Dally. A detailed and flexible cycle-accurate network-on-chip simulator. In 2013 IEEE International Symposium on Performance Analysis of Systems and Software (ISPASS) , pages 86–96, 2013. doi:10.1109/ISPASS.2013.6557149. URL https://doi.org/10.1109/ISPASS.2013.6557149 .[9] Henri Casanova, Arnaud Giersch, Arnaud Legrand, Martin Quinson, and Frédéric Suter. Versatile, scalable, and accurate simulation of distributed applications and platforms. Journal of Parallel and Distributed Computing , 74 (10):2899–2917, October 2014. doi:10.1016/j.jpdc.2014.06.008. URL https://doi.org/10.1016/j.jpdc. 2014.06.008 .[10] Pedro Velho, Lucas Mello Schnorr, Henri Casanova, and Arnaud Legrand. On the validity of flow-level TCP network models for grid and cloud simulations. ACM Transactions on Modeling and Computer Simulation , 23(4): 23:1–23:26, December 2013. doi:10.1145/2517448. URL https://doi.org/10.1145/2517448 .[11] Diksha Moolchandani, Joyjit Kundu, Frederik Ruelens, Peter Vrancx, Timon Evenblij, and Manu Perumkunnil. AMPeD: An analytical model for performance in distributed training of transformers. In 2023 IEEE Interna-tional Symposium on Performance Analysis of Systems and Software (ISPASS) , pages 306–315. IEEE, 2023. doi:10.1109/ISPASS57527.2023.00037. URL https://doi.org/10.1109/ISPASS57527.2023.00037 .[12] Joyjit Kundu, Wenzhe Guo, Ali BanaGozar, Udari De Alwis, Sourav Sengupta, Puneet Gupta, and Arindam Mallik. Performance modeling and workload analysis of distributed large language model training and inference, 2024. URL https://doi.org/10.48550/arXiv.2407.14645 .[13] William Won, Taekyung Heo, Saeed Rashidi, Srinivas Sridharan, Sudarshan Srinivasan, and Tushar Krishna. ASTRA-sim2.0: Modeling hierarchical networks and disaggregated systems for large-model training at scale. In 2023 IEEE International Symposium on Performance Analysis of Systems and Software (ISPASS) , pages 15 CALIPER: HPC/AI Network Simulator Calibration A P REPRINT 
+
+283–294, 2023. doi:10.1109/ISPASS57527.2023.00035. URL https://doi.org/10.1109/ISPASS57527. 2023.00035 .[14] Xizheng Wang, Qingxu Li, Yichi Xu, Gang Lu, Dan Li, Li Chen, Heyang Zhou, Linkang Zheng, Sen Zhang, Yikai Zhu, Yang Liu, Pengcheng Zhang, Kun Qian, Kunling He, Jiaqi Gao, Ennan Zhai, Dennis Cai, and Binzhang Fu. SimAI: Unifying architecture design and performance tuning for large-scale large language model training with scalability and precision. In 22nd USENIX Symposium on Networked Systems Design and Implementation (NSDI 25) , pages 541–558. USENIX Association, 2025. URL https://www.usenix.org/conference/nsdi25/ presentation/wang-xizheng-simai .[15] Fei Gui, Kaihui Gao, Li Chen, Dan Li, Vincent Liu, Ran Zhang, Hongbing Yang, and Dian Xiong. Accelerating design space exploration for LLM training systems with multi-experiment parallel simulation. In 22nd USENIX Symposium on Networked Systems Design and Implementation (NSDI 25) , pages 473–488. USENIX Association, 2025. URL https://www.usenix.org/conference/nsdi25/presentation/gui .[16] Siyuan Shen, Tommaso Bonato, Zhiyi Hu, Pasquale Jordan, Tiancheng Chen, and Torsten Hoefler. ATLAHS: An application-centric network simulator toolchain for AI, HPC, and distributed storage. In Proceedings of the International Conference for High Performance Computing, Networking, Storage and Analysis , SC ’25, pages 349–367, New York, NY, USA, 2025. Association for Computing Machinery. doi:10.1145/3712285.3759838. URL https://doi.org/10.1145/3712285.3759838 .[17] Jesse McDonald, Maximilian Horzela, Frédéric Suter, and Henri Casanova. Automated calibration of parallel and distributed computing simulators: A case study. In 2024 IEEE International Parallel and Distributed Processing Symposium Workshops (IPDPSW) , pages 1026–1035, 2024. doi:10.1109/IPDPSW63119.2024.00173. URL 
+
+https://doi.org/10.1109/IPDPSW63119.2024.00173 .[18] Maede Davoudzade, Chris Barber, Babak Esfandiari, and Thomas Kunz. Enhancing network simulation accuracy through calibration and model optimization. In PoEM Companion , 2024. URL https://api. semanticscholar.org/CorpusID:274515972 .[19] Robert G. Sargent. Verification and validation of simulation models: An advanced tutorial. In 2020 Winter Simulation Conference (WSC) , pages 16–29, 2020. doi:10.1109/WSC48552.2020.9384052. [20] NASA. Simulation credibility: Advances in verification, validation, and uncertainty quantification. NASA Techni-cal Publication NASA/TP-2016-219422, NASA Ames Research Center and JANNAF Interagency Propulsion Com-mittee, Moffett Field, CA, USA, November 2016. URL https://ntrs.nasa.gov/citations/20160013550 .JANNAF/GL-2016-0001. [21] Torsten Hoefler, Timo Schneider, and Andrew Lumsdaine. LogGOPSim: Simulating large-scale applications in the LogGOPS model. In Proceedings of the 19th ACM International Symposium on High Performance Distributed Computing , HPDC ’10, pages 597–604, New York, NY, USA, 2010. Association for Computing Machinery. [22] Henri Casanova. Simgrid: A toolkit for the simulation of application scheduling. In Proceedings of the 1st International Symposium on Cluster Computing and the Grid , CCGRID ’01, page 430. IEEE Computer Society. ISBN 978-0-7695-1010-1. URL https://dl.acm.org/doi/10.5555/560889.792328 .[23] Henri Casanova, Arnaud Giersch, Arnaud Legrand, Martin Quinson, and Frédéric Suter. Lowering entry barriers to developing custom simulators of distributed applications and platforms with SimGrid. Parallel Computing , 123: 103125, March 2025. doi:10.1016/j.parco.2025.103125. URL https://doi.org/10.1016/j.parco.2025. 103125 .[24] Mark Handley, Costin Raiciu, Alexandru Agache, Andrei Voinescu, Andrew W. Moore, Gianni Antichi, and Marcin Wójcik. Re-architecting datacenter networks and stacks for low latency and high performance. Los Angeles. [25] Augustin Degomme, Arnaud Legrand, George S. Markomanolis, Martin Quinson, Mark Stillwell, and Frédéric Suter. Simulating MPI applications: The SMPI approach. IEEE Transactions on Parallel and Distributed Systems ,28(8):2387–2400, August 2017. doi:10.1109/TPDS.2017.2669305. URL https://doi.org/10.1109/TPDS. 2017.2669305 .[26] Mikhail Isaev, Nic Mcdonald, Larry Dennison, and Richard Vuduc. Calculon: A methodology and tool for high-level co-design of systems and large language models. In Proceedings of the International Conference for High Performance Computing, Networking, Storage and Analysis , pages 1–14, New York, NY, USA, 2023. Association for Computing Machinery. doi:10.1145/3581784.3607102. URL https://doi.org/10.1145/ 3581784.3607102 .[27] Wenyan Lu, Guihai Yan, Jiajun Li, Shijun Gong, Yinhe Han, and Xiaowei Li. FlexFlow: A flexible dataflow accelerator architecture for convolutional neural networks. In 2017 IEEE International Symposium on High 
+
+16 CALIPER: HPC/AI Network Simulator Calibration A P REPRINT 
+
+Performance Computer Architecture (HPCA) , pages 553–564, 2017. doi:10.1109/HPCA.2017.29. URL https: //doi.org/10.1109/HPCA.2017.29 .[28] Newsha Ardalani, Saptadeep Pal, and Puneet Gupta. DeepFlow: A cross-stack pathfinding framework for distributed ai systems. ACM Transactions on Design Automation of Electronic Systems , 29(2):30:1–30:20, February 2024. doi:10.1145/3635867. URL https://doi.org/10.1145/3635867 .[29] Yuliang Li, Rui Miao, Hongqiang Harry Liu, Yan Zhuang, Fei Feng, Lingbo Tang, Zheng Cao, Ming Zhang, Frank Kelly, Mohammad Alizadeh, and Minlan Yu. HPCC: High precision congestion control. In Proceedings of the ACM Special Interest Group on Data Communication , SIGCOMM ’19, pages 44–58, New York, NY, USA, 2019. Association for Computing Machinery. doi:10.1145/3341302.3342085. URL https://doi.org/10.1145/ 3341302.3342085 .[30] Jaehong Cho, Minsu Kim, Hyunmin Choi, Guseul Heo, and Jongse Park. LLMServingSim: A hw/sw co-simulation infrastructure for llm inference serving at scale. In 2024 IEEE International Symposium on Workload Characterization (IISWC) , pages 15–29, 2024. doi:10.1109/IISWC63097.2024.00012. URL https://doi.org/ 10.1109/IISWC63097.2024.00012 .[31] Seonho Lee, Amar Phanishayee, and Divya Mahajan. Forecasting GPU performance for deep learning training and inference. In Proceedings of the 30th ACM International Conference on Architectural Sup-port for Programming Languages and Operating Systems, Volume 1 , ASPLOS ’25, pages 493–508. As-sociation for Computing Machinery. ISBN 979-8-4007-0698-1. doi:10.1145/3669940.3707265. URL 
+
+https://dl.acm.org/doi/10.1145/3669940.3707265 .[32] Jonas Svedas, Nathan Laubeuf, Ryan Harvey, Arjun Singh, Changhai Man, Abubakr Nada, Tushar Krishna, James Myers, and Debjyoti Bhattacharjee. Evaluating cross-architecture performance modeling of distributed ml workloads using stablehlo. In 2026 IEEE International Symposium on Performance Analysis of Systems and Software (ISPASS) , pages 448–460. IEEE, 2026. [33] NVIDIA Corporation. NCCL Tests. https://github.com/NVIDIA/nccl-tests , 2026. GitHub repository. [34] Jülich Supercomputing Centre. JUWELS Booster overview, 2026. URL https://apps.fz-juelich.de/jsc/ hps/juwels/booster-overview.html .[35] NVIDIA. NVIDIA Collective Communications Library (NCCL). URL https://developer.nvidia.com/ nccl .[36] Alexander Shpiner, Zachy Haramaty, Saar Eliad, Vladimir Zdornov, Barak Gafni, and Eitan Zahavi. Dragonfly+: Low cost topology for scaling datacenters. In 2017 IEEE 3rd International Workshop on High-Performance Interconnection Networks in the Exascale and Big-Data Era (HiPINEB) , pages 1–8, Austin, TX, USA, 2017. IEEE. doi:10.1109/HiPINEB.2017.11. URL https://doi.org/10.1109/HiPINEB.2017.11 .[37] Maximilian Balandat, Brian Karrer, Daniel Jiang, Samuel Daulton, Benjamin Letham, Andrew G. Wilson, and Eytan Bakshy. Botorch: A framework for efficient monte-carlo bayesian optimization. In Advances in Neural Information Processing Systems , volume 33, pages 21524–21538, 2020. [38] Sebastian Ament, Samuel Daulton, David Eriksson, Maximilian Balandat, and Eytan Bakshy. Unexpected improvements to expected improvement for bayesian optimization. In Advances in Neural Information Processing Systems , volume 36, pages 20577–20603, 2023. [39] K. Pawlikowski, H.-D. J. Jeong, and J.-S. R. Lee. On credibility of simulation studies of telecommunication networks. IEEE Communications Magazine , 40(1):132–139, January 2002. doi:10.1109/35.978060. URL 
+
+https://doi.org/10.1109/35.978060 .[40] Mochamad Asri, Ardavan Pedram, Lizy K. John, and Andreas Gerstlauer. Simulator calibration for accelerator-rich architecture studies. In 2016 International Conference on Embedded Computer Systems: Architectures, Modeling and Simulation (SAMOS) , pages 88–95. doi:10.1109/SAMOS.2016.7818335. [41] Joshua Suetterlein, Stephen J. Young, Jesun Firoz, Joseph Manzano, Ryan Friese, Nathan Tallent, Kevin Barker, and Timothy Stavenger. Automatic Extraction of Network Configurations for Realistic Simulation and Validation. In 2024 IEEE International Symposium on Performance Analysis of Systems and Software (ISPASS) , pages 310–312, . doi:10.1109/ISPASS61541.2024.00041. [42] Joshua Suetterlein, Stephen J. Young, Jesun Firoz, Joseph Manzano, Nathan Tallent, Ryan D. Friese, Kevin Barker, and Timothy Stavenger. HPC Network Simulation Tuning via Automatic Extraction of Hardware Parameters. In 2024 IEEE High Performance Extreme Computing Conference (HPEC) , pages 1–10, . doi:10.1109/HPEC62836.2024.10938439. [43] Marko Hofmann. On the Complexity of Parameter Calibration in Simulation Models. 2(4):217–226. ISSN 1548-5129. doi:10.1177/154851290500200405. 17 CALIPER: HPC/AI Network Simulator Calibration A P REPRINT 
+
+[44] Kayo Fujiwara and Henri Casanova. Speed and accuracy of network simulation in the SimGrid framework. In 
+
+Proceedings of the 2nd International Conference on Performance Evaluation Methodologies and Tools , ValueTools ’07, pages 1–10. ICST (Institute for Computer Sciences, Social-Informatics and Telecommunications Engineering). ISBN 978-963-9799-00-4. URL https://dl.acm.org/doi/10.5555/1345263.1345279 .[45] Paul Bédaride, Augustin Degomme, Stéphane Genaud, Arnaud Legrand, George S. Markomanolis, Martin Quinson, Mark Stillwell, Frédéric Suter, and Brice Videau. Toward better simulation of MPI applications on ethernet/tcp networks. In Stephen A. Jarvis, Steven A. Wright, and Simon D. Hammond, editors, High Performance Computing Systems. Performance Modeling, Benchmarking and Simulation , pages 158–181. Springer International Publishing, Cham, 2014. doi:10.1007/978-3-319-10214-6_8. URL https://doi.org/10.1007/978-3-319-10214-6_8 .[46] Julien Monniot, François Tessier, Henri Casanova, and Gabriel Antoniu. Simulation of Large-Scale HPC Storage Systems: Challenges and Methodologies. In 2024 IEEE 31st International Conference on High Performance Computing, Data, and Analytics (HiPC) , pages 232–242. doi:10.1109/HiPC62374.2024.00031. 18

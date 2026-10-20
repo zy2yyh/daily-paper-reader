@@ -1,0 +1,297 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-10-20T22:46:23.350103+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 2,
+    "deep_cap": 6,
+    "deep_selected": 2,
+    "quick_candidates": 5,
+    "quick_skim_target": 11,
+    "quick_selected": 5
+  },
+  "deep_dive": [
+    {
+      "id": "2610.22890v1",
+      "source": "arxiv",
+      "title": "MailRail: Mitigating Incast Congestion with User-Space, Node-Based Flow Control",
+      "abstract": "Irregular workloads, such as those stemming from Graph Neural Networks (GNNs) and Mixture-of-Experts (MoE) models, frequently induce severe incast congestion in large-scale parallel environments. Existing fabric-level congestion control mechanisms rely on reactive, link-level rate limiting that degrades overall throughput. While receiver-driven, credit-based flow control offers a proactive alternative, as process counts scale memory slots per rank fall below usable thresholds, rendering traditional rank-based accounting untenable. To address this challenge, we introduce MailRail, an out-of-order, asynchronous messaging framework, along with a novel user-space, node-based credit flow control system. By shifting credit accounting from individual processes to shared per-node pools, our proactive, fabric-agnostic approach maintains sufficient credit availability even as process density grows, enabling processes to dynamically utilize freed credits without waiting for receiver-side redistribution. Experimental evaluations demonstrate that node-based flow control achieves up to a 1132x speedup over unconstrained execution at an adversarial incast ratio of 4096:1 while adding minimal overhead on uniform workloads.",
+      "authors": [
+        "Noel Gomillion",
+        "Lance Fletcher",
+        "Trevor Steil",
+        "Eun Jung Kim",
+        "Roger Pearce"
+      ],
+      "primary_category": "cs.DC",
+      "categories": [
+        "cs.DC"
+      ],
+      "published": "2026-10-16T03:44:43+00:00",
+      "link": "https://arxiv.org/pdf/2610.22890v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "user-space node-based credit flow control to mitigate incast congestion in large-scale parallel environments",
+      "llm_evidence_cn": "面向大规模并行环境的用户态节点级信用流控缓解Incast拥塞",
+      "llm_evidence": "面向大规模并行环境的用户态节点级信用流控缓解Incast拥塞",
+      "canonical_evidence": "面向大规模并行环境的用户态节点级信用流控缓解Incast拥塞",
+      "llm_tldr_en": "Irregular GNN and MoE workloads trigger severe incast congestion, while reactive link-level rate limiting hurts throughput and rank-based credits break down at scale. MailRail uses asynchronous messaging with user-space node-based credit flow control.",
+      "llm_tldr_cn": "GNN与MoE等不规则负载在大规模并行环境中常引发严重Incast拥塞，现有链路级反应式限速会损害整体吞吐，而接收端信用流控在进程规模增大后因每rank内存槽不足而失效。作者提出MailRail，一种乱序异步消息框架，并把信用记账从单个rank上移到节点，构建用户态节点级信用流控系统。该工作为规模化集合通信中的拥塞控制与流控设计提供了新思路。",
+      "llm_tldr": "GNN与MoE等不规则负载在大规模并行环境中常引发严重Incast拥塞，现有链路级反应式限速会损害整体吞吐，而接收端信用流控在进程规模增大后因每rank内存槽不足而失效。作者提出MailRail，一种乱序异步消息框架，并把信用记账从单个rank上移到节点，构建用户态节点级信用流控系统。该工作为规模化集合通信中的拥塞控制与流控设计提供了新思路。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "What network scheduling and congestion control techniques improve collective communication performance",
+      "matched_requirement_id": "req-8",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2610.24328v1",
+      "source": "arxiv",
+      "title": "SigmaTrace: Library-Agnostic Observability for CPU/GPU-Initiated RDMA Communication",
+      "abstract": "RDMA networking enables low-latency, high-bandwidth communication on large systems. Despite its adoption, however, observability is lacking. Existing tools target specific communication libraries or only report aggregated data, missing per-operation behavior. The gap is widest for GPU-initiated networking, whose in-kernel RDMA operations are invisible to the host.   We present SigmaTrace, a library-agnostic RDMA profiling framework providing fine-grained, per-operation visibility for CPU and GPU-initiated networking. It traces operations at the libibverbs/mlx5dv layers, the common denominator beneath communication libraries on InfiniBand and RoCE, and employs a low-overhead memory interposition technique that, to our knowledge, gives the first observability into GPU-initiated RDMA without source patching or binary instrumentation.   Host-side tracing adds 1.3% overhead on NCCL AllReduce at 128 GPUs and under 2% on RCCL at 1024 GPUs. On a persistent-kernel BFS and Mixture-of-Experts inference, SigmaTrace exposes an in-kernel barrier spread and 2.13x inter-node traffic skew invisible to existing profilers.",
+      "authors": [
+        "Javid Baydamirli",
+        "Didem Unat"
+      ],
+      "primary_category": "cs.DC",
+      "categories": [
+        "cs.DC"
+      ],
+      "published": "2026-10-16T23:49:40+00:00",
+      "link": "https://arxiv.org/pdf/2610.24328v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "fine-grained per-operation profiling of CPU/GPU-initiated RDMA communication",
+      "llm_evidence_cn": "面向CPU/GPU发起RDMA通信的细粒度剖析",
+      "llm_evidence": "面向CPU/GPU发起RDMA通信的细粒度剖析",
+      "canonical_evidence": "面向CPU/GPU发起RDMA通信的细粒度剖析",
+      "llm_tldr_en": "SigmaTrace is a library-agnostic RDMA profiling framework giving per-operation visibility for CPU- and GPU-initiated networking at the libibverbs/mlx5dv layer.",
+      "llm_tldr_cn": "RDMA网络虽具备低延迟高带宽优势，但其运行可观测性不足，现有工具仅针对特定通信库或只给出聚合数据，GPU发起的在核RDMA操作更是对主机不可见。本文提出SigmaTrace，一个库无关的RDMA剖析框架，在libibverbs/mlx5dv层面对CPU与GPU发起的操作进行逐操作追踪，并采用低开销内存插桩。实验显示其能以细粒度、低开销方式揭示每次通信操作的行为，弥补了RDMA通信可观测性的空白。",
+      "llm_tldr": "RDMA网络虽具备低延迟高带宽优势，但其运行可观测性不足，现有工具仅针对特定通信库或只给出聚合数据，GPU发起的在核RDMA操作更是对主机不可见。本文提出SigmaTrace，一个库无关的RDMA剖析框架，在libibverbs/mlx5dv层面对CPU与GPU发起的操作进行逐操作追踪，并采用低开销内存插桩。实验显示其能以细粒度、低开销方式揭示每次通信操作的行为，弥补了RDMA通信可观测性的空白。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "remote direct memory access transport for low-latency data center communication",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2610.16068v1",
+      "source": "arxiv",
+      "title": "Improved Approximations for Coflow Scheduling via Iterated Rounding and Stable Matchings",
+      "abstract": "We study Coflow Scheduling, introduced by Chowdhury, Zhong, and Stoica (2014). We give deterministic polynomial-time algorithms achieving a $2.77$-approximation without release dates and a $3.17$-approximation with integer release dates. These improve the $3.42$ and $4.36$ guarantees of Rohwedder and Schnaars (2025).   Our approach combines two ideas: (1) a novel iterated rounding scheme, and (2) Galvin's list edge coloring method, which is based on the Gale--Shapley stable matching algorithm.",
+      "authors": [
+        "Mikhail Cherniavskii",
+        "Arseni Fedorovich",
+        "Mikhail Koshelev",
+        "Andrey Kupavskii",
+        "Stanislav Moiseev",
+        "Fedor Ozhegov",
+        "Alexander Shekhovtsov"
+      ],
+      "primary_category": "cs.DS",
+      "categories": [
+        "cs.DS"
+      ],
+      "published": "2026-10-12T02:12:00+00:00",
+      "link": "https://arxiv.org/pdf/2610.16068v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "improved approximation algorithms for data center coflow scheduling",
+      "llm_evidence_cn": "面向数据中心Coflow调度的改进近似算法",
+      "llm_evidence": "面向数据中心Coflow调度的改进近似算法",
+      "canonical_evidence": "面向数据中心Coflow调度的改进近似算法",
+      "llm_tldr_en": "Gives deterministic polynomial-time 2.77- and 3.17-approximation algorithms for coflow scheduling via iterated rounding and stable-matching-based edge coloring.",
+      "llm_tldr_cn": "Coflow调度刻画了数据中心中并行通信流的整体完成需求，已有近似算法性能保证较弱。本文针对无释放时间与整数释放时间两种情形，结合新的迭代取整方案与基于Gale-Shapley稳定匹配的Galvin边着色方法，构造确定性多项式时间算法。所得近似比分别为2.77与3.17，明显优于此前3.42与4.36的保证，为数据中心通信调度提供了更强的理论性能保障。",
+      "llm_tldr": "Coflow调度刻画了数据中心中并行通信流的整体完成需求，已有近似算法性能保证较弱。本文针对无释放时间与整数释放时间两种情形，结合新的迭代取整方案与基于Gale-Shapley稳定匹配的Galvin边着色方法，构造确定性多项式时间算法。所得近似比分别为2.77与3.17，明显优于此前3.42与4.36的保证，为数据中心通信调度提供了更强的理论性能保障。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "What network scheduling and congestion control techniques improve collective communication performance",
+      "matched_requirement_id": "req-8",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2610.16477v1",
+      "source": "arxiv",
+      "title": "CALIPER: Calibrating HPC/AI Network Simulators",
+      "abstract": "Network simulation plays an important role in HPC/AI system research by enabling exploration of network architectures, communication strategies, and system configurations at scales that may be impractical to study experimentally. Existing approaches to network simulator calibration and validation lack a principled methodology that combines parameter alignment, constrained inference, and independent validation for collective-centric HPC/AI networks. We present CALIPER, a methodology for systematic calibration and validation of HPC/AI network simulators. CALIPER distinguishes directly observable system parameters from auxiliary parameters which are configured via calibration and constrains the latter to feasible domains consistent with the target system. We evaluate CALIPER's hierarchical, scale-aware calibration and its effects on parameter identifiability and generalization using collective communication benchmarks on a reference system with up to 64-nodes at the Jülich Supercomputing Centre. Validation results show that the calibrated parameter configurations identified by CALIPER predict system performance with less than 5% mean errors across scale-up and scale-out network domains. CALIPER demonstrates that hierarchical, constrained calibration can produce simulator configurations whose predictive accuracy persists beyond the observations used for fitting.",
+      "authors": [
+        "Seyyidahmed Lahmer",
+        "Daniel Seibel",
+        "Srijeet Basu",
+        "Arno Troch",
+        "Jayesh Badwaik",
+        "Subhomoy Bhattacharyya",
+        "Abubakr Nada",
+        "Debjyoti Bhattacharjee",
+        "Vinay Kumar Baapanapalli Yadaiah",
+        "Michael Peeters",
+        "Andreas Herten",
+        "Darayus Adil Patel"
+      ],
+      "primary_category": "cs.NI",
+      "categories": [
+        "cs.NI",
+        "cs.DC"
+      ],
+      "published": "2026-10-12T09:29:47+00:00",
+      "link": "https://arxiv.org/pdf/2610.16477v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "calibration of HPC/AI network simulators for collective-centric communication networks",
+      "llm_evidence_cn": "面向集合通信HPC/AI网络仿真器的校准方法",
+      "llm_evidence": "面向集合通信HPC/AI网络仿真器的校准方法",
+      "canonical_evidence": "面向集合通信HPC/AI网络仿真器的校准方法",
+      "llm_tldr_en": "CALIPER provides a principled methodology to calibrate and validate HPC/AI network simulators used to study collective-centric network architectures and communication strategies.",
+      "llm_tldr_cn": "现有HPC/AI网络仿真器缺乏结合参数对齐、约束推断与独立验证的系统化校准方法，难以可靠支撑网络架构与通信策略研究。本文提出CALIPER方法论，将可直接观测的系统参数与需校准的辅助参数区分开，并把辅助参数约束在与目标系统一致的可行域内，再进行独立验证。实验表明该方法提升了仿真器对集合通信网络的保真度，为大规模网络设计与通信优化研究提供了更可信的评估基础。",
+      "llm_tldr": "现有HPC/AI网络仿真器缺乏结合参数对齐、约束推断与独立验证的系统化校准方法，难以可靠支撑网络架构与通信策略研究。本文提出CALIPER方法论，将可直接观测的系统参数与需校准的辅助参数区分开，并把辅助参数约束在与目标系统一致的可行域内，再进行独立验证。实验表明该方法提升了仿真器对集合通信网络的保真度，为大规模网络设计与通信优化研究提供了更可信的评估基础。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "data center network architectures and communication mechanisms for large-scale clusters",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.17901v1",
+      "source": "arxiv",
+      "title": "FlashMask-3: Efficient and Expressive Mask-Aware Distributed Attention",
+      "abstract": "Long-context training of large language and multimodal models couples structured attention masks (document, prefix-LM, share-question, sliding-window, block-sparse) with multi-node context parallelism, making the mask a dominant bottleneck. FlashMask's column-wise sparse mask compresses them from $O(n^2)$ to $O(n)$ via four query-axis boundary vectors, covering broad structured patterns. Implemented for Ampere GPUs, it neither exploits FlashAttention-3's TMA/WGMMA warp-specialized pipeline on Hopper nor supports distribution. The column-wise sparse mask is indexed by key positions but stores query-axis interval boundaries. Under any multi-chunk context-parallel assignment, it reduces per-rank mask localization to a provably zero-communication \\emph{clip--shift--max} on the boundary vectors, compatible with the single-GPU kernel. FlashMask-3 introduces a mask-aware Hopper kernel with three-role warp specialization atop FlashAttention-3's TMA/WGMMA pipeline, plus a mask-aware distributed extension: zero-communication mask localization, a sparsity-aware load balancer (HCC-IPO), and a mask-aware compute-communication overlap with mask-driven communication pruning, whose forward all-gather uses topology-aware hierarchical routing. On a single H100 across 12 masks at 4K--128K context, it improves achieved TFLOPs over FlashMask, FlexAttention, and MagiAttention by 45--141%, 34--71%, and 2--44%. At context-parallel degrees 4--32 with 8K sequence per device, it attains 31--75% compute-communication overlap efficiency and improves throughput over Megatron-Core CP ring, Megatron-Core CP all-gather, and MagiAttention by $1.80\\times$--$3.71\\times$, $1.71\\times$--$2.92\\times$, and $1.09\\times$--$1.46\\times$. In end-to-end training of a 118B-A14B MoE at 128K on 128 H100 GPUs, it raises throughput by 7.3--11.0% over a Dual Chunk all-gather baseline, with attention forward+backward 24.5--44.9% faster.",
+      "authors": [
+        "Guoxia Wang",
+        "Qianyue He",
+        "Siming Wu",
+        "Haoyang Xie",
+        "Qiwen Bao",
+        "Jinle Zeng",
+        "Jiabin Yang",
+        "Tian Wu",
+        "Dianhai Yu"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG"
+      ],
+      "published": "2026-10-13T07:55:51+00:00",
+      "link": "https://arxiv.org/pdf/2610.17901v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "zero-communication mask localization under multi-node context parallelism for distributed training",
+      "llm_evidence_cn": "多节点上下文并行下零通信的掩码定位，服务分布式训练",
+      "llm_evidence": "多节点上下文并行下零通信的掩码定位，服务分布式训练",
+      "canonical_evidence": "多节点上下文并行下零通信的掩码定位，服务分布式训练",
+      "llm_tldr_en": "FlashMask-3 brings column-wise sparse masks to Hopper TMA/WGMMA pipelines and multi-node context parallelism, reducing per-rank mask localization to provably zero-communication clipping and removing the mask bottleneck in long-context training.",
+      "llm_tldr_cn": "长上下文训练将结构化注意力掩码与多节点上下文并行结合，使掩码处理成为主要瓶颈，而现有列式稀疏掩码既未利用Hopper的TMA/WGMMA流水线，也不支持分布式。本文提出FlashMask-3，在保持表达力的同时适配Hopper架构，并支持多块上下文并行。方法将每卡掩码定位化简为可证明的零通信裁剪，显著降低掩码开销。该工作提升了分布式长上下文训练的效率。",
+      "llm_tldr": "长上下文训练将结构化注意力掩码与多节点上下文并行结合，使掩码处理成为主要瓶颈，而现有列式稀疏掩码既未利用Hopper的TMA/WGMMA流水线，也不支持分布式。本文提出FlashMask-3，在保持表达力的同时适配Hopper架构，并支持多块上下文并行。方法将每卡掩码定位化简为可证明的零通信裁剪，显著降低掩码开销。该工作提升了分布式长上下文训练的效率。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "communication optimization for distributed training workloads in data center networks",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.25058v1",
+      "source": "arxiv",
+      "title": "Triple Overlap in Pipelined Krylov Methods on Multi-GPU Systems",
+      "abstract": "We introduce a novel triple-overlap implementation of the pipelined preconditioned conjugate gradient (Pipe-PCG) and pipelined stabilized biconjugate gradient (Pipe-BiCGStab) solvers, methods widely used in scientific applications. By leveraging a collective communication library, our approach extends conventional computation-communication overlap to concurrently execute collective operations, irregular P2P communication, and compute kernels, enabling computation-communication-communication overlap across multiple GPUs. We evaluate the design on the MareNostrum 5 (H100) and Leonardo (A100) supercomputers, comparing against PETSc and the state-of-the-art two-stream NCCL implementation using SuiteSparse matrices and three massive instances scaled up to 512 GPUs. The three-stream design outperforms the two-stream baseline on every instance, with the margin widening from 2-6% at 4 GPUs to 18-47% at 64 GPUs. At 64 GPUs, the geometric-mean speedup over the two-stream baseline is 1.33x on MareNostrum 5 and 1.23x on Leonardo for Pipe-PCG, and reaches 1.30x for Pipe-BiCGStab. In large-scale experiments, we observed a speedup up to 35% in Pipe-PCG and up to 33% in Pipe-BiCGStab compared to the two-stream design. For PETSc, the margin is even wider, up to 3.27x speedup in both Pipe-PCG and Pipe-BiCGStab. Related code for the proposed method is available online: https://github.com/ParCoreLab/aCG",
+      "authors": [
+        "Sinan Ekmekçibaşı",
+        "James D. Trotter",
+        "Johannes Langguth",
+        "Xing Cai",
+        "Didem Unat"
+      ],
+      "primary_category": "cs.DC",
+      "categories": [
+        "cs.DC"
+      ],
+      "published": "2026-10-18T06:55:36+00:00",
+      "link": "https://arxiv.org/pdf/2610.25058v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "overlaps collective communication, P2P communication and compute kernels via a collective library on multi-GPU systems",
+      "llm_evidence_cn": "在多GPU系统上通过集合通信库重叠集合通信、点对点通信与计算内核",
+      "llm_evidence": "在多GPU系统上通过集合通信库重叠集合通信、点对点通信与计算内核",
+      "canonical_evidence": "在多GPU系统上通过集合通信库重叠集合通信、点对点通信与计算内核",
+      "llm_tldr_en": "A triple-overlap design overlaps collective operations, irregular P2P communication and compute kernels via a collective library, accelerating pipelined Krylov solvers on up to 512 GPUs.",
+      "llm_tldr_cn": "针对流水线Krylov求解器中通信难以被充分隐藏的问题，作者提出三重重叠实现，借助集合通信库让集合通信、不规则点对点通信与计算内核并发执行。在MareNostrum 5与Leonardo超算上，使用SuiteSparse矩阵并扩展至512块GPU，与PETSc及NCCL两流实现进行对比。结果表明该方案能显著提升多GPU求解器的通信隐藏效率与整体性能，为科学计算中的集合通信优化提供了可复用思路。",
+      "llm_tldr": "针对流水线Krylov求解器中通信难以被充分隐藏的问题，作者提出三重重叠实现，借助集合通信库让集合通信、不规则点对点通信与计算内核并发执行。在MareNostrum 5与Leonardo超算上，使用SuiteSparse矩阵并扩展至512块GPU，与PETSc及NCCL两流实现进行对比。结果表明该方案能显著提升多GPU求解器的通信隐藏效率与整体性能，为科学计算中的集合通信优化提供了可复用思路。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "algorithms for efficient collective communication operations in distributed environments",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.25173v1",
+      "source": "arxiv",
+      "title": "An Information-Geometric Framework for OCS-Reconfigurable Interconnect Topology in Large-Scale AI Clusters",
+      "abstract": "Optical Circuit Switches (OCS) make inter-pod wiring in AI clusters programmable, posing design questions on wiring choice, symmetry departure, and reconfigurations. We present a unified information-geometric framework to address these issues.A wiring is a point in a probability simplex over circuits within a degree polytope. Departure from a symmetric Fat-Tree prior $\\mathbf{q}$ is measured by $\\DKL(\\cdot \\,\\|\\, \\mathbf{q})$. The cost $U$ is the smoothed DAG critical-path length, whose gradient equals path marginals of a Gibbs distribution via forward--backward recursion.For free energy $F_{β_1} = U + β_1^{-1} \\DKL(\\cdot \\,\\|\\, \\mathbf{q})$, we prove well-posedness, monotonic dependence on $β_1$, adaptation bounds via Jeffreys divergence, and a symmetry principle for static optimality. An entropic proximal-gradient method updates multiplicatively with a $|V|$-dim dual KL projection, achieving linear convergence.For time-varying traffic, a threshold policy yields regret $O(\\sqrt{ΓC V_1 T})$ against the switching-free optimum. Traffic changes are detected by a multinomial GLR--CUSUM detector with non-asymptotic false-alarm bounds. Multi-job generalized-mean fairness aligns with $α$-fairness ($α\\ge 2$). Experiments on pipeline, data, and MoE workloads validate the framework against integer programming.",
+      "authors": [
+        "Shintaro Yoshizawa"
+      ],
+      "primary_category": "cs.DC",
+      "categories": [
+        "cs.DC",
+        "cs.LG"
+      ],
+      "published": "2026-10-18T10:55:39+00:00",
+      "link": "https://arxiv.org/pdf/2610.25173v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "OCS-reconfigurable interconnect topology for large-scale AI clusters",
+      "llm_evidence_cn": "面向大规模 AI 集群的 OCS 可重构互连拓扑",
+      "llm_evidence": "面向大规模 AI 集群的 OCS 可重构互连拓扑",
+      "canonical_evidence": "面向大规模 AI 集群的 OCS 可重构互连拓扑",
+      "llm_tldr_en": "OCS makes inter-pod wiring programmable but raises design questions on wiring choice and reconfiguration. The paper gives an information-geometric framework measuring departure from a Fat-Tree prior via KL divergence and using critical-path cost, with proven well-posedness and adaptation bounds.",
+      "llm_tldr_cn": "AI 集群中光路交换使机房间布线可编程，但如何选择布线、偏离对称结构以及重配置仍是设计难题。作者提出统一的信息几何框架，将布线视为概率单纯形上的点，用 KL 散度度量相对 Fat-Tree 对称先验的偏离，并以平滑 DAG 关键路径长度作为代价。该框架给出良定义性与自适应界等理论结果，为大规模 AI 集群互连拓扑设计提供原则性方法。",
+      "llm_tldr": "AI 集群中光路交换使机房间布线可编程，但如何选择布线、偏离对称结构以及重配置仍是设计难题。作者提出统一的信息几何框架，将布线视为概率单纯形上的点，用 KL 散度度量相对 Fat-Tree 对称先验的偏离，并以平滑 DAG 关键路径长度作为代价。该框架给出良定义性与自适应界等理论结果，为大规模 AI 集群互连拓扑设计提供原则性方法。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "data center network architectures and communication mechanisms for large-scale clusters",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}

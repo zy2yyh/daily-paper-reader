@@ -1,0 +1,493 @@
+Title: SigmaTrace: Library-Agnostic Observability for CPU/GPU-Initiated RDMA Communication
+
+URL Source: https://arxiv.org/pdf/2610.24328v1
+
+Published Time: Tue, 20 Oct 2026 00:27:25 GMT
+
+Number of Pages: 13
+
+Markdown Content:
+# SigmaTrace: Library-Agnostic Observability for CPU/GPU-Initiated RDMA Communication 
+
+Javid Baydamirli 
+
+Computer Science and Engineering, Koç University 
+
+Istanbul, Turkey jbaydamirli21@ku.edu.tr 
+
+Didem Unat 
+
+Computer Science and Engineering, Koç University 
+
+Istanbul, Turkey dunat@ku.edu.tr 
+
+Abstract —RDMA networking enables low-latency, high-band-width communication on large systems. Despite its adoption, however, observability is lacking. Existing tools target specific communication libraries or only report aggregated data, missing per-operation behavior. The gap is widest for GPU-initiated networking, whose in-kernel RDMA operations are invisible to the host. We present SIGMA TRACE , a library-agnostic RDMA profiling framework providing fine-grained, per-operation visibility for CPU and GPU-initiated networking. It traces operations at the 
+
+libibverbs /mlx5dv layers, the common denominator beneath communication libraries on InfiniBand and RoCE, and employs a low-overhead memory interposition technique that, to our knowledge, gives the first observability into GPU-initiated RDMA without source patching or binary instrumentation. Host-side tracing adds 1.3% overhead on NCCL AllReduce at 128 GPUs and under 2% on RCCL at 1024 GPUs. On a persistent-kernel BFS and Mixture-of-Experts inference, SIGMA TRACE 
+
+exposes an in-kernel barrier spread and 2.13 × inter-node traffic skew invisible to existing profilers. 
+
+Index Terms —GPU-initiated networking, High performance Computing, Network interfaces, Performance evaluation, Remote Direct Memory Access (RDMA) 
+
+I. I NTRODUCTION 
+
+Communication overhead is a major consideration for scalability and efficiency in AI training and inference, as well as scientific computing workloads [1]–[3]. To better meet performance-critical data movement demands of modern workloads, large-scale clusters now ubiquitously employ high-speed and low-latency Remote Direct Memory Access (RDMA) networking. At the software level, RDMA communication has seen wide adoption in libraries including NCCL [4], NVSHMEM [5], MPI, UCX [6], and many of their derivatives, dominating the high-performance computing landscape. Significant effort has also been directed at bringing native networking to GPUs. Traditionally, CPU threads managed network buffers and operations on behalf of GPUs. GPUDirect RDMA [7] moved the data path onto devices, allowing NICs 
+
+Accepted for publication in the International Conference for High Perfor-mance Computing, Networking, Storage and Analysis (SC26), November 15–20, 2026, Chicago, Illinois, USA. Author’s accepted manuscript. © 2026 IEEE. Personal use of this material is permitted. Permission from IEEE must be obtained for all other uses, in any current or future media, including reprinting/republishing this material for advertising or promotional purposes, creating new collective works, for resale or redistribution to servers or lists, or reuse of any copyrighted component of this work in other works. 
+
+to read directly from GPU memory. Later, GPUDirect Async (IBGDA) [8] moved the control path onto devices as well, enabling GPU threads to construct RDMA messages in device memory, write to NIC doorbells to initiate communication, and poll for completion without CPU involvement. This paradigm of putting the devices in control of communication can reduce end-to-end latency greatly while allowing higher levels of computation and communication overlap [9]–[13]. GPU-initiated networking has been adopted by first-party libraries [4], [5] and is increasingly specialized for latency-sensitive workloads such as Mixture-of-Experts (MoE) routing: DeepEP V2 [14] uses NCCL’s device-side API to minimize all-to-all dispatch latency across hundreds of expert-parallel ranks, and several communication libraries have since built on it [15]–[17]. Despite the growing adoption of both CPU and GPU-initiated RDMA, tooling for observability, performance engineering, and communication debugging has not kept pace. Existing profiling and tracing tools largely focus on a single high-level layer in the communication stack, missing RDMA-level information, and remaining entirely blind to GPU-initiated operations: GPU-initiated RDMA is opaque to the host and consists of loads and stores that are indistinguishable from the many other memory operations occurring within a kernel. Unlike its CPU-side counterpart, there are no API boundaries or software events that can be used as observability points. Tools like Mycroft [18], NCCL Inspector [19], and NPKit [20] that instrument GPU communication libraries trace the host-side proxy threads and API calls but stop squarely at the kernel launch. On the other hand, binary instrumentation-based tools like Snoopie [21] incur high overheads due to assembly level injection across all memory operations [22]. Vendor profilers like NVIDIA’s Nsight Systems [23] and AMD’s ROCm Systems Profiler [24] provide system-level aggregate NIC counters, but cannot attribute metrics to an individual kernel, GPU, or even process, and offer little visibility into the actual RDMA operations being performed. As a result, the most performance-critical operations are paradoxically the least visible. To address the observability gaps, we present S IGMA TRACE ,an RDMA profiling framework that provides fine-grained, per-operation visibility into the full communication stack for both CPU and GPU-initiated networking. Our approach relies on one arXiv:2610.24328v1 [cs.DC] 16 Oct 2026 observation: while GPU-initiated RDMA bypasses traditional software interception points such as API calls, it cannot bypass the hardware interface between the GPU and the NIC. Even with fully GPU-native networking, where all communication buffers reside entirely within device memory and data moves through hardware-level DMA without the CPU on the path, every RDMA operation is ultimately initiated by a PCIe write. The write is done from within GPU kernels to a NIC’s doorbell register, which is exposed in its PCIe memory-mapped I/O (MMIO) Base Address Register (BAR) and memory-mapped into the application’s address space. This gives us a single observable point below all communication libraries and opaque memory instructions, on a data path accessible to the CPU. We exploit this point and selectively replace the doorbell pages that would be mapped into GPU address space—NIC 
+
+User Access Region (UAR) pages—with pinned CPU memory through hijacks at the mlx5 direct verbs and CUDA driver levels, redirecting doorbell writes without modifying the target application. When the GPU rings the doorbell to initiate a transfer, our polling thread captures it first, records the RDMA metadata associated with it, and forwards the request to the real NIC for execution. To our knowledge, S IGMA TRACE is the first tool to both enable observability into GPU-initiated RDMA operations, and to employ GPU-level memory interposition for profiling without binary instrumentation. Our contributions are as follows:  
+
+> •
+
+The first observability solution for true GPU-initiated networking : We capture precise doorbell timing and RDMA work queue content, invisible to all existing tools.  
+
+> •
+
+UAR memory interposition technique : We detail a novel 
+
+Memory Hijack-and-Repeat mechanism that records and redirects GPU memory operations without source code modifications, at a fraction of the overhead of binary instrumentation.  
+
+> •
+
+Library-agnostic multi-layer tracing : We target the lowest common denominator layer above hardware— 
+
+libibverbs and mlx5dv [25]—that upstream libraries use on InfiniBand and RoCE platforms. We additionally instrument UCX and libfabric directly, extending support to HPE Slingshot and AWS EFA fabrics.  
+
+> •
+
+Scalable cross-node correlation and analysis : We develop a minimal-overhead event recording framework with hardware-ID-based distributed trace correlation, and support both timeline visualization of network events and quantitative analysis via Perfetto and PerfettoSQL. We evaluate S IGMA TRACE on up to 128 nodes, demonstrating as little as 1.3% overhead on NCCL AllReduce on 128 GPUs across 32 nodes and under 2% on RCCL at 1024 GPUs across 128 nodes. We further characterize the overhead of the memory-hijack mechanism with microbenchmarks and present two case studies: a distributed persistent-kernel BFS traversal, where SIGMA TRACE reveals early per-level graph load imbalance and straggler barriers, and a Mixture-of-Experts inference workload, where S IGMA TRACE exposes inter-node traffic skew across data-parallel ranks. II. B ACKGROUND AND MOTIVATION 
+
+RDMA is a low-latency and high-throughput data movement technique that enables direct memory access between peers without OS intervention. In networking, this allows NICs to read from and write to system memory directly, moving data over the network with minimal CPU coordination. Switch  
+
+> UAR Register
+
+NIC          
+
+> SQ
+> Buffer
+> RQ
+> Buffer
+> QP0 QP1 QP2
+> WQE0
+> WQE1
+> PCIe
+> CQE0
+> CQE1
+> WQE2 CQE2
+> Legends
+> SQ: Send Queue
+> RQ: Receive Queue
+> WQE: Work Queue Element
+> CQE: Completion Queue
+> Element
+> QP: Queue Pair
+> UAR: User Access Region
+
+GPU              
+
+> 2
+> 1
+> 0
+> 0
+> 5
+> 4
+> DMA
+> 3
+> Doorbell
+> Fig. 1. Illustrating the GPU RDMA communication path. 0The communica-tion runtime allocates SQs and RQs in device memory and maps the doorbell registers into GPU-accessible address space. During communication, 1GPU threads construct WQEs in device memory and 2ring the doorbells. Data flows ( 3and 4) through DMA engines in GPUs and NICs, while doorbells go through PCIe. 5The NIC later posts a CQE to signal completion.
+
+RDMA communication is organized around sets of queues. In the InfiniBand verbs model, endpoints are Queue Pairs (QPs) ,each consisting of a Send Queue (SQ) and a Receive Queue (RQ) . To issue an RDMA operation, the application constructs a Work Queue Element (WQE) in SQ memory describing the operation type ( WRITE , READ ), local and remote buffer identifiers, and the transfer size. The application then rings the NIC doorbell through a write to its User Access Region (UAR) , a register page exposed in the NIC’s PCIe BAR and memory-mapped into the process address space. A doorbell write may batch multiple WQEs for asynchronous execution, after which the NIC posts Completion Queue Entries (CQE) to the Completion Queue (CQ) . Data movement other than the doorbell takes place through DMA engines within the NIC and PCIe subsystem. 
+
+A. GPUDirect RDMA 
+
+Hardware prerequisites for RDMA networking—PCIe BAR access and DMA capability—are present on modern GPUs, which are themselves both DMA peers and PCIe endpoints. This means that all RDMA queues and memory buffers described above can reside in GPU memory and be accessed by NIC hardware transparently. Furthermore, the NIC’s doorbell registers, exposed on its PCIe BAR, can be mapped into user-space virtual memory and subsequently registered with the GPU driver for in-kernel access, allowing GPU threads to construct WQEs in device memory and notify the NIC via stores to the mapped doorbell address. This mechanism underlies GPUDirect RDMA [7] and GPUDirect Async [8], which enable GPU-initiated networking (GIN) [26]. This communication path is used by NVSHMEM’s IBGDA transport [5] and the DOCA GPUNetIO SDK [27], used by NCCL’s recently introduced GDAKI backend [26]. On AMD systems, rocSHMEM [28] implements an analogous GPU-initiated path using GDA transports over Mellanox NICs, while RCCL [29] currently relies on CPU proxy threads for network operations. 
+
+B. Motivation and Gaps in Observability 
+
+Consider an application performing a remote put operation (Figure 1). Internally, GPU threads construct several RDMA 
+
+WRITE WQEs of varying sizes on their local memory to addresses on remote peers and write to NIC doorbell registers using global memory operations ( STG.E.STRONG.SYS or 
+
+STG.E.STRONG.GPU in CUDA SASS). Depending on the size of the transfer, the number of peers, and the network topology, a single kernel invocation may issue hundreds of such operations across several QPs connected to many remote nodes and GPUs. Because this communication path is reduced to ordinary memory operations on mapped address ranges, GPU-initiated RDMA is largely invisible to conventional profiling tools. Nsight Systems shows such kernels as opaque timeline blocks and reports only aggregate NIC statistics without per-kernel or per-GPU attribution. Similarly, tools such as Mycroft [18], NPKit [20], ucTrace [30], and Aegis [31] instrument host-side communication and therefore miss in-kernel operations that bypass the host entirely. At this stage, extracting runtime network information from the application is impossible without extensive source code modifications or binary patching. Performance pathologies caused by communication imbalance across peers and QPs, congestion reflected in doorbell register activity, bandwidth underutilization across kernels, and other correctness bugs are reflected in doorbell register writes and WQE contents that no existing tool currently targets. III. S YSTEM DESIGN 
+
+A. Design Goals and Challenges 
+
+We define and outline the following design goals for SIGMA TRACE and the challenges they introduce:  
+
+> •
+
+Capturing all RDMA operations , both CPU and GPU-initiated. The tool must record precise doorbell timings, extract WQE metadata, and correlate events across threads, processes, and network nodes.  
+
+> •
+
+Maintaining low overhead while remaining non-intrusive to the communication flow. Since RDMA applications often issue and poll for fine-grained operations, the tool must handle high-frequency traces efficiently, scale reasonably alongside the application, and consolidate data efficiently on large systems.  
+
+> •
+
+Remaining communication library agnostic without requiring source modifications or recompilation. Since communication routines may traverse multiple software layers and internal buffers, the tool must gather sufficient information independent of library specifics. 
+
+B. Architecture Overview 
+
+SIGMA TRACE is implemented as a two-part architecture that decouples runtime capture and offline reconstruction. The 
+
+Profiler on the hot path captures fine-grained RDMA activity while keeping the overhead low, and the Correlator parses and consolidates the collected data post-mortem. The Profiler intercepts communication activity at selected software layers, including host-side RDMA and middleware calls, mlx5dv state creation, and CUDA driver calls required for GPU doorbell interposition. We keep the Profiler as light as possible with minimal state tracking and only record data points available to a single thread during application execution. Subsequently, the Correlator merges per-thread traces and metadata, normalizes timestamps, reconstructs queue-pair connectivity, associates doorbells with WQEs, and matches communication activity across processes and nodes. This split allows us to minimize the overhead of the tool, as Profiler 
+
+threads perform the minimal amount of work to record traces without synchronizing or communicating among one another. 
+
+C. Selective Tracing 
+
+The Profiler is composed of a set of modular event providers implemented as LD_PRELOAD shims that can be enabled selectively at runtime. This allows users to pick and choose injection targets and reduce the overhead of the tool; for example, a user may choose to omit the libibverbs layer and only collect UCX data at startup without further runtime overhead. Within the selected libraries, S IGMA TRACE supports three trace modes:  
+
+> •
+
+Aggregate : Collects only total communication volume with source and destination markers, using thread-local in-memory aggregation with no timestamping for minimal overhead and file I/O.  
+
+> •
+
+Simple (Default) : Records a reduced set of traces, omit-ting high-frequency operations such as ibv_poll_cq 
+
+completions. This mode allows a higher-level visualization of the network flow at low overhead.  
+
+> •
+
+Full : Records all supported events, including per-request operations such as nested ibv_post_send work re-quests. This mode provides the highest fidelity at the cost of increased I/O pressure and a larger hit to application performance, and is meant for short, targeted debugging tasks rather than production runs. We note that the architecture of S IGMA TRACE fully disables trace collection for omitted events, meaning no overhead is incurred for calls that are not traced. IV. H OST -S IDE INSTRUMENTATION AND TRACE 
+
+COLLECTION 
+
+A. Host-side Interception 
+
+In order to intercept and record the doorbells alongside other RDMA operations, we need to intercept the host-side 
+
+mlx5dv library and a set of CUDA driver APIs. S IGMA TRACE 
+
+primarily uses a function symbol interposition technique to trace GPU Kernels       
+
+> and Doorbells
+> GPU-level
+> Bandwidth
+> QP-Level IBV
+> Bandwidth
+> GPU Level QP Level Node Level
+> Hypercube
+> GPU ID :0
+> QP Num :20379
+> Prod ID :48288
+> Bytes sent : 32
+> Opcode :8
+> GPU0
+> GPU0 BW Sent
+> GPU0 Bytes Sent
+> QP10313 BW Sent
+> QP10313 Bytes Sent
+> QP10346 BW Sent
+> QP10346 Bytes Sent
+> UCX Bytes Recv
+> UCX Bytes Sent
+> Doorbell Data
+> Communication
+> Matrix
+
+Fig. 2. Sample visualized data. Top: Multi-level timeline trace with doorbell information, produced by the Simple and Full modes. Bottom: Aggregate-mode data at multiple granularities (IBV Queue Pairs, GPUs, Ranks, Nodes). 
+
+communication calls and collect data through injected callbacks. This is achieved through the LD_PRELOAD mechanism of the dynamic linker on ELF-based systems which allows us to selectively route library calls to our custom callbacks. We identify three ways in which communication calls are resolved and invoked in the target libraries: (1) Plain link-time binding to shared objects used for bootstrapping functions like ibv_open_device , (2) Runtime resolution through dlopen , dlsym and dlvsym for most library calls, and (3) Symbol tables on internal library objects for high-frequency calls like libibverbs@ibv_post_send and 
+
+libfabric@fi_writemsg .SIGMA TRACE supports instrumenting all three through simple symbol shims, injections at dlsym and dlvsym , and efficient object tracking for high-frequency dispatch table calls. 
+
+B. CUDA Driver Interception 
+
+To transparently interpose UAR memory without changing pointer semantics and consequently distorting application execution, S IGMA TRACE must modify the behavior of the CUDA driver API, in particular, host memory management functions. While CUDA provides tooling for observability into the driver API through CUPTI [32] and the Sanitizer API [33], it is currently not possible to inject custom code during execution or alter return values of the runtime methods. Moreover, the 
+
+LD_PRELOAD and dlsym interposition techniques described earlier are not sufficient for the CUDA driver API, since most symbols are resolved through internal undocumented dispatch tables. To address this, we intercept two CUDA driver entry points used to bootstrap symbol resolution: cuGetProcAddress 
+
+and cuGetExportTable . These interfaces expose dispatch tables that are later used to resolve additional CUDA driver and runtime symbols. We instrument the tables by inspecting and saving the original function pointers and replacing them with pointers to our own wrappers. This allows us to selectively inject our instrumentation while preserving the original CUDA driver behavior for other calls. 
+
+C. Doorbell State Reconstruction 
+
+To interpret doorbell writes, S IGMA TRACE must know the QP configuration, SQ memory layout, and endpoint information associated with each doorbell at the time it is fired. We extract this data by intercepting mlx5dv setup calls on the host side during transport initialization. Specifically, we track the following runtime state: 
+
+UAR lifecycle. We record UAR allocations done through 
+
+mlx5dv_devx_alloc_uar with their register address, page identifier and the associated NIC device context. On a call to mlx5dv_devx_free_uar with the same page ID and register address, the tracking state is cleared. 
+
+UMEM registration. mlx5dv_devx_umem_reg regis-ters a contiguous memory region (possibly GPU memory allocated with cuMemAlloc or equivalent) into the NIC’s address space. S IGMA TRACE queries cudaPointerGet Attributes on the registered address to determine whether the memory is GPU-resident, or host-accessible. For GPU-resident memory, we record a mapping from the registered-memory ID to the memory address, GPU device ID, memory type, and CUDA context. This mapping allows us to determine which GPU owns the send queue buffer when a queue pair referencing the memory ID is created. 
+
+QP creation . Following the UAR allocation and UMEM registration, a queue pair is created through mlx5dv_devx_ obj_create with opcode MLX5_CMD_OP_CREATE_QP ,referencing the aforementioned UAR and UMEM. We extract the address, capacity, and byte offsets of the SQ, the service type of the transport, and the QP number from the command mailbox. 
+
+D. Post-Mortem Analysis and Correlation 
+
+After execution, the Correlator reads the raw event files in parallel and merges them into a unified event stream. It performs the following passes to reconstruct communication activity across threads, processes, and nodes: 
+
+Timestamp normalization . Per-thread timestamps are recorded using the x86 timestamp counter ( RDTSC ), which provides cycle-accurate timing with negligible overhead. To establish a consistent time base and to avoid inter-node clock drift during distributed trace correlation, the Profiler records pairs of wall clocks synchronized via the Precision Time Protocol (PTP) at initialization. The Correlator converts per-thread cycle counts to nanoseconds using this calibration data. This allows events collected from different threads and processes to be compared consistently on a unified timeline. Hijack thread      
+
+> while (* fake_db == old_val ) {
+> wait ();
+> }
+> memcpy (local_buf, sq_buffer );
+> parse_wqe (local_buf);
+> *real_db = * fake_db ;UAR Register
+> GPU
+> CPU
+
+` 
+
+> DMA
+> NIC 1
+> Switch
+> UAR Register NIC 0
+> SQ
+> Buffer
+> NIC 2
+> PCIe
+> GPU
+
+`    
+
+> DMA
+> NIC 1
+> Switch
+> UAR Register NIC 0
+> SQ
+> Buffer
+> NIC 2
+> PCIe Fig. 3. High-level overview of the doorbell hijack mechanism. Left : regular GPU-initiated communication flow. Right : our hijack thread transparently intercepting doorbell writes, reading from the SQ and forwarding to the NIC. No difference in execution or semantics from the perspective of the GPU or NIC.
+
+QP topology reconstruction . Using the metadata collected during QP creation and state transitions, the Correlator recon-structs the connectivity between local and remote QPs. This topology information is used to determine the communication endpoints associated with each event. 
+
+Doorbell-to-WQE association . Doorbell events are matched with the corresponding WQE using QP identifiers and producer state. This step annotates each doorbell with communication metadata such as operation type, remote target address, and transfer size. 
+
+Export formats. The correlated trace is exported in Perfetto Protobuf format for timeline visualization with flow arrows connecting send/receive across nodes and custom tracks for doorbell events alongside kernel timelines. Additionally, the trace can be queried with PerfettoSQL for custom filtering, aggregation, and post-mortem analysis. 
+
+Visualization. The collected data can be presented in two forms: as a unified timeline trace, or as aggregate data visualized in communication matrices and graphs. Figure 2 shows sample outputs from various configurations. The trace data is exported with normalized timestamps and custom tracks for GPU-level doorbell activity. Aggregate data, including per-QP bandwidth, per-GPU communication volume, and node-level communication matrices, is stored in JSON format and can be visualized through standard tools or queried directly for programmatic analysis. V. GPU D OORBELL HIJACK AND WQE R ECOVERY 
+
+A. Memory Hijack 
+
+Our doorbell tracking mechanism involves selectively re-placing memory-mapped NIC UAR pages with CPU-visible memory pages to intercept doorbell writes without source code modifications or binary instrumentation. To achieve this, we identify and exploit the following three-step sequence for setting up GPU-initiated networking: 1) UAR Allocation : The target application calls mlx5dv_ devx_alloc_uar to allocate a NIC user access region. The allocated structure contains a host-accessible virtual address space pointer to the doorbell register mapped over the NIC’s PCIe BAR. 2) CUDA Host Memory Registration : The target application then calls cuMemHostRegister on the register address to make the mapped I/O range accessible to CUDA kernels. 3) Device Pointer Resolution : The application calls cu MemHostGetDevicePointer to obtain a GPU-side pointer to the register address. This pointer is written to by GPU threads to ring doorbells. We intercept all three steps above to transparently replace the UAR register space as well as device-side pointers. At steps 1 and 2, we simply record and mark the address ranges as possible candidates for replacement. At step 3, we allocate a fake 4KB page in pinned host memory and return a device-side pointer to it instead. From the GPU’s perspective, stores to pinned host memory and to the registered UAR mapping behave identically—both are uncached posted writes that cross PCIe—so the profiled application transparently receives a valid device-side pointer with the same store semantics as the original address. 
+
+B. Memory Repeater and Polling 
+
+A dedicated CPU thread is created for each unique doorbell to monitor the first 64 bytes of its associated replacement page for changes. When a write is detected, the thread invokes a callback for event logging, and forwards the written value to the real NIC UAR. Figure 3 illustrates this mechanism. To keep CPU utilization low without increasing wake-up latency, we use monitorx /mwaitx (AMD) or umonitor /
+
+umwait (Intel) for polling. These instructions block the thread until the cache line accessed by the GPU is invalidated. GPU doorbell writes traverse PCIe and are delivered as posted writes to the CPU’s coherence domain, invalidating the monitored cache line and waking the polling thread. Since mlx5 doorbell writes are exactly 8 bytes, each write invalidates a single cache line and wakes the polling thread, and no spurious wake-ups occur from unrelated memory traffic, as each fake page is dedicated to one doorbell and shared with no other data structure. Back-to-back doorbells that land before the polling thread wakes may coalesce into a single observation; this loses no information, because doorbell values carry a monotonically increasing producer index, so the latest observed value covers all preceding writes and WQE recovery (§V-C) accounts for the full producer-index delta. Parked polling threads do not contend with the application for CPU resources: while waiting in mwaitx /umwait , a core consumes no execution bandwidth and yields its resources to the sibling hyperthread. Since QPs have no core affinity, polling threads can additionally be pinned to any core, away from application threads. 
+
+C. Doorbell and WQE Parsing 
+
+Each mlx5 doorbell write encodes the target QP number and a producer index that identifies the position of the most recent WQE in the send queue. We extract these fields to associate doorbell events with the communication requests issued by the GPU. While the doorbell control sequence is written to (supposed) NIC memory that is readily accessible to CPU threads after interposition, the associated work queue elements and the data ranges they describe can reside in pure GPU memory. As such, individual WQEs are not directly readable on the CPU side at the time of the doorbell ring and require a device-to-host copy. Since doorbells happen frequently on latency-critical paths, we cannot synchronously copy and parse these structures on every doorbell write without a high performance penalty. Instead, we adopt a strategy where we split WQE recovery into a cheap per-doorbell step and a deferred batched parse step. On every doorbell, the polling thread records the timestamp and producer index, enqueues an asynchronous device-to-host copy of the newly posted WQE slots on a dedicated CUDA stream, and forwards the doorbell to the NIC. Because the copy does not need to be synchronous, forwarding is not delayed further. Parsing the recovered WQEs is deferred and done in batches: once a number of new WQE slots have accumulated since the last batch, the polling thread synchronizes the copy stream and parses the recovered entries before forwarding the current doorbell. These threshold-crossing doorbells are blocked on copy completion, while most doorbell writes are forwarded without deferral. This amortizes the synchronization and parsing costs across many doorbell writes while preserving accurate per-doorbell timing. This design is safe with respect to send queue wrap-around. Since the GPU can only overwrite a slot after the circular buffer wraps to avoid data corruption, batching at less than or equal to the number of available slots keeps us ahead of the wrap-around. We found a batch threshold of 128 to be safe for the workloads we tested, though, depending on the communication library configuration, it can be increased further. NVSHMEM’s IBGDA transport allocates 1024 WQE slots per send queue ( log_wq_size = 10) where a batch size of 512 can be used, and DeepEP similarly sizes its queues larger than its maximum number of in-flight requests to skip slot-availability checks. We note that corruption in WQE recovery is detectable by inspecting the monotonic producer index. Alternatively, batching can be tightened or disabled entirely to copy and parse every doorbell and its associated WQEs synchronously at the expense of a higher overhead. After each batch copy, we parse the relevant WQE control segments to recover the operation type ( opmod ), the number of data segments ( ds ), and the data segments themselves, which contain the remote address ( raddr ), remote memory key ( rkey ), and the byte count for each scatter/gather entry. By correlating deferred WQE metadata with previously recorded doorbell timestamps, S IGMA TRACE reconstructs fine-grained RDMA communication behavior: per-operation timing, per-QP traffic volume, and per-peer communication patterns for GPU kernels that are otherwise completely opaque to existing tools. 
+
+Memory ordering considerations. A potential concern is whether WQE contents associated with doorbells are visible to the CPU when we copy them back. The correctness of GPU-initiated RDMA itself requires that all WQE stores reach the GPU’s coherence point before the doorbell write reaches the NIC. The NIC requires this ordering for its own DMA read of the WQEs following doorbell rings. Communication libraries therefore order WQE stores ahead of the doorbell store with a memory fence or a release store to ensure correct delivery; NVSHMEM, for example, issues a __threadfence 
+
+or release-store ( st.release ) sequence when ringing the doorbell. This ordering is established on the GPU before the doorbell store is issued, and is thus independent of where that store lands. It holds for our replacement page identically as it does for the real UAR. The WQEs are read back after the doorbell is observed by the copy engine, which observes GPU memory at the same scope as the NIC’s DMA read. Once the polling thread observes a new doorbell value, every WQE slot covered by its producer index is already visible to our device-to-host copy, as it would have been to the NIC. VI. E VALUATION AND CASE STUDIES 
+
+We evaluate S IGMA TRACE in two parts. First, we quantify its overhead in two experiments: the per-operation cost of GPU-initiated doorbell interception (§VI-B) and end-to-end application overhead at multi-node scale (§VI-C). We then demonstrate the observability gains on two real workloads: distributed BFS (§VI-D) and Mixture-of-Experts inference (§VI-E). 
+
+A. Experiment Setup 
+
+Each experiment is repeated five times on a fixed set of compute nodes within an allocation. 
+
+a) Single-node IBGDA platform: Doorbell interception experiments run on a single node with four NVIDIA A100-SXM4-40GB GPUs connected to one Mellanox ConnectX-5 (MT27800) InfiniBand Host Channel Adapter (HCA) via PCIe Gen4. We disable NVLink peer-to-peer transfers 1 and force all inter-GPU communication through the NIC using NVSHMEM’s GPU-initiated IBGDA transport 2,3 . This configuration routes every GPU-initiated doorbell write through a single HCA, producing the maximum possible doorbell rate per NIC and is a worst-case stress test for UAR interposition. Normally, systems with per-GPU NICs distribute doorbell traffic across HCAs, reducing per-NIC interposition load proportionally. The system is configured with CUDA 13.0 and NVSHMEM 
+
+v3.3.24 and S IGMA TRACE is compiled with clang 20.1.8 .
+
+b) Multi-node InfiniBand platform: Scaling experiments on NVIDIA hardware are done on a cluster equipped with four H100 GPUs and four Mellanox ConnectX-7 MT2910 HCAs per node, connected via NDR 400 Gb/s InfiniBand. Communication is handled by NCCL 2.24.3 over libibverbs from rdma-core 1.14.47.0 and UCX 1.16.0 . The system runs CUDA 12.9 and S IGMA TRACE is compiled with gcc 
+
+13.2.0 .
+
+> 1NVSHMEM_DISABLE_P2P=1
+> 2NVSHMEM_REMOTE_TRANSPORT=ibdevx
+> 3NVSHMEM_IBGDA_NIC_HANDLER=gpu
+
+c) Multi-node Slingshot platform: RCCL experiments run on a cluster with four AMD MI250X GPUs per node connected via an HPE Slingshot interconnect, with communication handled by RCCL over libfabric .
+
+Tracing modes. Tracing experiments compare three S IG -
+
+> MA
+
+TRACE tracing modes against an uninstrumented baseline where applicable. The modes are described in §III-C: Aggregate 
+
+(thread-local counters only), Simple (timestamped operation events, excluding high-frequency polling), and Full (all in-tercepted calls including individual ibv_post_send work requests and ibv_poll_cq completions). 
+
+B. Overhead Study 1: Doorbell Interception Microbenchmark 
+
+UAR interposition (§V) lies on the latency-critical path of every GPU-initiated RDMA operation. Its overhead has two contributors: (1) the UAR forwarding path itself adding an extra write over PCIe from the CPU polling thread, and (2) the device-to-host SQ copy, where the polling thread copies and reads WQE control and data segments. 
+
+a) Per-Operation Latency: We measure completion la-tency for four representative GPU-initiated NVSHMEM opera-tions, each exercising a distinct RDMA verb and WQE type. All timings are taken by GPU threads using the globaltimer 
+
+register, which provides precise fixed-frequency nanosecond-resolution timestamps. Each operation is timed individually inside a persistent single-threaded kernel with 1000 warmup and 5000 measured iterations.  
+
+> •
+
+Put+Quiet: RDMA write followed by a NIC completion wait ( nvshmem_int_p then nvshmem_quiet ) 
+
+> •
+
+Get: a blocking RDMA read that returns a remote value with nvshmem_int_g . 
+
+> •
+
+Atomic FetchAdd: a blocking RDMA atomic operation that returns the prior value ( nvshmem_int_atomic_fetch_ add ).  
+
+> •
+
+Ping-Pong: Round-trip time measurement with nvshmem_ int_p where ranks write, spin, and write back in order. We test two SIGMA TRACE configurations against the uninstrumented baseline: UAR forward (doorbell redirect and forwarding only, no WQE inspection) and Forward + Read WQEs (doorbell forwarding, WQE recovery, parsing, and trace recording). Figure 4a reports median completion latency. The baseline latencies are ∼15–20 μs for scalar operations ( put , get ,
+
+atomic ) and higher for ping-pong round trips. Figure 4b shows the relative overhead. UAR forwarding alone adds 2–4% overhead across all operation types. This is a fixed per-doorbell overhead from the polling thread’s wake-up latency and the additional PCIe MMIO write that forwards the doorbell value to the real UAR. Because GPU doorbell writes themselves are asynchronous, the overhead does not stall the issuing store; it appears only in operations that wait on NIC completion (quiet, get, atomic, ping-pong), which is why all four measured operations are affected. UAR forwarding combined with reading and parsing the related work queue entries adds 22–46% depending on the operation, even though our batching strategy ensures that Put+Quiet Get Atomic FetchAdd Ping-Pong (RTT)         
+
+> 010 20 30 Median latency (μs)
+> Baseline UAR forward Forward + Read WQEs
+> (a) Per-operation completion latency for four NVSHMEM operations. 4 ×A100, single ConnectX-5, GPU-timed via globaltimer .Put+Quiet Get Atomic FetchAdd Ping-Pong (RTT)
+> 010 20 30 40 50 60
+> Overhead (%)
+> 3% 4% 2% 4% 22% 26% 28% 46%
+> UAR forward Forward + Read WQEs
+> (b) Relative overhead vs. baseline for each operation type. UAR forwarding adds 2–4%; forwarding with WQE recovery and recording (Forward + Read WQEs) adds 22–46%. Fig. 4. Per-operation Doorbell Microbenchmark
+
+synchronized copies are infrequent relative to doorbell writes. The additional cost over UAR-only forwarding stems from reading back WQE control and data segments from GPU-visible memory over PCIe and recording the trace. Ping-pong exhibits the highest relative overhead of 46% as both the outgoing put and the incoming response traverse the interposition path, adding to the per-doorbell cost on both ends of the round trip. 
+
+b) Discussion: The measured overhead in the above section represents a worst case of what real deployments experience. Our single-NIC configuration forces all four GPUs on the system to issue doorbells through one HCA, which increases the PCIe backpressure and doorbell contention on polling threads. Realistic deployments distribute doorbells across multiple HCAs and route a substantial portion of traffic through peer memory, which is disabled in this worst-case configuration. 
+
+C. Overhead Study 2: Multi-Node Scaling 
+
+While S IGMA TRACE minimizes cross-rank overhead by design—each profiler rank writes to a private thread-local ring buffer without synchronization on the recording path— library interposition, event collection, and file I/O still introduce overheads at each instrumented function call. We run the standard NCCL all_reduce_perf bench-mark on our multi-node platforms, scaling from 2 to 32 nodes with communication sizes of 1 MB and 128 MB. We report overhead as the percentage increase in median execution time relative to the uninstrumented baseline at the same node count. 2 Nodes 8 GPUs 4 Nodes 16 GPUs 8 Nodes 32 GPUs 16 Nodes 64 GPUs 32 Nodes 128 GPUs 0510 15 20 Overhead (%)            
+
+> -0.0% 0.6% 0.4% 0.2% 1.3% -0.3% 0.5% 0.9% 0.1% 1.2% 13.4% 11.6% 8.0% 7.7% 9.8%
+> Aggregate Simple Full
+
+Fig. 5. NCCL AllReduce overhead on the InfiniBand platform with 1 MB messages. Aggregate and Simple modes stay below 1.5% at all scales, while Full mode incurs higher overhead due to frequent event recording by NCCL proxy polling threads. 2 Nodes 8 GPUs 4 Nodes 16 GPUs 8 Nodes 32 GPUs 16 Nodes 64 GPUs 32 Nodes 128 GPUs −0.5 0.0 0.5 1.0 1.5 2.0 2.5 Overhead (%)    
+
+> -0.0% -0.0% 0.3% -0.1% 0.1% 0.1% -0.0% 0.7% 0.8% 0.3% 0.5% -0.1% 1.8% 1.4% 1.4%
+> Aggregate Simple Full
+
+Fig. 6. NCCL AllReduce overhead on the InfiniBand platform with 128 MB messages. All tracing modes remain below 2% at every scale point. 
+
+Figure 5 shows the scaling results for 1 MB messages. Aggregate and Simple (Default) modes both remain below 1.5% across all tested scales, with no upward trend as node count increases from 2 to 32. Full mode incurs 8–13% overhead, attributable to recording large numbers of ibv_poll_cq 
+
+completions and ibv_post_send and ibv_post_recv 
+
+work request data. Figure 6 shows the results for 128 MB. At this message size, all three tracing modes remain within 2% of baseline at every scale point. Table I shows the log sizes and event counts for both message sizes. In Full mode, roughly half of the events are ibv_post_send work requests (WRs). We additionally run the same AllReduce workload with RCCL over libfabric on the Slingshot platform, scaling from 2 to 128 nodes (16 to 1024 GPUs) with 128 MB messages. Figure 7 shows results where the overhead of all three modes stays below 2% at every scale point. The instrumented call rate on this path is far lower than on the InfiniBand platform: at the 128 MB data size, the Profiler collected 16 MB of data consisting of 17,207 fi_recvmsg and 4,811 fi_sendmsg events. 2 Nodes 16 GPUs 4 Nodes 32 GPUs 8 Nodes 64 GPUs 16 Nodes 128 GPUs 32 Nodes 256 GPUs 64 Nodes 512 GPUs 128 Nodes 1024 GPUs −4 −2 024Overhead (%)     
+
+> -0.3% -0.8% -0.0% -0.6% -0.2% -0.2% -0.7% -0.4% -0.3% -0.6% -0.1% -0.4% 0.2% -1.2% 0.4% -0.1% 0.2% -1.3% -0.4% -0.3% -0.5%
+> Aggregate Simple Full
+
+Fig. 7. RCCL AllReduce overhead on the Slingshot platform with 128 MB messages. All tracing modes stay below 2% at every scale point and within run-to-run variance of the baseline. TABLE I TRACE SIZE AND EVENT COUNTS COLLECTED BY SIGMA TRACE ON 
+
+32 NODES (128 GPU S) FOR TWO MESSAGE SIZES AND THREE TRACING MODES .
+
+Buffer Size Mode Trace Size Event Count 
+
+1 MB Aggregate 3.5 MB 50 K 1 MB Simple 1.7 GB 43 M 1 MB Full 13 GB 305 M 128 MB Aggregate 3.5 MB 42 K 128 MB Simple 11 GB 292 M 128 MB Full 81 GB 2,000 M 
+
+Beyond overhead, this experiment validates the libfabric 
+
+instrumentation path and the event collection pipeline at 1024-GPU scale. 
+
+D. Case Study 1: Feature Showcase with Distributed BFS 
+
+GPU-initiated communication can introduce communication and synchronization stalls that are hidden inside kernel execution and therefore invisible to many profiling tools. This limitation is particularly problematic for persistent kernels [9], and tightly coupled kernels that rely on device-side communication to make joint progress. Irregular applications exhibit this behavior: communication patterns in graph traversal depend on the evolving frontier and cannot be inferred from the host-side timeline. We demonstrate S IGMA TRACE ’s tracing and analysis capabilities on a distributed Breadth-First Search (BFS) implementation based on persistent NVSHMEM kernels across 4 GPUs, traced in Simple mode with doorbell collection enabled. 
+
+a) Workload: We implement a level-synchronous BFS as a single persistent kernel [11]. The graph is stored in Compressed Sparse Row (CSR) format and partitioned across GPU ranks using 1D vertex partitioning. At each BFS level, GPU threads expand the local frontier: edges to local vertices are resolved with device-side atomics, while edges crossing partition boundaries generate NVSHMEM atomics. Checks for remote visited vertices generate additional atomic compare/swap operations, and remote frontier enqueues are done with memory puts and gets. Nsight Systems (a) Nsight Systems timeline showing the entire BFS application execution. GPU0      
+
+> GPU0 BW
+> GPU1
+> GPU1 BW
+> GPU2
+> GPU2 BW
+> GPU3
+> GPU3 BW
+> SigmaTrace
+> GPU0
+> GPU1
+> GPU2
+> GPU3
+> Control Doorbell Data Doorbell
+> Zoomed-in timeline with
+> control doorbells
+> filtered
+> (b) S IGMA TRACE timeline (Simple mode) showing per-kernel RDMA doorbell traffic and per-GPU bandwidth. Triangle markers denote doorbells. Data doorbells (pink) correspond to RDMA READ/WRITE . Control doorbells (brown) correspond to RDMA ATOMIC and barriers. The bottom panel shows the zoomed-in timeline with only control doorbells displayed. Fig. 8. Comparison of multi-GPU persistent BFS execution as seen by Nsight Systems and S IGMA TRACE .
+
+We evaluate on soc-LiveJournal1 [34], a directed social network graph with 4.8 M vertices and 68 M edges. The graph exhibits a skewed degree distribution characteristic of real-world social networks: a small fraction of vertices account for a disproportionate share of outgoing edges. With 1D partitioning across 4 devices, GPU 0 owns the highest-degree hub vertices. This creates a structural communication asymmetry where rank 0 generates substantially more cross-partition RDMA traffic during early BFS levels as hub vertex neighborhoods span all remote partitions. 
+
+b) Observation with existing tools: Figure 8a shows the Nsight Systems timeline for a 4 GPU run. The persistent BFS kernels appear as uninterrupted contiguous blocks on each GPU, with almost the same start and end timestamps. Nsight Systems provides no further indication of the runtime or communication characteristics of the kernels: no per-BFS level timing, no visibility into which GPU generates the most RDMA traffic, and no information on where barriers take place or how much overhead they add. 
+
+c) Observation with SIGMA TRACE : Figure 8b shows the SIGMA TRACE timeline for the same execution. With doorbell collection enabled, S IGMA TRACE reveals the kernels’ internal communication structures and provides several insights into their behavior. The hub-driven asymmetry is clear as GPU 0 generates large bursts of RDMA traffic (WRITEs and ATOMICs) at early levels. GPUs 1 through 3 complete their expansions with substantially fewer and decreasing number of remote operations. At deeper BFS levels, the frontier begins to migrate away from hub vertices. We see this reflected in the RDMA traffic where GPU 1 traffic equalizes with GPU 0 while GPUs 2 and 3 carry GPU arrival    
+
+> orders
+> to barriers
+> Barrier analysis
+> with
+> SQL Interface
+> Global Barriers
+> GPU: 0
+> GPU: 2
+> GPU: 3
+> GPU: 1
+> Global Barriers
+> Fig. 9. SQL analysis and visualization of global barriers
+
+bursts of cross-partition traffic. This level-dependent behavior is entirely invisible without granular doorbell timing. We can filter the doorbells to display only atomic and barrier operations and zoom into the timeline in Figure 8b. Since each frontier expansion requires atomic compare/swap, we observe bursts of atomic doorbell events. The duration and density of doorbell bursts vary significantly across GPUs and BFS levels, reflecting the irregular distribution of cross-partition edges. 
+
+d) Quantitative analysis with SQL: Figure 9 shows filtered barrier ranges alongside the arrival order of the GPUs. The worst-case barrier is at the earliest levels where GPU 0 dominates and consequently leaves other peers idle. The barrier spread—the time between the first and last GPU arrival— reaches 30 seconds at this level. The pattern begins to invert at deeper levels as the frontier migrates away from hub vertices. GPU 1 has the next largest barrier at 15 seconds, followed by GPU 2. We note that NVSHMEM’s block-wide cooperative barrier (nvshmemx_barrier_all_block ) issues a separate con-trol doorbell from each calling block, manifesting as overlapping barrier ranges in the timeline. We consider the longer-spanning barrier as the straggler for this application. 
+
+e) Discussion: SIGMA TRACE ’s doorbell trace and analysis features display the graph partitioning behavior and inefficien-cies reflected in the GPU-initiated RDMA traffic. The 1D partitioning concentrates hub vertices on GPU 0, creating early-level imbalance and large global barriers at subsequent GPUs. Without per-level and per-GPU doorbell visibility, the effect of partitioning strategy on barrier overhead is unobservable. 
+
+f) Overhead: This experiment, traced in Simple mode with doorbell collection, incurred an overhead of 11 .5% over the baseline, recording 114 MB of data including 2,718,665 doorbell writes. 
+
+E. Case Study 2: Mixture-of-Experts Inference 
+
+Mixture-of-Experts (MoE) inference distributes expert weights across GPUs and dispatches each token to selected experts. The resulting network traffic depends on the routing distribution at runtime and is invisible to existing tools. Using SIGMA TRACE we can attribute this traffic to nodes and GPUs, as well as individual QPs. node0 node1 node2 node3         
+
+> Destination
+> node0 node1 node2 node3
+> Source
+> 4.3GB 8.0GB 2.8GB 7.8GB 12.3GB 4.3GB 8.1GB 15.9GB 8.1GB 4.3GB 12.4GB
+> 0246810 12 14 Tra ffi c (GB) Fig. 10. Node-level communication matrix for DeepSeek-V3-0324 served with SGLang on 4 nodes / 16 H200 GPUs, driven by 200 ShareGPT requests.
+
+a) Workload: We serve the 671 B parameter DeepSeek-V3-0324 model [35], which has 256 routed experts and one shared expert per MoE layer with top-8 routing. We use SGLang [36] on 4 nodes with 16 NVIDIA H200 GPUs, configured with data-parallel (DP) attention and tensor-parallel (TP)-sharded MoE layers, using host-side NCCL collectives for dispatch and combine. We drive the server with 200 requests from the ShareGPT dataset and trace in Aggregate mode. 
+
+b) Observation: Figure 10 shows the S IGMA TRACE 
+
+node-level communication matrix, with bootstrap and weight-distribution traffic excluded. The matrix reveals substantial inter-node imbalance: total egress varies by 2.13 × across nodes, and the heaviest pair—node2 → node1—carries 2.15 × the mean per-pair volume. The asymmetry continues at the cell level, where node2 → node1 transfers 15.9 GB while node1 → node2 transfers only 12.3 GB. Node2 is the heaviest node in both directions. This indicates uneven token load across the DP ranks: the ranks hosted on node2 process a larger share of the tokens, generating proportionally more dispatch and combine traffic to and from their peers. 
+
+c) Discussion: With the serving stack’s scheduler spread-ing requests across DP ranks, averaging over many ShareGPT requests should in principle smooth per-rank token load. The 2 ×
+
+per-node imbalance observed here, however, shows that this does not apply to our configuration. While DP schedulers balance request or token counts across ranks, token count does not directly imply byte-volume or NIC-utilization balance: sequence lengths vary per request, dispatch and combine payloads scale differently, and per-node NIC placement further shapes the realized network load. S IGMA TRACE directly measures the network-side outcome that such balancers ultimately target. VII. R ELATED WORK 
+
+Mycroft [18] and NCCL Inspector [19] are NCCL-specific tools that target activity at host-side proxy threads. Mycroft uses source code patching while NCCL Inspector makes use of the NCCL plugin API. Unlike S IGMA TRACE , neither tool can observe GPU-initiated operations, though they gather semantic NCCL data that may be obfuscated within lower-level traces we collect. NPKit [20] inserts compile-time macros into *CCL 
+
+proxy threads and GPU kernel source code to emit timed events. It has broader support with NCCL and MSCCL, but requires recompilation of the target library with instrumentation macros enabled. Aegis [31] is a production fault diagnosis system for AI training infrastructure. It records RDMA work request metadata and per-collective timing to detect anomalies such as straggler ranks and network failures. Like Mycroft, it requires modifications to NCCL source code and does not observe GPU-initiated paths. Its focus is fault diagnosis rather than performance profiling. ucTrace [30] profiles UCX communication by instrumenting its transport (UCT) and protocol (UCP) layers, providing per-operation visibility into UCX endpoints, tagged messages, and RDMA operations. While ucTrace covers a broader set of transports than *CCL -specific tools, it operates at the UCX level, and does not see the underlying RDMA verbs or doorbell-level activity. OSU INAM [37] profiles MPI applications across the software stack, correlating MPI-level metrics with fabric-level counters in near real time. Like ucTrace, it observes host-side communication only and cannot attribute traffic to GPU-initiated operations. Nsight Systems [23] provides comprehensive traces of CUDA APIs, kernel launches, data transfers, collectives, and custom NVTX annotations. For network observability, it exposes system-level NIC throughput counters and Mellanox-specific congestion events. However, these views are aggregated across all processes sharing the NIC and cannot be attributed to individual GPUs, kernels, QPs, or remote endpoints. Nsight Systems also cannot observe GPU-side RDMA. On AMD systems, the ROCm Systems Profiler [24] samples OS-level NIC interface counters while ROCProfiler [38] provides API and kernel traces. Notably, ROCm Systems Profiler supports device-level RDMA transport counters on AMD’s own Pensando NICs, though neither tool offers per-operation or verbs-level visibility. Snoopie [21] is the tool closest in spirit to S IGMA TRACE as it tracks GPU-side memory operations using NVBit dynamic binary instrumentation [22]. It records every load and store in a kernel and classifies accesses as local or remote P2P. While Snoopie’s methodology can theoretically be extended to capture writes to UAR doorbells, instrumenting every memory instruction incurs overhead that is orders of magnitude higher than S IGMA TRACE ’s selective doorbell-level interposition. VIII. L IMITATIONS 
+
+A. Hardware scope 
+
+GPU-initiated RDMA tracing in S IGMA TRACE is currently only supported on NVIDIA GPUs with Mellanox NICs. This covers all GPU-initiated RDMA paths available on NVIDIA platforms. On AMD GPU systems, rocSHMEM [28] implements a similar GPU-initiated path over Mellanox NICs: its GPU-IB backend links against the same mlx5dv 
+
+and libibverbs layers and implements IBGDA identically to NVSHMEM down to the send and completion queue configuration, memory layout, and WQE sizes. Its newer GDA backend likewise constructs WQEs and rings doorbells over PCIe from device code on the same NICs. The NIC-side interception therefore transfers directly to such systems, but the GPU-side instrumentation would need to be replaced with equivalent ROCm/HIP driver hooks. We note that the HIP host memory API is one-to-one with CUDA’s in both interface and semantics ( hipHostRegister and hipHostGetDevice Pointer are analogous to the calls we intercept). RCCL [29] does not currently support GPU-initiated RDMA and relies on CPU proxy threads, which are already visible to SIGMA TRACE ’s host-side instrumentation. Several other NIC architectures support GPU-initiated RDMA but are not yet covered by S IGMA TRACE : Broadcom Thor 2 [39], which uses a different driver stack, doorbell format, and WQE structure; and AMD Pensando Pollara 400 [40], a fully programmable RDMA NIC with a register interface unrelated to mlx5dv . While the GPU-NIC communication model is fundamentally similar (WQE construction in device memory followed by a PCIe doorbell write), and the interception mechanism itself is otherwise hardware-independent, the interposition layer would require per-NIC adaptations for the doorbell layout and WQE parsing. More notably, a GPU-initiated data path for AWS’s Elastic Fabric Adapter (EFA) shipped in NCCL 2.31 as the EFA GDA backend: CUDA kernels build 64-byte EFA send WQEs and ring the send-queue doorbell over the SRD transport with no host involvement [41], [42]. This path is closer to SIGMA TRACE ’s existing target than Thor 2 or Pollara 400—the 
+
+libfabric EFA provider hands the application the send-queue and doorbell BAR addresses through its FI_EFA_ GDA_OPS extension [43], which the host plugin then makes GPU-visible with the cuMemHostRegister and cuMem HostGetDevicePointer calls that S IGMA TRACE already intercepts (§V-A). A port would need to hook libfabric 
+
+or efadv in place of mlx5dv and decode the efa_io_tx_ wqe descriptors. We note that in EFA the transport rings a single 32-bit producer index with no separate doorbell record, which is simpler than the mlx5dv workflow. 
+
+B. Software scope 
+
+The driver interception and memory hijack techniques described in Section IV-B and Section V-A are CUDA-specific. We believe the methods are sufficiently general to adapt to other GPU software stacks: the core technique (replacing a device-visible memory mapping with a monitored proxy page) is independent of the vendor. An AMD port would require replacing cuGetExportTable interception with equivalent ROCm driver hooks and substituting the CUPTI-based GPU event correlation with its ROCm counterparts (ROCProfiler/rocTracer). Because ROCm is open source and mirrors the CUDA driver interfaces closely, we expect this port to be an engineering effort rather than a redesign, though we have not yet validated this path. 
+
+C. Instrumentation scope 
+
+We primarily use LD_PRELOAD to instrument communica-tion library functions, which is only compatible with libraries that expose symbols for dynamic linking. While the overhead is minimal, statically linked libraries and compiler-inlined function calls cannot be instrumented by symbol preloading. The libraries targeted in this work are designed to be dynamically loaded; however, we found that libcxi [44], the low-level interface for HPE Cray Slingshot systems, makes heavy use of 
+
+static inline function definitions, which are invisible to our interposition layer. As a result, S IGMA TRACE cannot currently provide the same depth of tracing on HPE Cray systems as it does for 
+
+libibverbs and mlx5 direct verbs, though we do provide partial observability through libfabric -level instrumentation. Full doorbell-level coverage and static-compilation support are porting tasks possible through dynamic instrumentation (Frida [45] or eBPF probes), which can reach inlined functions at the cost of higher per-call overhead. Combining LD_PRELOAD 
+
+for supported libraries with dynamic probes for inlined calls is a viable direction for future work. IX. C ONCLUSION 
+
+We presented S IGMA TRACE , a library-agnostic RDMA profiling framework that provides fine-grained observability into both CPU and GPU-initiated networking. By targeting the 
+
+libibverbs and mlx5dv direct verbs layers—the common denominator beneath all InfiniBand and RoCE communica-tion libraries—S IGMA TRACE captures per-operation RDMA behavior without requiring source modifications, recompilation, or binary instrumentation with 1.3% overhead on NCCL AllReduce at 32 nodes. Our core contribution is the UAR memory interposition technique that replaces PCIe MMIO mapped memory pages with CPU-monitored proxy pages, enabling the first-ever observ-ability into GPU-initiated RDMA operations at overheads orders of magnitude below those reported for binary instrumentation [21]. We demonstrate that the interposition method adds 11.5% end-to-end overhead on a worst-case distributed BFS application while collecting previously invisible doorbell-level information that reveals hidden load imbalance and computation/commu-nication inefficiencies. S IGMA TRACE is publicly available at https://github.com/ParCoreLab/SigmaTrace. ACKNOWLEDGMENT 
+
+This project has received funding from the European Research Council (ERC) under the European Union’s Horizon 2020 research and innovation programme (grant agreement No 949587). ChatGPT and Claude were used in preparation of the manuscript. The tools were used to correct typos and grammar and to polish wording throughout the text. Additionally, portions of the experiment drivers and plotting scripts that produced Figures 4–7 and 10 were generated with these tools. No experimental data, or citations were generated by an AI system. REFERENCES [1] D. Narayanan, M. Shoeybi, J. Casper, P. LeGresley, M. Patwary, V. Korthikanti, D. Vainbrand, P. Kashinkunti, J. Bernauer, B. Catanzaro, A. Phanishayee, and M. Zaharia, “Efficient large-scale language model training on GPU clusters using Megatron-LM,” in Proceedings of the International Conference for High Performance Computing, Networking, Storage and Analysis , ser. SC’21. New York, NY, USA: Association for Computing Machinery, 2021. [Online]. Available: https://doi.org/10.1145/3458817.3476209 [2] M. Isaev, N. Mcdonald, L. Dennison, and R. Vuduc, “Calculon: A methodology and tool for high-level co-design of systems and large language models,” in Proceedings of the International Conference for High Performance Computing, Networking, Storage and Analysis , ser. SC ’23. New York, NY, USA: Association for Computing Machinery, 2023. [Online]. Available: https://doi.org/10.1145/3581784.3607102 [3] D. Unat, A. Dubey, E. Jeannot, and J. Shalf, “The persistent challenge of data locality in the post-exascale era,” Computing in Science & Engineering , vol. 27, no. 4, pp. 19–27, 2025. [Online]. Available: https://doi.org/10.1109/MCSE.2025.3567586 [4] NVIDIA, “NVIDIA Collective Communications Library (NCCL) documentation,” 2025, accessed: May 17, 2026. [Online]. Available: https: //docs.nvidia.com/deeplearning/nccl/user-guide/docs/overview.html [5] ——, “NVIDIA OpenSHMEM Library (NVSHMEM) documentation,” 2025, accessed: Feb. 4, 2026. [Online]. Available: https://docs.nvidia.co m/nvshmem/api/index.html [6] P. Shamis, M. G. Venkata, M. G. Lopez, M. B. Baker, O. Hernandez, Y. Itigin, M. Dubman, G. Shainer, R. L. Graham, L. Liss, Y. Shahar, S. Potluri, D. Rossetti, D. Becker, D. Poole, C. Lamb, S. Kumar, C. Stunkel, G. Bosilca, and A. Bouteiller, “UCX: An open source framework for HPC network APIs and beyond,” in 2015 IEEE 23rd Annual Symposium on High-Performance Interconnects , 2015, pp. 40–43. [Online]. Available: https://doi.org/10.1109/HOTI.2015.13 [7] S. Potluri, K. Hamidouche, A. Venkatesh, D. Bureddy, and D. K. Panda, “Efficient inter-node MPI communication using GPUDirect RDMA for InfiniBand clusters with NVIDIA GPUs,” in 2013 42nd International Conference on Parallel Processing , 2013, pp. 80–89. [Online]. Available: https://doi.org/10.1109/ICPP.2013.17 [8] E. Agostini, D. Rossetti, and S. Potluri, “GPUDirect Async: Exploring GPU synchronous communication techniques for InfiniBand clusters,” 
+
+Journal of Parallel and Distributed Computing , vol. 114, pp. 28–45, 2018. [Online]. Available: https://www.sciencedirect.com/science/article/ pii/S0743731517303386 [9] I. Ismayilov, J. Baydamirli, D. Sa˘ gbili, M. Wahib, and D. Unat, “Multi-GPU communication schemes for iterative solvers: When CPUs are not in charge,” in Proceedings of the 37th ACM International Conference on Supercomputing , ser. ICS ’23. New York, NY, USA: Association for Computing Machinery, 2023, pp. 192–202. [Online]. Available: https://doi.org/10.1145/3577193.3593713 [10] T. Ma, Z. Gou, N. Xu, and S. Sun, “Efficient multi-GPU implementations of preconditioned conjugate gradient method,” Advances in Engineering Software , vol. 207, p. 103936, 2025. [Online]. Available: https://doi.org/10.1016/j.advengsoft.2025.103936 [11] Y. Chen, B. Brock, S. Porumbescu, A. Buluç, K. Yelick, and J. D. Owens, “Scalable irregular parallelism with GPUs: Getting CPUs out of the way,” in SC22: International Conference for High Performance Computing, Networking, Storage and Analysis , 2022, pp. 1–16. [Online]. Available: https://doi.org/10.1109/SC41404.2022.00055 [12] M. Doijade, A. Alekseenko, A. Brown, A. Gray, and S. Páll, “Redesigning GROMACS halo exchange: Improving strong scaling with GPU-initiated NVSHMEM,” in Proceedings of the SC ’25 Workshops of the International Conference for High Performance Computing, Networking, Storage and Analysis , ser. SC Workshops ’25. New York, NY, USA: Association for Computing Machinery, 2025, pp. 1314–1329. [Online]. Available: https://doi.org/10.1145/3731599.3767508 [13] J. D. Trotter, S. Ekmekçiba¸ sı, D. Sa˘ gbili, J. Langguth, X. Cai, and D. Unat, “CPU- and GPU-initiated communication strategies for conjugate gradient methods on large GPU clusters,” in Proceedings of the International Conference for High Performance Computing, Networking, Storage and Analysis , ser. SC ’25. New York, NY, USA: Association for Computing Machinery, 2025, pp. 298–315. [Online]. Available: https://doi.org/10.1145/3712285.3759774 [14] C. Zhao, S. Zhou, L. Zhang, C. Deng, Z. Xu, Y. Liu, K. Yu, J. Li, and L. Zhao, “DeepEP: An efficient expert-parallel communication library,” GitHub repository, 2025, accessed: May 17, 2026. [Online]. Available: https://github.com/deepseek-ai/DeepEP [15] F. Yu, T. Liu, and K. Sun, “Optimizing communication for mixture-of-experts training with hybrid expert parallel,” NVIDIA Developer Technical Blog, 2026, implementation released as the hybrid-ep 
+
+branch of DeepEP. Accessed: Aug. 29, 2026. [Online]. Available: https://developer.nvidia.com/blog/optimizing-communication-for-mixtu re-of-experts-training-with-hybrid-expert-parallel [16] A. Goldman, N. Boker, M. Sheraizin, N. Admoni, A. Polyakov, S. Bhattacharya, F. Yu, K. Sun, G. Theodorakis, H.-C. Yin, P.-J. Gootzen, A. Shafi, A. Ravid, S. Di Girolamo, J. Dinan, X. Li, M. Gorentla Venkata, and G. Bloch, “NCCL EP: Towards a unified expert parallel communication API for NCCL,” arXiv:2603.13606 [cs.DC], 2026. [Online]. Available: https://arxiv.org/abs/2603.13606 [17] Z. Mao, Y. Zhang, C. Cui, Z. Huang, K. You, Z. Chen, Z. Xu, Z. Gu, S. Shenker, C. Raiciu, Y. Zhou, and I. Stoica, “UCCL-EP: Portable expert-parallel communication,” arXiv:2512.19849 [cs.DC], 2025. [Online]. Available: https://arxiv.org/abs/2512.19849 [18] Y. Deng, L. Zhang, Q. Wang, X. Zhi, X. Zhang, Z. Jiang, H. Xu, L. Wang, Z. Song, G. Liu, Y. Bai, S. Wang, W. Xiao, J. Ye, M. Yu, and H. Xu, “Mycroft: Tracing dependencies in collective communication towards reliable LLM training,” in Proceedings of the ACM SIGOPS 31st Symposium on Operating Systems Principles , ser. SOSP ’25. New York, NY, USA: Association for Computing Machinery, 2025, pp. 254–269. [Online]. Available: https://doi.org/10.1145/3731569.3764848 [19] S. Das, J. Sewall, G. Congiu, P. Shamis, and G. Prasad, “Enhancing Communication Observability of AI Workloads with NCCL Inspector,” NVIDIA Developer Technical Blog, 2025, accessed: May 17, 2026. [Online]. Available: https://developer.nvidia.com/blog/enhancing-commu nication-observability-of-ai-workloads-with-nccl-inspector/ [20] Microsoft, “NPKit (Networking Profiling Kit),” 2025, accessed: Feb. 8, 2026. [Online]. Available: https://github.com/microsoft/NPKit [21] M. K. T. Issa, M. A. Sasongko, I. Turimbetov, J. Baydamirli, D. Sa˘ gbili, and D. Unat, “Snoopie: A multi-GPU communication profiler and visualizer,” in Proceedings of the 38th ACM International Conference on Supercomputing , ser. ICS ’24. New York, NY, USA: Association for Computing Machinery, 2024, pp. 525–536. [Online]. Available: https://doi.org/10.1145/3650200.3656597 [22] O. Villa, M. Stephenson, D. Nellans, and S. W. Keckler, “NVBit: A dynamic binary instrumentation framework for NVIDIA GPUs,” in 
+
+Proceedings of the 52nd Annual IEEE/ACM International Symposium on Microarchitecture , ser. MICRO-52. New York, NY, USA: Association for Computing Machinery, 2019, pp. 372–383. [Online]. Available: https://doi.org/10.1145/3352460.3358307 [23] NVIDIA, “NVIDIA Nsight Systems documentation,” 2026, accessed: May 17, 2026. [Online]. Available: https://docs.nvidia.com/nsight-syste ms/index.html [24] AMD, “AMD ROCm Systems Profiler Documentation,” 2026, accessed: Aug. 29, 2026. [Online]. Available: https://rocm.docs.amd.com/projects/r ocprofiler-systems/en/latest/index.html [25] Linux RDMA Community, “RDMA Core Userspace Libraries and Daemons,” 2026, includes libibverbs and mlx5dv. Accessed: May 17, 2026. [Online]. Available: https://github.com/linux-rdma/rdma-core [26] K. Hamidouche, J. Bachan, P. Markthub, P.-J. Gootzen, E. Agostini, S. Jeaugey, A. Shafi, G. Theodorakis, and M. G. Venkata, “GPU-initiated networking for NCCL,” arXiv:2511.15076 [cs.DC], 2025. [Online]. Available: https://arxiv.org/abs/2511.15076 [27] NVIDIA, “NVIDIA DOCA GPUNetIO documentation,” 2026, accessed: May 17, 2026. [Online]. Available: https://docs.nvidia.com/doca/sdk/doc a-gpunetio/index.html [28] AMD, “AMD ROCm OpenSHMEM (rocSHMEM) Documentation,” 2026, ROCm 7.2.0, rocSHMEM 3.2.0. Accessed: May 17, 2026. [Online]. Available: https://rocm.docs.amd.com/projects/rocSHMEM/en/docs-7.2.0/ [29] ——, “AMD ROCm Communication Collectives Library (RCCL) documentation,” 2026, ROCm 7.2.0, RCCL 2.27.7. Accessed: May 17, 2026. [Online]. Available: https://rocm.docs.amd.com/projects/rccl/en/doc s-7.2.0/ [30] E. Gencer, M. K. T. Issa, I. Turimbetov, J. D. Trotter, and D. Unat, “ucTrace: A multi-layer profiling tool for UCX-driven communication,” arXiv:2602.19084 [cs.DC], 2026. [Online]. Available: https://arxiv.org/abs/2602.19084 [31] J. Dong, K. Qian, P. Zhang, Z. Zheng, L. Chen, F. Feng, Y. Xu, Y. Zhu, G. Lu, X. Li, Z. Ren, Z. Wang, B. Luo, P. Zhang, Y. Liu, Y. Chen, Y. Guan, W. Wang, C. Yang, Y. Zhang, M. Yuan, H. Zhao, Y. Li, Z. Zhao, S. Li, X. Zeng, Z. Yao, B. Fu, E. Zhai, W. Lin, C. Wang, and D. Cai, “Evolution of Aegis: Fault diagnosis for AI model training service in production,” in Proceedings of the 22nd USENIX Symposium on Networked Systems Design and Implementation , ser. NSDI ’25. USA: USENIX Association, 2025, pp. 865–881. [Online]. Available: https://www.usenix.org/conference/nsdi25/presentation/dong [32] NVIDIA, “NVIDIA CUDA Profiling Tools Interface (CUPTI),” 2025, version 2026.1.0. Accessed: May 17, 2026. [Online]. Available: https://docs.nvidia.com/cupti/ [33] ——, “NVIDIA Compute Sanitizer API,” 2026, accessed: May 17, 2026. [Online]. Available: https://docs.nvidia.com/compute-sanitizer/Sanitizer ApiGuide/index.html [34] L. Backstrom, D. Huttenlocher, J. Kleinberg, and X. Lan, “Group formation in large social networks: Membership, growth, and evolution,” in Proceedings of the 12th ACM SIGKDD International Conference on Knowledge Discovery and Data Mining , ser. KDD ’06. New York, NY, USA: Association for Computing Machinery, 2006, pp. 44–54. [Online]. Available: https://doi.org/10.1145/1150402.1150412 [35] DeepSeek-AI, A. Liu, B. Feng, B. Xue, B. Wang, B. Wu, C. Lu, C. Zhao, C. Deng, C. Zhang, C. Ruan, D. Dai, D. Guo, D. Yang, D. Chen, D. Ji, E. Li, F. Lin, F. Dai, F. Luo, G. Hao, G. Chen, G. Li, H. Zhang, H. Bao, H. Xu, H. Wang, H. Zhang, H. Ding, H. Xin, H. Gao, H. Li, H. Qu, J. L. Cai, J. Liang, J. Guo, J. Ni, J. Li, J. Wang, J. Chen, J. Chen, J. Yuan, J. Qiu, J. Li, J. Song, K. Dong, K. Hu, K. Gao, K. Guan, K. Huang, K. Yu, L. Wang, L. Zhang, L. Xu, L. Xia, L. Zhao, L. Wang, L. Zhang, M. Li, M. Wang, M. Zhang, M. Zhang, M. Tang, M. Li, N. Tian, P. Huang, P. Wang, P. Zhang, Q. Wang, Q. Zhu, Q. Chen, Q. Du, R. J. Chen, R. L. Jin, R. Ge, R. Zhang, R. Pan, R. Wang, R. Xu, R. Zhang, R. Chen, S. S. Li, S. Lu, S. Zhou, S. Chen, S. Wu, S. Ye, S. Ye, S. Ma, S. Wang, S. Zhou, S. Yu, S. Zhou, S. Pan, T. Wang, T. Yun, T. Pei, T. Sun, W. L. Xiao, W. Zeng, W. Zhao, W. An, W. Liu, W. Liang, W. Gao, W. Yu, W. Zhang, X. Q. Li, X. Jin, X. Wang, X. Bi, X. Liu, X. Wang, X. Shen, X. Chen, X. Zhang, X. Chen, X. Nie, X. Sun, X. Wang, X. Cheng, X. Liu, X. Xie, X. Liu, X. Yu, X. Song, X. Shan, X. Zhou, X. Yang, X. Li, X. Su, X. Lin, Y. K. Li, Y. Q. Wang, Y. X. Wei, Y. X. Zhu, Y. Zhang, Y. Xu, Y. Xu, Y. Huang, Y. Li, Y. Zhao, Y. Sun, Y. Li, Y. Wang, Y. Yu, Y. Zheng, Y. Zhang, Y. Shi, Y. Xiong, Y. He, Y. Tang, Y. Piao, Y. Wang, Y. Tan, Y. Ma, Y. Liu, Y. Guo, Y. Wu, Y. Ou, Y. Zhu, Y. Wang, Y. Gong, Y. Zou, Y. He, Y. Zha, Y. Xiong, Y. Ma, Y. Yan, Y. Luo, Y. You, Y. Liu, Y. Zhou, Z. F. Wu, Z. Z. Ren, Z. Ren, Z. Sha, Z. Fu, Z. Xu, Z. Huang, Z. Zhang, Z. Xie, Z. Zhang, Z. Hao, Z. Gou, Z. Ma, Z. Yan, Z. Shao, Z. Xu, Z. Wu, Z. Zhang, Z. Li, Z. Gu, Z. Zhu, Z. Liu, Z. Li, Z. Xie, Z. Song, Z. Gao, and Z. Pan, “DeepSeek-V3 technical report,” arXiv:2412.19437 [cs.CL], 2025. [Online]. Available: https://doi.org/10.48550/arXiv.2412.19437 [36] L. Zheng, L. Yin, Z. Xie, C. Sun, J. Huang, C. H. Yu, S. Cao, C. Kozyrakis, I. Stoica, J. E. Gonzalez, C. Barrett, and Y. Sheng, “SGLang: efficient execution of structured language model programs,” in Proceedings of the 38th International Conference on Neural Information Processing Systems ,ser. NIPS ’24. Red Hook, NY, USA: Curran Associates Inc., 2024. [37] P. Kousha, K. R. Sankarapandian Dayala Ganesh Ram, M. Kedia, H. Subramoni, A. Jain, A. Shafi, D. Panda, T. Dockendorf, H. Na, and K. Tomko, “INAM: Cross-stack profiling and analysis of communication in MPI-based applications,” in Practice and Experience in Advanced Research Computing 2021: Evolution Across All Dimensions , ser. PEARC ’21. New York, NY, USA: Association for Computing Machinery, 2021. [Online]. Available: https://doi.org/10.1145/3437359.3465582 [38] AMD, “AMD ROCm ROCProfiler-SDK Documentation,” 2026, accessed: Aug. 28, 2026. [Online]. Available: https://rocm.docs.amd.com/projects/r ocprofiler-sdk/en/latest/index.html [39] Broadcom Inc., “Broadcom BCM57608 400G PCIe Ethernet Controller (Thor 2),” 2024, accessed: Aug. 28, 2026. [Online]. Available: https://docs.broadcom.com/docs/BCM57608-PB [40] AMD, “AMD Pensando Pollara 400 AI NIC,” 2025, accessed: Mar. 17, 2026. [Online]. Available: https://www.amd.com/content/dam/amd/en/doc uments/pensando-technical-docs/product-briefs/pollara-product-brief.p df [41] Amazon Web Services, “EFA Datapath Direct: GPU-initiated data path interfaces for the Elastic Fabric Adapter,” 2026, accessed: Aug. 29, 2026. [Online]. Available: https://github.com/amzn/efa-dp-direct [42] ——, “AWS OFI NCCL v1.21.0 Release Notes: GPU-Initiated Networking (GIN) with the EFA GDA kernel backend,” 2026, accessed: Aug. 29, 2026. [Online]. Available: https://github.com/aws/aws-ofi-nccl/ releases/tag/v1.21.0 [43] OpenFabrics Alliance, “Open Fabrics Interfaces (OFI) libfabric,” 2026, accessed: May 17, 2026. [Online]. Available: https://github.com/ofiwg/li bfabric [44] Hewlett Packard Enterprise, “libcxi: The CXI library,” 2026, accessed: May 28, 2026. [Online]. Available: https://github.com/hewlettpackard/sh s-libcxi [45] Frida Developers, “Frida: Dynamic Instrumentation Toolkit,” 2026, accessed: May 17, 2026. [Online]. Available: https://frida.re/docs/home/

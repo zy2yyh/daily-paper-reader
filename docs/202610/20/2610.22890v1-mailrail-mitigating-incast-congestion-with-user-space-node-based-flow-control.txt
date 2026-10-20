@@ -1,0 +1,288 @@
+Title: MailRail: Mitigating Incast Congestion with User-Space, Node-Based Flow Control
+
+URL Source: https://arxiv.org/pdf/2610.22890v1
+
+Published Time: Mon, 19 Oct 2026 00:37:42 GMT
+
+Number of Pages: 10
+
+Markdown Content:
+# MailRail: Mitigating Incast Congestion with User-Space, Node-Based Flow Control 
+
+Noel Gomillion †‡ , Lance Fletcher ‡, Trevor Steil †, Eun Jung Kim ‡, Roger Pearce †‡ 
+
+> †
+
+Center for Applied Scientific Computing ; Lawrence Livermore National Laboratory 
+
+> ‡
+
+Department of Computer Science and Engineering ; Texas A&M University 
+
+{gomillion1, steil1, rpearce }@llnl.gov, {ngomillion, lance.fletcher, ejkim, rpearce }@tamu.edu 
+
+Abstract —Irregular workloads, such as those stemming from Graph Neural Networks (GNNs) and Mixture-of-Experts (MoE) models, frequently induce severe incast congestion in large-scale parallel environments. Existing fabric-level congestion control mechanisms rely on reactive, link-level rate limiting that de-grades overall throughput. While receiver-driven, credit-based flow control offers a proactive alternative, as process counts scale memory slots per rank fall below usable thresholds, rendering traditional rank-based accounting untenable. To address this challenge, we introduce MailRail, an out-of-order, asynchronous messaging framework, along with a novel user-space, node-based credit flow control system. By shifting credit accounting from individual processes to shared per-node pools, our proactive, fabric-agnostic approach maintains sufficient credit availability even as process density grows, enabling processes to dynamically utilize freed credits without waiting for receiver-side redistri-bution. Experimental evaluations demonstrate that node-based flow control achieves up to a 1132 × speedup over unconstrained execution at an adversarial incast ratio of 4096:1 while adding minimal overhead on uniform workloads. 
+
+Index Terms —flow control, asynchronous communication, in-cast communication 
+
+I. I NTRODUCTION 
+
+Both Graph Neural Networks (GNNs) and Mixture-of-Experts (MoE) models generate highly irregular communi-cation patterns that are inherently prone to inducing incast congestion, a severe bottleneck where many sender processes simultaneously flood a small set of receiving victim processes [1]–[3]. GNNs use real-world datasets for training, which typ-ically exhibit power-law degree distributions [4], [5]. During training, aggregating features from hub nodes causes fan-in traffic unless mitigation techniques are used. In MoE models, used to make AI inference more scalable, tokens are routed to a subset of experts. Some experts prove more popular than others, creating many-to-one traffic spikes at GPUs hosting those experts during All-to-All collectives [1]. As one of the most destructive forms of network con-gestion in distributed architectures, incast congestion causes severe communication stalls, leaving high-speed compute and memory resources underutilized and significantly degrading overall system throughput to near zero [6], [7]. In lossless network fabrics, link-level flow control prevents packet loss by backpressuring senders when receiver buffers saturate. During incast communication, the victims’ buffers quickly saturate, forcing upstream senders to stall. Congestion spreading en-sues, causing severe performance degradation. Thus, conges-tion control represents a critical challenge in high-performance computing (HPC). Current incast mitigation strategies focus on hardware-level solutions that are reactive instead of proactive. These include sender rate limiting, which has been shown to degrade effective throughput rates [1], [6]. To overcome these limitations, end-to-end, receiver-driven, credit-based flow control offers a proactive alternative by tying transmission credits directly to pre-allocated buffer memory at the receiver, bounding in-flight traffic before congestion occurs [8], [9]. However, as supercomputer core counts and process densities scale, traditional rank-based credit accounting faces severe memory constraints: dividing receiver memory among thousands of sending processes reduces available credits to less than one buffer slot per rank, rendering rank-based accounting untenable. While traditional rank-based flow control manages credits on a per-process (MPI rank) basis, node-based flow control aggregates credit accounting into a shared, per-node pool accessed dynamically by all local ranks on the same physical host. By shifting credit accounting from individual processes to shared per-node pools, local sending ranks can dynami-cally access a collective quota of credits, maintaining high throughput and credit availability even when receiver memory slots fall below one per rank. Although receiver-side credit redistribution strategies attempt to adapt to shifting process demands [6], [10]–[12], they remain inherently reactive by relying on the receiver to detect communication bottlenecks and adjust allocations across the network. In contrast, sender-side node-based credit pooling naturally reallocates available credits instantaneously as local processes complete their trans-fers. In this work, we introduce MailRail, an asynchronous mes-saging framework designed for high-performance out-of-order communication. Within MailRail, we propose two end-to-end, user-space, credit-based flow control mechanisms to address incast congestion in a fabric-agnostic manner: rank-based flow control, which manages credits per process, and node-based flow control, which aggregates credits into host-level shared pools. We evaluate MailRail across synthetic benchmarks and real-world application traces, including an adversarial incast benchmark, a uniform-traffic histogram workload, and trace replays from YGM, LLNL’s asynchronous distributed active message runtime [13]. Experimental results show that node-based flow control consistently outperforms traditional rank-based and unconstrained execution, achieving up to a 1132 ×
+
+speedup at an adversarial incast ratio of 4096:1, sustaining 
+
+> SC26 Workshops, November 15-20, 2026, Chicago, Illinois, USA 979-8-3195-1221-5/26/$31.00 ©2026 IEEE arXiv:2610.22890v1 [cs.DC] 16 Oct 2026
+
+consistent goodput under extreme 4096:1 incast ratios, and demonstrating linear runtime scaling as the workload per victim increases. The main contributions of this work are:  
+
+> •
+
+an asynchronous messaging API for out-of-order com-munication;  
+
+> •
+
+two end-to-end, user-space, receiver-driven, credit-based flow control solutions to the incast communication prob-lem that are network-fabric agnostic: rank-based flow control and node-based flow control;  
+
+> •
+
+an adversarial benchmark for testing incast communica-tion performance under various incast ratios;  
+
+> •
+
+an analysis of incast sensitivity during unconstrained execution on the supercomputers Dane and Lynx. The remainder of this paper is organized as follows: Sec-tion II discusses background and related work on congestion control mechanisms. Section III presents the MailRail mes-saging interface, while Section IV details our rank-based and node-based flow control implementations. Section V describes our experimental methodology and performance evaluations across synthetic benchmarks and application traces. Finally, Section VI concludes the paper and outlines future work. II. B ACKGROUND 
+
+Incast communication, where many processes send to a few victims, rapidly saturates receiver buffer space at victim processes, causing severe network backpressure, buffer bloat, and throughput collapse that hinders system scalability. Prior mitigation approaches predominantly rely on hardware-level or sender-side rate-limiting mechanisms to manage these bot-tlenecks, including the following: 
+
+A. Network Fabric Strategies 1) Ethernet with RoCEv2: RoCEv2 enforces losslessness using Priority-based Flow Control (PFC) at the link level and regulates send rate via Data Center Quantized Con-gestion Notification (DCQCN). When incast communication saturates switch buffers, DCQCN relies on feedback loops using Explicit Congestion Notification (ECN) and Congestion Notification Packets (CNP) to throttle senders. These feedback loops take multiple round-trip times (RTT) to take effect. This delayed reaction causes throughput oscillations, buffer overruns, PFC pause storms, and Head-of-Line (HoL) blocking across the fabric [14]–[16]. 
+
+2) Receiver-Driven Congestion Control for InfiniBand: To prevent packet loss, InfiniBand (IB) utilizes hop-by-hop credit-based flow control. However, fan-in incast rapidly depletes switch credits, causing backpressure to cascade upstream and freeze even uncongested flows. Receiver-driven paradigms resolve this by granting transmission windows and credit tokens from the receiving host [6]. 
+
+3) Ultra Ethernet Consortium: The Ultra Ethernet Trans-port (UET) implements Receiver Credit-Based Congestion Control (RCCC) to eliminate last-hop incast. The receiving host tracks active senders and allocates bandwidth using microsecond time slots via ACK CC control packets [10]. 
+
+4) Omni-Path Express (OPX): Omni-Path Express (OPX) mitigates receiver incast using in-fabric telemetry and flit-level credits rather than the link pauses used by PFC. When switch buffers near the receiving host fill up, switches issue backward notifications to throttle the sending hosts, causing the congestion for that target endpoint; the sender is free to continue sending to uncongested recipients because only the traffic sent to the congested endpoint is throttled. Per-virtual-lane credit accounting caps ingress data volume to prevent buffer overruns [14]. 
+
+B. Endpoint Software Strategies 1) MPI Protocols: Message Passing Interface (MPI) is a library specification widely used for communication in HPC systems. MPI utilizes protocols that require acknowledgment handshakes to limit sender data transmission. This includes the Rendezvous protocol, which is triggered when a message exceeds a given size, and synchronous sends (e.g. MPI Ssend and MPI Issend), which wait for a receipt acknowledgment before the communication can finish. Both of these techniques introduce additional RTT latency, though MPI Issend can overlap this delay with computation [17], [18]. 
+
+2) Flow Control for GASNet-EX: GASNet-EX is a commu-nication library for the network middleware layer designed for Active Messaging (AM) and Remote Memory Access (RMA). As part of the library, GASNet-EX uses flow control that ties the number of credits each sending process has to available buffer space on the receiving process using a dynamic credit allocation scheme that initially underallocates credits, then reallocates surplus credits to processes that have previously stalled due to credit starvation when sending AM Requests [12]. 
+
+C. Motivation 
+
+While irregular workloads achieve higher throughput us-ing asynchronous execution, small asynchronous messages can cause congestion, buffer overflows, and out-of-memory (OOM) errors. Examined congestion control strategies fail to prevent this without negatively impacting effective through-put: sender rate limiting experiences delayed responses and prolonged recovery times, while software protocols requiring handshakes or dynamic receiver-side adjustments create RTT delays. Our proposed node-based flow control overcomes these limits by proactively shaping traffic flow at the user-space level while naturally allocating credits to active sending processes. This enables consistent throughput without triggering switch backpressure regardless of the underlying network fabric. III. M AIL RAIL INTERFACE 
+
+The MailRail API is simple by design (see Fig. 1), al-lowing for experiments targeting fire-and-forget asynchronous communication [13]. This communication model exploits one-sided, non-blocking asynchronous messages to eliminate round-trip latency associated with handshakes and acknowl-edgments. Message processing order reflects arrival order at the receiver, independent of send order or sender identity. MailRail C++ Class Interface                                            
+
+> 1class mailrail {
+> 2public :
+> 3// Lifecycle
+> 4int mailrail_init( MPI_Comm comm);
+> 5int mailrail_finalize();
+> 67// Zero-Copy Send Path (Backpressure)
+> 8int mailrail_reserve_send_buffer( int dest, void **ptr,
+> 9int *capacity);
+> 10 int mailrail_send( void *ptr, int size);
+> 11 12 // Zero-Copy Receive Path &Progress
+> 13 int mailrail_receive( void **ptr, int *size);
+> 14 int mailrail_release_receive_buffer( void *ptr);
+> 15 };
+
+Fig. 1. The MailRail API allows for zero-copy sends and receives while back-pressuring the sender when buffer space is unavailable. While the MailRail API is conceptually transport-agnostic, our current implementation uses MPI as the underlying communication layer. All MPI-specific dependencies are limited to the init call; the remaining data-path functions operate on untyped memory buffers, allowing the underlying transport to be swapped out in future. 
+
+MailRail does not provide a mechanism for synchronization and requires user code to handle quiescence detection. The underlying messaging layer is abstracted, enabling implemen-tations for various communication substrates (e.g., MPI, UCX, or libfabric). To deliver high throughput without incurring memory copy overhead, the MailRail API centers on these core principles: zero-copy, sender-side backpressure, and user-driven progress. 
+
+A. Buffer Reservation and Sender-side Backpressure 
+
+To achieve zero-copy performance, MailRail requires applications to request a send buffer via mailrail reserve send buffer prior to populating payload data. Crucially, buffer allocation failure is not an error condition; rather, it serves as MailRail’s primary sender-side backpressure mechanism (see Fig. 2). When internal buffers are saturated, the call returns a null buffer and immediately yields execution back to the caller. Applications handle saturation through cooperative polling, interleaving reservation attempts with calls to mailrail receive. This ensures a sender stalled by backpressure continues to drain its incoming queues, avoiding distributed deadlocks. Once populated, the message is relayed via mailrail send. This operation is nonblocking and fire-and-forget. Depending on the implementation, a message is not necessarily sent immediately when this function is called. The API allows for sends to be deferred in a deferred send queue. When implemented, this would enable the application to continue execution without waiting for a send to complete, which is in keeping with our asynchronous model. 
+
+B. Zero-copy Receive and User-driven Progress 
+
+Messages are received using nonblocking calls to mailrail receive. When a message is present, MailRail returns a direct pointer into its own internal receive pool, along with the payload size. Calls to mailrail receive double as the runtime’s internal progress engine, draining deferred outbound                                   
+
+> Example of Sending Messages
+> 1mailrail mb;
+> 2int result =mailrail_init(MPI_COMM_WORLD);
+> 3void *send_buffer =nullptr;
+> 4int capacity =datagram_size;
+> 5while (result != 0|| send_buffer == NULL ){
+> 6result =mb.mailrail_reserve_send_buffer(dest,
+> 7&send_buffer, &capacity);
+> 8receive_message_poll();
+> 9}
+> 10 fill_buffer(send_buffer);
+> 11 mb.mailrail_send(send_buffer, num_bytes);
+
+Fig. 2. This example shows how to reserve and send buffers. By interleaving reservation attempts with calls to mailrail receive, senders continue to drain incoming queues while waiting for an available buffer.                                      
+
+> Example of Polling for Received Messages
+> 1void *recv_ptr =NULL;
+> 2int recv_size =0;
+> 3do {
+> 4result =mb.mailrail_receive(&recv_ptr, &recv_size);
+> 5if (recv_ptr != NULL && recv_size >0) {
+> 6received_message =1;
+> 7process_received_message(recv_ptr, recv_size);
+> 8result=mb.mailrail_release_receive_buffer(recv_ptr);
+> 9}else {
+> 10 received_message =0;
+> 11 }
+> 12 }while (received_message);
+
+Fig. 3. Aggressively receiving messages acts as the user-driven progress mechanism; this clears incoming receive queues as quickly as possible while also draining any pending send messages MailRail may have. 
+
+sends while processing incoming messages (see Fig. 3). After the application finishes processing the buffer, the application signals MailRail to return the buffer to the receive buffer pool via mailrail release receive buffer, which also posts new non-blocking receive requests. MailRail uses mailrail finalize, a collective operation performed by all ranks together, to cancel any pending communication and to release buffers. IV. M AIL RAIL IMPLEMENTATION 
+
+MailRail’s simplicity allows for various implementation strategies and design decisions. This enables experimentation over a wide variety of communication paradigms. Here we discuss details of a MailRail implementation centered on MPI, including node- and rank-based flow control. We first discuss general implementation decisions, then the specifics of each flow control mechanism. 
+
+A. MailRail over MPI 
+
+We implement MailRail using MPI. Because we focus on asynchronous communication, we use the nonblocking functions MPI Isend and MPI Irecv for passing messages. Receivers process messages in the order they arrive without regard to the source or the message tag. To avoid malloc overhead, MailRail reuses memory through dedicated send and receive buffer pools. When the application requests a send buffer, MailRail pulls the buffer from the send queue. Once MPI Test confirms completion, MailRail recycles the buffer back to the send pool. Similarly, when the application posts a receive request, MailRail draws a buffer from the receive pool and releases the buffer when directed by the application. Environment variables configure the datagram size, pool sizes, and maximum outstanding receive requests. 
+
+B. Flow Control 
+
+Our MailRail implementation provides three flow control modes: unconstrained execution, rank-based flow control, and node-based flow control. In both node- and rank-based mech-anisms, MailRail ties credits directly to available slots in the receive buffer pool. Because these credits reflect real receiver-side capacity, senders only transmit when space is available, preventing incoming messages from overwhelming receive buffers even in incast scenarios. An environment variable configures the credit-return threshold. To prevent message communication from interfering with returning credits, MailRail duplicates the MPI communicator to create a dedicated credit communicator. MailRail returns credits using zero-payload messages, encoding the credit count directly in the message tag. This approach avoids buffer allocation and memory access during credit communication. Both flow control mechanisms require a deferred send queue. When the application calls mailrail send, if the sender lacks sufficient credits for the destination process, MailRail places the send buffer into the deferred send queue and immediately returns control to the calling application. This design allows the application to continue executing without blocking on send credits. Whenever an application invokes mailrail send while messages remain in the deferred send queue, MailRail attempts to drain the queue by transmitting one message to each destination that now has available credits. MailRail then appends the new message to the queue, preserv-ing FIFO ordering to prevent newer messages from bypassing older messages destined for the same target. The maximum number of outstanding send buffers (those in use by the application as well as those enqueued in the deferred send queue) is the number of slots in the send buffer pool. When all slots are in use, attempts to reserve buffers will result in backpressure until user-driven progress drains messages from the deferred send queue. 
+
+1) Rank-Based Flow Control: In rank-based flow control, each sending rank begins with the same static number of credits. Credits are tied to the number of slots set aside for that sender in each receiver’s receive buffer. The number of credits per sender-receiver pair is: Credits per pair = Total receive buffer size per receive rank Datagram size × Total ranks Rank-based flow control tracks credits symmetrically on both sender and receiver ranks. Senders maintain a credit count for each target destination, decrementing credits upon each transmission and sending only when credits are available. Conversely, receivers track consumed credits per sending rank, incrementing the count as they process and release incoming buffers. Once a sender’s consumed credits reach the configured threshold, the receiver returns them via the dedicated credit communicator. MailRail also supports piggybacking credits in rank-based flow control. When transmitting a payload message, the sender checks for pending credit returns owed to that target rank. If credits exist, MailRail encodes the count directly into the message tag. Upon receiving any payload message, the receiver inspects the tag; if non-zero, it adds the tag value back to its send credits for that rank. An environment variable enables this piggybacking feature. 
+
+C. Node-Based Flow Control 
+
+In node-based flow control, MailRail tracks credits per node rather than per rank. The tracking mechanism mirrors rank-based flow control, using shared sender- and receiver-side credit counts per node. Before transmitting, a sender verifies that its local node has available credits, then decrements the shared node-level count. Upon receiving a message, the target process, on behalf of the receiving node, increments the credits consumed for the sending node. Once the consumed count reaches the return threshold, the receiving process transmits a credit-return message to the sending process, which then updates its node’s sending credits. Because this design shifts tracking from rank pairs to node pairs, the credit allocation formula becomes: Credits per pair = Total receive buffer size per receive rank Datagram size × Total nodes There are three major advantages to tracking credits on a per-node basis rather than per-rank: reduced memory over-head, access to a large pool of shared credits, and a reduction in credit return message traffic. With rank-based flow control, the memory overhead for credit tracking is: 
+
+2 × (Ranks per node × Node count )2 × Bit width Because our node-based mechanism tracks credits in shared memory, updating adjacent credit entries on the same cache line can trigger false sharing and costly cache evictions. To prevent this performance degradation, we pad each credit entry to 128 bytes, isolating every credit entry onto its own cache line. Consequently, node-based flow control uses 
+
+2 × (Node count )2 × 128 Bytes to track credits. On 112-core processors, this design allows node-based flow control to use 425 × to 850 × less memory (depending on whether the bit width is 4 or 8 bytes) than rank-based flow control to track the same number of effective credits. Furthermore, node-based flow control enables receiver buffer pools smaller than one slot per rank without starving senders of credits or oversubscribing receiver memory. Under node-based flow control’s shared credit model, active sending processes gain access to a larger pool of credits as neighboring processes on the same node finish their trans-missions. Theoretically, this dynamic pooling is expected to shorten the latency tail relative to static rank-based flow control, without requiring receiver-side intervention. Node-based flow control substantially reduces network over-head from credit-return messages compared to rank-based schemes. Because credit returns trigger when a threshold ratio of consumed-to-total credits is reached, aggregating credits at the node level increases the credit pool capacity by a factor of 
+
+k, where k is the number of ranks per node. This larger credit pool scales the credit-return threshold accordingly, offering a potential k-fold reduction in inter-node credit update mes-sages, depending on traffic distribution. In addition, intra-node credit updates bypass the network entirely, resolving locally via low-overhead shared memory. Together, these mechanisms reduce fine-grained control traffic, reducing the risk of fabric congestion caused by frequent control packets. V. E XPERIMENTATION 
+
+A. Hardware and Software 
+
+Unless otherwise specified, all experiments are run on Dane, a supercomputer housed at Lawrence Livermore National Laboratory (LLNL). Dane contains 1,544 nodes, with each node having two 56-core, 2 GHz Xeon Platinum 8480+ (Sapphire Rapids) central processing units (CPUs) running the TOSS4 operating system. Nodes are connected via Cornelis Networks Omni-Path Architecture (OPA), using Performance Scaled Messaging 2 (PSM2) as the low-level communications library. The MPI library used is OpenMPI 4.1.2, and the compiler is GCC 10.3.1 using the default optimization levels. Also unless otherwise noted, we use 4 KiB datagrams and 64 ranks per node in our experiments. We assign sending ranks 8 credits per receiving rank when using rank-based flow control. For node-based flow control, all ranks on sending nodes share 512 credits per receiving node. We conduct all rank-based flow control experiments using credit piggyback-ing. We set the credit return threshold to 2, meaning receiving processes return credits to senders after half of the senders’ credits are consumed. This reduces the number of credit return messages sent while combating credit starvation. 
+
+B. Adversarial 
+
+We introduce an adversarial benchmark to study how incast communication affects performance. This benchmark repre-sents an extreme example of incast communication, focusing entirely on communication and severely imbalanced work-loads. The benchmark accepts four parameters: the number of victim processes, the datagram size, the number of messages sent per process, and the number of trials. It randomly selects victim processes from the process pool, after which each process randomly generates its message sending order. Pro-cesses aggressively receive communication before their first sent message, while waiting for available send buffers, and after each sent message. This benchmark performs no compute, calling mailrail send immediately after a successful buffer reservation. Victim pro-cesses do not send messages to themselves. Only the com-munication portion of the benchmark is timed, and we find goodput (the useful, application-level data transferred over a network, measured in bits per second) by dividing the total aggregate bits received by all victims by the overall runtime of the trial [19]. All goodput numbers reported for node- and rank-based flow control schemes are based on this calculation method. Because incast communication degrades performance so severely, we add an option to capture sub-second execution statistics for granular insight into communication behavior. These metrics include elapsed time, sent message count, number of bytes sent, received message count, number of bytes received, completion percentages for sends and receives, the maximum time between mailrail send calls on the sender side, and the maximum time between mailrail receive calls on the receiver side. We print metrics per rank to avoid impacting runtime measurements. Note that because our benchmark collects these metrics at the application layer, it reports mes-sages issued to mailrail send; under active flow control, these messages may still reside in MailRail’s deferred send queue. This is why we use number of bytes received when reporting goodput for unconstrained execution. 
+
+1) Weak Scaling: To compare incast communication per-formance with and without flow control, we conduct two weak scaling experiments. The first establishes a baseline for speedups between our methods of flow control and un-constrained execution by limiting the data sent per rank to a constant 12.8 MiB, which allows unconstrained execution on the adversarial benchmark to complete for up to 4096 ranks. The second experiment uses goodput to compare flow control and unconstrained execution at higher numbers of ranks; accordingly, we increase the amount of data sent to a constant 128 MiB per rank to maximize achieved goodput. We evaluate our adversarial benchmark using four victim ranks. 
+
+a) 12.8 MiB: Incast communication over unconstrained execution degrades performance severely over PSM2, result-ing in outright program crashes or continually decreasing throughput. Therefore, to establish a baseline comparison be-tween unconstrained execution and our flow control methods, we limit the amount of data sent per rank to 12.8 MiB. This allows unconstrained execution to complete, enabling straightforward runtime comparisons. Runtimes reported are the average across five trials unless otherwise noted. No warm-up trial is used because runtimes remain largely consistent across trials. Table I shows node- and rank-based flow control achieve a sizable speedup over unconstrained execution through an incast ratio of 1024:1. As workload doubles with the doubling of ranks, node-based flow control runtime also approximately doubles. Rank-based flow control nearly triples as workload doubles. In contrast, unconstrained execution begins at about 150 × the runtime of either flow control method, and as workload doubles, unconstrained execution experiences a 5.7 ×
+
+to 8 × increase in runtime. For node-based flow control, the resulting speedup over unconstrained execution is between 149 × at an incast ratio of 128:1 and 4431 × at an incast ratio of 1024:1. Rank-based flow control sees a more modest speedup over unconstrained execution, with speedups of between 156 × at an incast ratio of 128:1 and 1902 × at an incast ratio of 1024:1. Given their respective runtime growth rates, we expect TABLE I RUNTIME COMPARISONS FOR 12.8 M IB                          
+
+> Average Runtimes (s) Speedup over No FC Ranks No FC Rank FC Node FC Rank Node
+> 512 152.4 0.979 1.02 155.7 148.9 1024 895 2.55 2.3 350.6 388.1 2048 5080 a6.84 4.67 742.5 1086.8 4096 40542 b21.3 9.15 1902 4431
+> aTwo trials completed in 3 hours (job time).
+> bTwo trials completed in 24 hours (job time).
+
+node- and rank-based speedups over unconstrained execution to continue to increase at higher incast ratios. However, the runtime of unconstrained execution restricts this experiment to 4096 ranks; we project that one trial of 8196 ranks would take about 3 days and 16,384 ranks would take about 19 days to complete based on average runtime increases for unconstrained execution. 
+
+b) 128 MiB: To better measure the goodput achieved by node- and rank-based flow control, we increase the data sent per rank to 128 MiB. At these data loads, unconstrained execution at 512 ranks with an incast ratio of 128:1 takes an average overall runtime of 5463 seconds (about 1.5 hours), and 1024 ranks with an incast ratio of 256:1 finishes only one trial, with an overall runtime of 61,439 seconds (about 17 hours). Based on our previous observations, we could expect 2048 ranks to complete in over 4 days and 4096 to complete in over 3 weeks; since we evaluate flow control up to 16,384 ranks, running unconstrained execution at these scales is infeasible given allocation constraints, especially for a baseline known to behave poorly. Consequently, to compare flow control to unconstrained execution at 128 MiB per rank, we use goodput to measure speedup and truncate execution for unconstrained runs only. Experiments conducted over PSM2 examining goodput over execution time for unconstrained execution show goodput tends to degrade further as time elapsed increases. We there-fore cut off unconstrained execution after 600 seconds of sending and receiving data, then find the goodput using: Aggregate Victim Bits Received Time (s) This represents an upper bound on unconstrained execution goodput, especially since cutting off execution excludes tail latency from consideration. Flow-controlled execution is able to complete and hence includes tail latencies; we calculate flow control goodput using total aggregate bits received divided by overall completion time. This method is biased in favor of unconstrained execution, meaning flow control speedups reported are conservative es-timates. This is confirmed by examining the actual runtime speedup of 512 ranks and 1024 ranks vs the truncated goodput speedups. The actual speedup for 512 ranks with an incast ratio of 128:1 is 628 × for rank-based flow control and 655 × for node-based flow control, while our truncation method only reports speedups of 287 × and 299 × respectively. For 1024 512 1,024 2,048 4,096 8,192 16,384    
+
+> Number of Ranks
+> 1/32 1/8 1/2 2832 128
+> Aggregate Goodput (Gbps)
+> 63.0 63.8 61.0 61.7 57.2 53.6 65.8 49.6 29.3 16.2 11.0 10.4 0.22 0.11 0.11 0.11 0.060 0.047
+> Node FC Rank FC No FC
+> Fig. 4. Incast communication with 4 victim ranks. This histogram shows the goodput for incast ratios of between 128:1 and 4096:1 for node-based flow control, rank-based flow control, and unconstrained execution. Goodputs shown for unconstrained execution represent an optimistic estimate because execution is truncated and so lacks the latency tail. Note the y-axis grows exponentially.
+
+ranks with an incast ratio of 256:1, the actual speedup is 2776 × for rank-based flow control and 3570 × for node-based flow control, while the truncated method only reports speedups of 456 × and 586 × respectively. Of the mechanisms explored, node-based flow control performs best under incast communication, with application goodput only degrading by 14.9% between an incast ratio of 128:1 at 512 ranks and a ratio of 4096:1 at 16,384 ranks (see Fig. 4). Compared to our upper-bound goodput estimate for unconstrained execution, node-based flow control delivers speedups between 287 × and 1132 ×.Rank-based flow control performs 153 × to 456 × better than unconstrained execution. However, as rank size increases, ag-gregate goodput drops 84% between incast ratios of 128:1 and 4096:1. Unconstrained execution experiences severe degra-dation under incast communication; unconstrained execution achieves an upper bound of 0.05% to 0.01% peak ingress throughput. This throughput failure is consistent with unregu-lated message injection saturating switch buffers, spreading congestion, and triggering hardware-level backpressure and slowly recovering source-rate limiting Our flow control meth-ods regulate message injection at the process level, preventing incast traffic from exhausting fabric buffers. 
+
+2) Incast Degree Sensitivity: To evaluate flow control per-formance across the spectrum from severe incast to uniform traffic for pure communication, we use the adversarial bench-mark to perform a victim sweep (see Fig. 5). We hold the system scale constant at 4096 ranks and fix the aggregate data volume at 512 GiB. We define the victim sweep by varying the number of receiving (victim) ranks in power-of-two increments from 1 to 4096, transitioning from maximum incast severity (1 victim process) to a uniform distribution (4096 victim processes). Consequently, workload per victim rank doubles as the incast ratio increases. Among the evaluated methods, node-based flow control demonstrates the greatest resilience to increasingly severe incast ratios while performing at least as well as unconstrained execution under uniform communication. Beginning at an incast ratio of 8:1, unconstrained execution exhibits approxi-mately cubic runtime growth with respect to workload size: doubling the workload increases runtime by approximately 8×. In contrast, node- and rank-based flow control maintain approximately constant runtimes until an incast ratio of 64:1. At that point, node- and rank-based flow control both begin to see linear runtime growth with respect to workload, with node-based flow control growing at a slower constant factor than rank-based. At incast ratios of 4096:1 and 2048:1, node-based flow control achieves a 3.7 × speedup over rank-based flow control. Between 512 and 128 victim processes, node- and rank-based flow control exhibit significant performance speedups over unconstrained execution. At 512 victim processes (an incast ratio of 8:1), node- and rank-based flow control achieve a speedup of 15.8 × and 10.8 × over baseline respectively. This rises to 89 × and 56 × over baseline for 256 victims. At 128 victims (an incast ratio of 32:1) node- and rank-based flow control exhibit a 512 × and 391 × speedup, respectively. PSM2 timeout errors occur at 64 victims; therefore, we are unable to collect data on unconstrained execution beyond 128 victims. Node-based, rank-based, and unconstrained execution ex-hibit similar performance for more uniform communication (victim counts 1024, 2048, and 4096). Even for these, how-ever, node-based flow control demonstrates a 1.06 × to 1.58 ×
+
+speedup compared to the unconstrained baseline. Rank-based flow control actually performs best in more uniform commu-nication, with a speedup over baseline of between 1.47 × to 1.66 ×, with the uniform case being the highest speedup. 
+
+C. Histogram 
+
+Our histogram benchmark is set up similarly to YGM’s histogram benchmark [13]. The histogram table, of size 2N ,is stored in distributed memory. Each process randomly gen-erates integer entries to be incremented in the associated bin in the distributed table. To increase the effective bandwidth of the benchmark, we coalesce the 8-byte histogram entries on a per-receiver basis, using a user-specified datagram size. These messages are then sent via mailrail send to the process responsible for those entries [20]. We use the histogram benchmark to evaluate the runtime overhead introduced by flow control under more ideal work-loads (i.e., uniform communication paced through data coa-lescing), as well as to evaluate MailRail performance against YGM. We leave the default datagram size unchanged for YGM. We use weak scaling for the histogram benchmark, with table size doubling as process size doubles and entries per rank (67,108,864, or 512 MiB) scaling with the number of processes. We run 50 trials per configuration. The initial trial of each batch is discarded as a warmup run. We calculate flow 124816 32 64 128 256 512 1024 2048 4096  
+
+> Number of Victim Processes
+> 0500 1000 1500 2000 2500
+> Median Runtime (s)
+> N:512.69x R:390.96x N:89.43x R:55.65x N:1.06x R:1.80x
+> No Flow Control Rank-Based Node-Based
+> Fig. 5. Incast degree sensitivity across flow control mechanisms. This line graph shows a comparison of runtime performance relative to unconstrained baseline across varying communication patterns, from severe incast traffic (left, with an incast ratio of 4096:1) to uniform distribution (right, with a ratio of 1:1), with select speedup values.
+
+control overhead percentages by normalizing the flow control runtimes to the unconstrained baseline. Both node- and rank-based flow control exhibit minimal overhead or even a slight improvement versus unconstrained execution. Fig. 6 shows the runtime overhead of flow control across rank counts. Node-based flow control yields overheads ranging from −6.7% at 4096 ranks to 4.8% at 1024 ranks, achieving a mean overhead of −1.3% overall. Similarly, rank-based flow control ranges from −7.4% overhead at 2048 ranks to 4.5% at 1024 ranks, resulting in an average overhead of 
+
+−1.84% . On average, both node- and rank-based flow control match or modestly outperform unconstrained execution even with the histogram benchmark’s more uniform workload. All of MailRail’s configurations show a more than 2 × speedup over YGM. This difference may reflect active-message and metadata overhead in YGM, although this study does not isolate those effects. 
+
+D. Communication Trace Replay 
+
+To test under real-world communications patterns and work-loads, we introduce a replayer built on MailRail that reads and replays YGM traces. These are traces of recorded communi-cation and omit computation. We replay traces on 8, 16, 32, 64, and 128 nodes, with 112 ranks per node. 
+
+1) Reddit Sort Traces: To test performance of flow control on a dataset that exhibits irregular and imbalanced communi-cation patterns (see Fig. 8), we replay Reddit comment sort traces that used strong scaling [4], [13]. The datagram size we use is 8 KiB. Node- and rank-based flow control exhibit considerable speedups over unconstrained execution for all but 896 and 14,336 ranks (see Fig. 7). While runtime is nearly the same on 896 ranks, for larger rank counts node-based flow con-trol achieves a speedup between 1.36 × and 6.91 ×. Rank-512 1024 2048 4096 8192 
+
+Number of Ranks  
+
+> 2345678
+> Median Runtime (s)
+> R:-3% N:+3% R:+5% N:+5% R:-4% N:-4% R:-7% N:-7% R:+1% N:-4%
+> No Flow Control Rank-Based Node-Based YGM
+
+mail 
+
+Fig. 6. Flow control runtime overhead comparison for the histogram bench-mark across different ranks. Values represent median runtimes with min-max ranges across 50 trials. 
+
+based flow control has a speedup between 1.63 × and 5.6 ×
+
+unconstrained execution for 1792 to 7168 ranks; at 14,336 ranks, rank-based flow control performs nearly 4 × worse than unconstrained execution. Potential reasons for rank-based flow control’s poor perfor-mance at 14,336 ranks include receiver buffer underutilization and control message traffic. At this scale, Reddit sort traces have 17.6 million sender-receiver pairings with zero commu-nication, representing 8.6% of all pairs. Because rank-based flow control allocates credits to every sender-receiver pair in advance, pairs with no communication retain credits tied to receive-buffer capacity that active rank pairs cannot use. This can lead to unnecessary credit starvation in active senders that would benefit from access to these unused receive buffers. Node-based flow control naturally shares credits across pro-cesses and therefore avoids this limitation. Another factor contributing to node-based flow control’s superior performance over rank-based flow control may be its credit-return strategy; while rank-based flow control averages between 17.8 million and 26.4 million credit return messages per trial at 14,336 ranks, node-based flow control averages between 116,922 and 435,055, reducing network congestion caused by control messages. 
+
+2) Triangle Counting Traces: Triangle counting is a com-mon benchmark to test irregular inter-node communication in HPC settings. We replay triangle counting traces created using R-MAT graphs [21], [22]. This triangle counting uses weak scaling, beginning with 225 vertices and about 225 × 16 edges for 8 nodes. For each doubling of compute nodes, the number of vertices scales by a power of 2, up to 231 vertices. Aggregate data replayed ranges from 3.6 TB on 896 ranks to 112.7 TB on 14,336 ranks. At 128 nodes (14,336 ranks), each rank receives a total of between 38 and 41.5 GB of messages, indicating that overall triangle counting communication is relatively uniform at this rank count (see Fig. 10). 896 1792 3584 7168 14336 
+
+Number of Ranks 
+
+> 246810 12
+> Average Runtime (s)
+> N:1.15x R:0.95x N:6.91x R:5.60x N:4.72x R:3.37x N:4.97x R:1.63x N:1.36x R:0.29x
+> No Flow Control Rank-Based Node-Based
+
+Fig. 7. Flow control performance comparison using replayed YGM Reddit sort traces. Annotations show speedup relative to unconstrained execution. At the largest rank scale, 8.6% of total sender-receiver pairings have zero com-munication. This would prevent rank-based flow control from piggybacking credits for those rank pairs, which may partially explain its poor performance at the largest rank count. 0.2 0.4 0.6 0.8 1.0 1.2 1.4 1.6 1.8 
+
+Received Volume (GB) 
+
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> Number of Ranks
+
+Fig. 8. Histogram showing how many ranks receive a given volume of data for Reddit sort traces at 14,336 ranks. Most processes receive between 0.3 and 0.6 GB of data, with outliers receiving up to 1.8 GB, indicating the communication pattern is irregular. 
+
+Node- and rank-based flow control achieve a small speedup over unconstrained execution for lower rank counts (between 1.07 × and 1.53 ×). However, at 14,336 ranks, node- and rank-based flow control exhibit a speedup of about 10 × over unconstrained execution, suggesting that flow-control benefits can extend beyond extreme incast workloads. 
+
+E. OPX Comparison 
+
+We also evaluate our adversarial benchmark using only rank-based flow control on Lynx. Lynx is an experimental supercomputer running on the Cornelis CN5000 Omni-Path 896 1792 3584 7168 14336 
+
+Number of Ranks     
+
+> 0200 400 600 800 1000
+> Average Runtime (s)
+> N:1.30x R:1.07x N:1.11x R:1.18x N:1.13x R:1.36x N:1.13x R:1.53x N:10.48x R:9.82x
+> No Flow Control Rank-Based Node-Based Fig. 9. Flow control performance comparison using replayed YGM traces. Annotations show speedup relative to unconstrained execution. 38 39 40 41
+
+Received Volume (GB)  
+
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> Number of Ranks
+> Fig. 10. Histogram showing the how many ranks received a given volume of data for triangle counting traces at 14,336 ranks. Most ranks received between 38 GB and 41.5 GB of data, indicating that overall triangle counting communication is relatively uniform.
+
+fabric using Omni-Path Express (OPX). OPX uses receiver-driven flow control, and CN5000 Omni-Path handles incast communication by pacing senders using telemetry to modulate injection rates [14]. We run our benchmark for 8, 16, 32, 64, 128, 256, 512, and 768 nodes, using 64 ranks per node. At the time of our experiment, unconstrained execution on Lynx experienced OOM errors beginning at 1024 ranks, with some but not all trials able to complete at 1024 and 2048 ranks (see Fig. 11). Rank-based flow control achieves 3 ×
+
+speedup over unconstrained execution at an incast ratio of 128:1 and 2.3 × at a ratio of 512:1. Rank-based flow control at an incast ratio of 4096:1 has approximately the same goodput as unconstrained execution at an incast ratio of 512:1. Rank-based flow control is able to complete execution on 49,152 512 1,024 2,048 4,096 8,192 16.4k 32.8k 49.2k 
+
+Number of Ranks   
+
+> 010 20 30 40 50
+> Aggregate Goodput (Gbps)
+> 51.6 46.5 40.7 34.2 24.3 15.1 8.13 5.47 16.7 17.7 17.5
+> Rank FC No FC
+> Fig. 11. Rank-based flow control vs unconstrained execution on Lynx over OPX, which implements receiver-driven flow control. This was run on 8, 16, 32, 64, 128, 256, 512, and 768 nodes, with 64 ranks per node. Unconstrained execution experiences OOM errors beginning at 1024 ranks. Rank-based flow control is able to complete execution at the maximum rank count tested.
+
+ranks, with an incast ratio of 12,288:1, though trials take about 2.75 hours to complete. VI. S UMMARY AND CONCLUSION 
+
+Node-based flow control delivers substantial gains on the evaluated adversarial incast workloads and incurs minimal overhead, or provides modest improvements, on the evaluated uniform and trace-replay workloads. Node-based flow control delivers substantial performance gains on the evaluated adversarial incast workloads and incurs minimal overhead, or provides modest improvements, on the evaluated uniform and real-world communication patterns, as demonstrated through our evaluation of MailRail on synthetic benchmarks and YGM application traces. By avoiding the static credit-allocation constraints of rank-based flow control and regulating message injection relative to unconstrained execution, node-based flow control delivers up to a 1132 ×
+
+speedup over unconstrained execution at an adversarial incast ratio of 4096:1, sustains goodput even under extreme 4096:1 incast scenarios, and exhibits linear runtime scaling as victim workloads increase. Ultimately, given its low overhead and consistently high goodput, node-based flow control provides a scalable approach to mitigating incast communication. ACKNOWLEDGMENT 
+
+This work was performed under the auspices of the U.S. Department of Energy by Lawrence Livermore National Lab-oratory under Contract DE-AC52-07NA27344. This material is based upon work supported by LLNL LDRD 24-ERD-047; LLNL-CONF-2022958. The authors would like to thank Nate Hanford for his assistance running jobs on Lynx, as well as for generously sharing his ample knowledge. REFERENCES [1] E. Cohen, J. Yallouz, A. Shpiner, M. Silberstein, S. Ratnasamy, and I. Keslassy, “Incast-free moe rate-based scheduling,” 2026. [Online]. Available: https://arxiv.org/abs/2607.26340 [2] Y. Shao et al. , “Distributed graph neural network training: A survey,” 2023. [Online]. Available: https://arxiv.org/abs/2211.00216 [3] S. Ghosh, N. R. Tallent, and M. Halappanavar, “Characterizing perfor-mance of graph neighborhood communication patterns,” IEEE Transac-tions on Parallel and Distributed Systems , vol. 33, no. 4, pp. 915–928, 2022, doi: 10.1109/TPDS.2021.3101425. [4] A.-L. Barab´ asi and R. Albert, “Emergence of scaling in random net-works,” Science , vol. 286, no. 5439, pp. 509–512, 1999. [Online]. Avail-able: https://www.science.org/doi/abs/10.1126/science.286.5439.509 [5] W. Hu, M. Fey, M. Zitnik, Y. Dong, H. Ren, B. Liu, M. Catasta, and J. Leskovec, “Open graph benchmark: Datasets for machine learning on graphs,” 2021. [Online]. Available: https://arxiv.org/abs/2005.00687 [6] Y. Zhang, K. Qian, and F. Ren, “Receiver-driven congestion control for infiniband,” in Proceedings of the 50th International Conference on Parallel Processing , ser. ICPP ’21. New York, NY, USA: Association for Computing Machinery, 2021. [Online]. Available: https://doi.org/10.1145/3472456.3472466 [7] Y. Zheng, H. Qi, L. Yu, Z. Shu, and Q. Zhao, “Distributed incast detection in data center networks,” 2025. [Online]. Available: https://arxiv.org/abs/2511.03039 [8] W. Bai et al. , “Empowering azure storage with RDMA,” in 20th USENIX Symposium on Networked Systems Design and Implementation (NSDI 23) . Boston, MA: USENIX Association, Apr. 2023, pp. 49–67. [Online]. Available: https://www.usenix.org/conference/nsdi23/presentation/bai [9] I. Cho, A. Saeed, S. J. Park, M. Alizadeh, and A. Belay, “Protego: Overload control for applications with unpredictable lock contention,” in 20th USENIX Symposium on Networked Systems Design and Implementation (NSDI 23) . Boston, MA: USENIX Association, Apr. 2023, pp. 725–738. [Online]. Available: https://www.usenix.org/conference/nsdi23/presentation/cho-inho [10] Ultra Ethernet Consortium, “Ultra Ethernet Specification, version 1.0,” Ultra Ethernet Consortium, Tech. Rep., Jun. 2025, ac-cessed: Aug. 5, 2026. [Online]. Available: https://ultraethernet.org/wp-content/uploads/sites/20/2025/06/UE-Specification-6.11.25.pdf. [11] J. Prades, F. Silla, J. Duato, H. Fr¨ oning, and M. N¨ ussle, “A new end-to-end flow-control mechanism for high performance computing clusters,” in 2012 IEEE International Conference on Cluster Computing , 2012, pp. 320–328, doi: 10.1109/CLUSTER.2012.15. [12] D. Bonachea, P. H. Hargrove, M. Welcome, and K. Yelick, “Porting gasnet to portals: Partitioned global address space (pgas) language support for the cray xt.” Lawrence Berkeley National Laboratory (LBNL), Berkeley, CA (United States), 05 2009. [Online]. Available: https://www.osti.gov/biblio/1407075 [13] T. Steil, T. Reza, B. Priest, and R. Pearce, “Embracing irregular parallelism in hpc with ygm,” in Proceedings of the International Conference for High Performance Computing, Networking, Storage and Analysis , ser. SC ’23. New York, NY, USA: Association for Computing Machinery, 2023. [Online]. Available: https://doi.org/10.1145/3581784.3607103 [14] Cornelis Networks, “Congestion-free networking: Breaking the AI + HPC bottleneck,” White Paper, Rev. 1.0, Jan. 2026, accessed: Aug. 5, 2026. [Online]. Available: https://www.cornelis.com/site/documents/white-papers/congestion-free-networking-breaking-the-ai- -hpc-bottleneckv3.pdf. [15] M. Voloshin, “Introduction to congestion control for RoCE,” Broadcom Inc., White Paper CC-WP103, Nov. 2023, accessed: Aug. 5, 2026. [Online]. Available: https://docs.broadcom.com/doc/CC-WP103. [16] J. Zhang et al. , “Receiver-driven RDMA congestion control by differ-entiating congestion types in datacenter networks,” in 2021 IEEE 29th International Conference on Network Protocols (ICNP) , 2021, pp. 1–12. [17] M. J. Rashti and A. Afsahi, “Improving communication progress and overlap in MPI Rendezvous protocol over RDMA-enabled intercon-nects,” in 2008 22nd International Symposium on High Performance Computing Systems and Applications , 2008, pp. 95–101, doi: 10.1109/H-PCS.2008.10. [18] Message Passing Interface Forum, MPI: A Message-Passing Interface Standard Version 4.1 , Nov. 2023. [Online]. Available: https://www.mpi-forum.org/docs/mpi-4.1/mpi41-report.pdf [19] Z. Haas, “Adaptive admission congestion control,” SIGCOMM Comput. Commun. Rev. , vol. 21, no. 5, p. 58–76, Oct. 1991. [Online]. Available: https://doi.org/10.1145/122431.122436 [20] E. Georganas, A. Buluc ¸, J. Chapman, L. Oliker, D. Rokhsar, and K. Yelick, “Parallel De Bruijn graph construction and traversal for De Novo genome assembly,” in SC ’14: Proceedings of the Inter-national Conference for High Performance Computing, Networking, Storage and Analysis , New Orleans, LA, USA, 2014, pp. 437–448, doi: 10.1109/SC.2014.41. [21] S. Samsi et al. , “Graphchallenge.org: Raising the bar on graph analytic performance,” in 2018 IEEE High Performance extreme Computing Conference (HPEC) , 2018, pp. 1–7, doi: 10.1109/HPEC.2018.8547527. [22] D. Chakrabarti, Y. Zhan, and C. Faloutsos, “R-MAT: A recursive model for graph mining,” in Proceedings of the Fourth SIAM International Conference on Data Mining, Lake Buena Vista, Florida, USA, April 22-24, 2004 , M. W. Berry, U. Dayal, C. Kamath, and D. B. Skillicorn, Eds. SIAM, 2004, pp. 442–446. [Online]. Available: https://doi.org/10.1137/1.9781611972740.43

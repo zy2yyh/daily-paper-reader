@@ -1,0 +1,643 @@
+Title: Triple Overlap in Pipelined Krylov Methods on Multi-GPU Systems
+
+URL Source: https://arxiv.org/pdf/2610.25058v1
+
+Published Time: Tue, 20 Oct 2026 01:21:33 GMT
+
+Number of Pages: 13
+
+Markdown Content:
+# Triple Overlap in Pipelined Krylov Methods on Multi-GPU Systems 
+
+Sinan Ekmekc ¸ibas ¸ı 
+
+Koc ¸ University 
+
+Istanbul, Turkey sekmekcibasi23@ku.edu.tr 
+
+James D. Trotter 
+
+Simula Research Laboratory 
+
+Oslo, Norway james@simula.no 
+
+Johannes Langguth 
+
+Simula Research Laboratory , Oslo, Norway 
+
+University of Bergen , Bergen, Norway langguth@simula.no 
+
+Xing Cai 
+
+University of Oslo , Oslo, Norway 
+
+Simula Research Laboratory , Oslo, Norway xingca@ifi.uio.no 
+
+Didem Unat 
+
+Koc ¸ University 
+
+Istanbul, Turkey dunat@ku.edu.tr 
+
+Abstract —We introduce a novel triple-overlap implementa-tion of the pipelined preconditioned conjugate gradient (Pipe-PCG) and pipelined stabilized biconjugate gradient (Pipe-BiCGStab) solvers, methods widely used in scientific applica-tions. By leveraging a collective communication library, our ap-proach extends conventional computation–communication over-lap to concurrently execute collective operations, irregular P2P communication, and compute kernels, enabling compu-tation–communication–communication overlap across multiple GPUs. We evaluate the design on the MareNostrum 5 (H100) and Leonardo (A100) supercomputers, comparing against PETSc and the state-of-the-art two-stream NCCL implementation using SuiteSparse matrices and three massive instances scaled up to 512 GPUs. The three-stream design outperforms the two-stream baseline on every instance, with the margin widening from 2–6% at 4 GPUs to 18–47% at 64 GPUs. At 64 GPUs, the geometric-mean speedup over the two-stream baseline is 1.33× on MareNostrum 5 and 1.23× on Leonardo for Pipe-PCG, and reaches 1.30× for Pipe-BiCGStab. In large scale experiments, we observed a speedup up to 35% in Pipe-PCG and up to 33% in Pipe-BiCGStab compared to two-stream design. For PETSc, the margin is even wider, up to 3.27x speed-up in both Pipe-PCG and Pipe-BiCGStab. Related code for the proposed method is available online: https://github.com/ParCoreLab/aCG 
+
+Index Terms —Parallel processing, pipeline processing, iterative methods, sparse matrices, graphics processing units, parallel algorithms 
+
+I. I NTRODUCTION 
+
+Overlapping communication with computation is a well-established approach to reducing communication cost. A com-mon example is the use of non-blocking send and/or receive 
+
+operations to initiate individual message transfers, typically between neighboring processes to exchange halo data [1], [2]. When these messages make progress in the background, com-putation can proceed concurrently. This strategy is effective in both multi-CPU and multi-GPU settings. On CPUs, message progression relies on dedicated communication threads [3] or advanced MPI implementations [4]. On GPUs, overlap is typically realized with two concurrent streams, one for communication and one for computation [5], [6]. The conjugate gradient (CG) method [7], its preconditioned (PCG) variants and pipelined stabilized biconjugate gradi-ent (Pipe-BiCGStab) methods are canonical Krylov subspace solvers for sparse linear systems, which makes them a central building block in large-scale scientific applications. Prior work on communication overlap in CG has largely treated its two communication types separately: global collective communi-cation needed for parallelizing dot products and point-to-point (P2P) halo exchange in distributed sparse matrix-vector multi-plications (SpMV). The literature on pipelined Krylov methods addresses the former to lower the global synchronization overhead, by overlapping non-blocking reductions with the SpMV and preconditioner operations, and this idea is further extended through deeper pipelines or fewer reductions per iteration [8]–[11]. The pipelined CG algorithm first presented in [8] is theoretically capable of overlapping both collective and P2P communication with computation. The authors of that work, however, focused only on hiding collective operations. A separate line of work targets overlapping halo/P2P data exchanges with computation in iterative solvers and multigrid methods, primarily through scheduling and implementation techniques, such as specialized OpenMP threads [12], [13]. On GPUs, recent efforts improve the communication path through multi-GPU SpMV overlap, persistent kernels, and CPU- or GPU-initiated communication mechanisms [5], [14]– [16]. However, none of these works jointly schedule collective communication, halo exchange, and computation as concurrent components of a single design. In this work, we show that pipelined Krylov subspace solvers such as Pipe-PCG and Pipe-BiCGStab offer richer overlap opportunities than previously exploited. Beyond the traditional communication-computation overlap, they naturally allow communication-communication overlap, where collec-tive reductions and P2P halo exchanges proceed concurrently alongside computation. To exploit this, we propose a novel 
+
+three-stream implementation of Pipe-PCG and Pipe-BiCGStab that overlaps three components: collective reduction, halo exchange, and SpMV. Our design builds on the NVIDIA Col-arXiv:2610.25058v1 [cs.DC] 18 Oct 2026 lective Communication Library (NCCL) [17], which provides native stream support for GPU communication. Our contributions are as follows:  
+
+> •
+
+We propose a three-stream overlap strategy for pipelined preconditioned CG and pipelined BiCGStab solvers that concurrently overlaps collective communication, P2P communication, and computation.  
+
+> •
+
+We evaluate our three-stream strategy against PETSc and a two-stream baseline [5]. Over this baseline, we achieve up to 35% (Leonardo, 256 GPUs) and 44% (MareNostrum 5, 64 GPUs) speedups for Pipe-PCG, with similar peak gains of 33% (MareNostrum5, 256 GPUs) and 42% (MareNostrum 5, 64 GPUs) for Pipe-BiCGStab compared to two-stream baseline. Beyond Pipe-PCG and Pipe-BiCGStab, the three-stream design can be generalized to any application combining high-bandwidth local data exchange with high-latency global coor-dination (e.g., convergence checks or global updates). II. B ACKGROUND AND MOTIVATION 
+
+A. Pipelined Preconditioned CG (Pipe-PCG) 
+
+Pipe-PCG methods [8] were developed to address the severe communication bottlenecks that limit the large-scale parallel scalability of standard PCG, where each iteration requires two separate dot products. In a distributed memory environment, each dot product forces a global synchronization event. These frequent synchronizations expose network latency and cause some processes to sit idle, creating a start-and-stop execution model that severely inhibits parallel efficiency [8]. Pipe-PCG directly targets this synchronization bottleneck by mathematically restructuring the solver to group the two dot products together, reducing the global synchronization to a single non-blocking phase per iteration. More importantly, this synchronization can be delayed until the preconditioner and SpMV are done. The Pipe-PCG implementation relies on the same fundamental compute kernels as the standard PCG method: vector additions (AXPY), dot products (DOT), and SpMV and a preconditioner. However, because Pipe-PCG restructures the algorithm, it introduces additional AXPY operations. Specifically, a single iteration of Pipe-PCG per-forms two DOT products combined, eight AXPY operations, one SpMV operation, and a preconditioning operation. The main computational difference from standard PCG is the use of eight AXPYs instead of three. Although these extra AXPYs increase the overall computational load, the benefit from reduced global synchronization amortizes this cost during large-scale executions [8]. 
+
+B. Pipelined Stablizied Biconjugate Gradient (Pipe-BICGSTAB) 
+
+Standard BICGSTAB suffers from even greater latency exposure than PCG, which requires three separate global reduction phases to compute four dot products per iteration. When scaled across distributed-memory architectures, these repeated synchronization points expose inter-GPU communi-cation latency and force processors into idle wait states, which inhibits the parallel performance at large scale. To overcome these communication stalls, Cools and Van-roose [18] introduced Pipe-BICGStab, which restructes the recurrences. By incorporating auxiliary vectors, the algorithm successfully fuses the dot products into just two global re-duction phases. Moreover, these reductions are formulated as non-blocking collectives that execute concurrently with the method’s two SpMVs, effectively hiding the network latency behind useful computation. While using the same core kernels (AXPY, DOT, SpMV), this reformulation increases local computational intensity. Each Pipe-BICGStab iteration executes six dot products (in two collective phases), eight AXPYs, and two SpMVs. Com-pared to standard BICGStab, it requires four extra AXPYs and expands vector storage from seven to eleven arrays. Despite increased resource demands, hiding inter-GPU communication behind computation yields substantial performance gains on massively parallel systems [18]. 
+
+C. Beyond Traditional Computation-Communication Overlap 
+
+Since these pipelined Krylov subspace solvers offer more overlap opportunities beyond the conventional computa-tion–communication model, this observation raises the ques-tion of whether multiple communication types can be over-lapped for greater performance gains. To answer this question, we first collected some results from nccl-tests and BabelStream microbenchmarks [19] to give an indication of relevant computation and communication costs. Specifically, on a system with 64 GPUs, nccl-test’s 
+
+allreduce measurements show that it takes about 45.4 μs to perform an allreduce operation for two double-precision floating-point numbers, which is required to complete the global dot products during a Pipe-PCG iteration. The bench-mark also shows that a single P2P message takes approxi-mately the same amount of time when the message size is between 256 KiB and 512 KiB. Finally, based on BabelStream ,simple computations such as AXPY and DOT can process about 68.6 MB of data (corresponding to double arrays with 
+
+∼8.6 million entries) in the same amount of time, i.e., 45 μs. This gives a rough idea of the amount of P2P communication or computation that will be needed to fully hide the collective (allreduce ) communication that occurs in Pipe-PCG. Furthermore, we developed a custom three-stream mi-crobenchmark that concurrently executes P2P communication, collective communication, and computation, to see the overlap effect. Specifically, the benchmark consists of an allreduce col-lective on two double-precision scalars (16 bytes), a send/recv 
+
+operation forming a simple ring topology with a payload of 32,000 doubles ( 256 KiB), and a DAXPY compute kernel processing 64 MB of data. The baseline for comparison is a traditional two-stream overlap strategy: a compute stream containing the allreduce and the DAXPY kernel, alongside a communication stream dedicated to P2P transfers, i.e., DAXPY is overlapped with P2P transfers but the allreduce 1 Input : A(p) = ¯A(p) + ˆA(p), b(p), x(p)0 , M , ϵ                                                                                                                                                                                 
+
+> 2r0←b−Ax 0,u0←M−1r0,w0←Au 0
+> 3For i= 0 ,1,2, . . . Do
+> 4GPU DOT: γ(p)
+> i←ri·ui
+> 5GPU DOT: δ(p)←wi·ui
+> 6SYNC: Wait for dot products to complete
+> 7ALLREDUCE: γi←P
+> pγ(p)
+> i;δ←P
+> pδ(p)(non-blocking)
+> 8GPU Preconditioner: mi←M−1wi
+> 9SYNC: Wait until miis ready
+> 10 P2P PACK: Pack halo ˆmifor sending
+> 11 P2P COMM: Start sending halo ˆmito remote GPUs
+> 12 GPU SpMV: ni←¯A(p)∗mi(Diagonal)
+> 13 SYNC: Wait until ˆmiis received
+> 14 GPU SpMV: ni←ni+ˆA(p)∗ˆmi(Off-diagonal)
+> 15 SYNC: Wait until allreduce is done
+> 16 CPU: If || ri|| ≤ ϵ|| r0|| Then Exit :Converged
+> 17 GPU FUSED AXPY:
+> 18 If i== 0 :α0←γ0/δ ,β0= 0
+> 19 Else :αi←γi/(δ−βiγi/α i−1),βi←γi/γ i−1
+> 20 zi←ni+βizi−1
+> 21 qi←mi+βiqi−1
+> 22 si←wi+βisi−1
+> 23 pi←ui+βipi−1
+> 24 xi+1 ←xi+αipi
+> 25 ri+1 ←ri−αisi
+> 26 ui+1 ←ui−αiqi
+> 27 wi+1 ←wi−αizi
+> 28 End For
+
+Listing 1: Pseudo-code of the multi-GPU three-stream Pipe-PCG implementation. Colors indicate the stream on which each operation is executed: the compute stream in green, the 
+
+P2P stream in purple, the collective stream in brown, and 
+
+host-side CPU operations in blue. collective is executed without any overlap. To mitigate the impact of noise and outlier measurements, we executed both microbenchmarks for 10 5 iterations. We conducted experiments on a single node with four GPUs, comparing the total execution time of the traditional two stream communication-computation overlap with that of our proposed three-way overlap. The three-stream implemen-tation outperformed the two-stream baseline by approximately 5%. We then inspected the execution using the NVIDIA Nsight Systems profiler. The profiler trace demonstrates clear overlap among all three streams: compute , P2P , and allreduce .III. I MPLEMENTATION 
+
+This section describes the two-stream and three-stream Pipe-PCG and Pipe-BICGSTAB implementations in detail. We use the two-stream design as the baseline because it achieves state-of-the-art performance among CG implementations [5]. We implement both the two- and three-stream designs for NVIDIA GPUs using NCCL [17] for communication, which natively supports GPU streams for asynchronous and overlap-ping GPU operations. Previous work [5], [20] showed that on supercomputers NCCL exhibits comparable performance to GPU-aware MPI. 
+
+A. Multi-GPU Pipelined PCG and Pipelined BICGSTAB 
+
+Executing Pipe-PCG and Pipe-BICGStab in a distributed-memory parallel setting requires partitioning the sparse matrix and its associated vectors. We utilize a row-wise partitioning strategy to divide the sparse matrix A, distributing the as-signed rows and corresponding vector segments to each rank. Following this distribution, each GPU becomes responsible for its specific partition, allowing the rest of the computations to take place locally within each GPU’s memory. 
+
+1) Computation: In GPU implementations of CG methods, the best practice [21] is to offload the compute kernels to the GPU and handle intermediate steps such as convergence checks and scalar calculations on the CPU. For the aforemen-tioned compute kernels, we rely on vendor-optimized BLAS libraries, using cuBLAS for local dot product and cuSPARSE for SpMV, which employs merge-based SpMV kernels [22]. Although vendor libraries offer easier implementation in AXPY operations, going back and forth between host and device to launch the kernels and move scalars between host and device after their calculation may introduce an additional overhead as pointed out by Trotter et al. [5]. Therefore, we fused the eight AXPY operations in a single compute kernel together with calculations of α and β scalars on the device to mitigate this inefficiency in Pipe-PCG. A similar fusion approach is also applied in Pipe-BICGSTAB, but it is structured differently due to its algorithmic difference. The AXPY operations are grouped into three distinct fused kernels as it can be seen in Figure 1-b, while the scalar computations are performed in a separate CUDA kernel rather than being fused with the AXPYs. For the preconditioning step in Pipe-PCG, we selected the Jacobi preconditioner due to its simplicity and low computa-tional overhead. It is defined as the diagonal of the system matrix ( M = diag (A)) and its inverse M −1 is obtained by taking the reciprocals of the diagonal elements. Since it is not available in vendor libraries, we implemented it ourselves. 
+
+2) Communication: Parallel dot product operations require collective allreduce operations to sum up the partial dot prod-uct results from every GPU into a single global value to ensure the mathematical correctness of the distributed algorithm. The second type of the communication required in pipelined CG and pipelined BICGSTAB concerns SpMV. More specif-ically, in a distributed SpMV (y = Ax ) with row-wise partitioning, each GPU computes a partial output vector from its assigned rows. Because GPUs only require elements of the vector x that correspond to the non-zero columns in their assigned matrix partition, SpMV generates an irregular point-to-point communication pattern. To manage this efficiently and hide network latency, the assigned matrix partition is conceptually divided into local and remote components, often referred to as diagonal and off-diagonal parts, respectively. Each GPU first multiplies the local (diagonal) matrix com-ponent with locally available x values. Simultaneously, it initiates P2P communication to fetch the missing remote x
+
+values. Once the transfer is completed, the GPU multiplies the off-diagonal matrix component with the newly received sync      
+
+> Begin – halo
+> exchange
+> P2P Stream
+> sync
+> sync
+> End – halo
+> exchange
+> Compute Stream
+> P2P Stream
+> Allreduce
+> (merged)
+> sync
+> sync
+> Collective Stream
+> 3 × Axpy sync
+> Begin – halo
+> exchange
+> sync
+> Allreduce
+> (merged)
+> Begin – halo
+> exchange
+> sync
+> End – halo
+> exchange
+> sync
+> 3 × Axpy
+> Begin – halo
+> exchange
+> End – halo
+> exchange
+> sync
+> sync
+> sync
+> Compute Stream
+> 2 × Axpy
+> 2 × Dot Products
+> SpMV (Diagonal)
+> SpMV (off-diagonal)
+> Allreduce (merged)
+> 3 × Axpy
+> 4 × Dot Products
+> SpMV (Diagonal)
+> SpMV (off-diagonal)
+> Allreduce (merged)
+> Begin – halo
+> exchange
+> 2 × Axpy
+> 2 × Dot Products
+> SpMV (Diagonal)
+> SpMV (off-diagonal)
+> 3 × Axpy
+> 4 × Dot Products
+> SpMV (Diagonal)
+> SpMV (off-diagonal)
+> sync
+> 2 × Dot Product
+> Allreduce
+> (merged)
+> Preconditioning
+> SpMV (diagonal)
+> SpMV (off-diagonal)
+> α&β
+> calculations and
+> 8 × Axpy
+> Begin – halo
+> exchange
+> End – halo
+> exchange
+> Compute Stream
+> P2P Stream
+> sync
+> sync
+> 2 × Dot Product
+> Preconditioning
+> SpMV (diagonal)
+> SpMV off-diagonal)
+> α&β
+> calculations and
+> 8 × Axpy
+> Begin – halo
+> exchange
+> End – halo
+> exchange
+> Compute Stream
+> P2P Stream
+> sync
+> Allreduce
+> (merged)
+> sync
+> sync
+> Collective Stream
+
+a. Pipe-PCG b. Pipe-BICGSTAB Fig. 1: Two-stream vs Three-stream design of Pipelined Preconditioned CG and Pipelined BICGSTAB data. This strategy allows us to overlap local computation with halo communication, and we utilize it throughout our implementations. 
+
+B. Two-Stream Approach 
+
+We exploit the opportunity to overlap the irregular P2P communication of distributed memory SpMV with compu-tation on the local part of the sparse matrix using GPU streams, as illustrated in Figure 1. Our implementation builds on a state-of-the-art approach [5], which combines CUDA streams with NCCL to avoid host-side synchro-nizations. Since NCCL is stream-aware, GPU kernels for packing, sending, receiving and unpacking messages can be queued asynchronously from the CPU without incurring CPU-GPU synchronization overhead. Dependencies between the P2P stream and compute stream are handled asyn-chronously through CUDA events ( cudaEventRecord and 
+
+cudaStreamWaitEvent ), which further eliminates CPU-GPU synchronization and hides kernel launch latencies. As shown in Figure 1-a for Pipe-PCG, once the precon-ditioning step completes, synchronization is established by asynchronously recording an event on the compute stream and making the P2P stream wait on that event. Conversely, the P2P stream records an event upon completing the P2P communication, and the compute stream thus waits on this event before proceeding with the off-diagonal part of the SpMV. Similarly in Pipe-BICGSTAB as shown in Figure 1-b, once the first group of fused AXPY operations complete, compute stream signals to P2P stream and initiates the halo exchange operations. This ensures that the required vector data is ready for both the SpMV operation and the P2P transfer. Non-blocking point-to-point communication is implemented using grouped calls to ncclSend and ncclRecv , enclosed by ncclGroupStart and ncclGroupEnd .
+
+C. Three-Stream Approach 
+
+In the two-stream strategy, the collective communication required for the dot products remains a synchronization bot-tleneck, unable to be overlapped with other data transfers or computations. To achieve the triple overlap, we propose a novel three-stream implementation of Pipe-PCG and Pipe-BICGSTAB. As illustrated in Fig. 1, the collective operations are offloaded to a dedicated Collective stream. The core mathematical computations are maintained in the primary 
+
+Compute stream, and the P2P data transfers remain isolated in their own dedicated P2P stream. Listing 1 shows the pseudo-code of the multi-GPU three-stream implementations for Pipe-PCG and Pipe-BICGSTAB. However, placing the collective in a separate stream is not sufficient to achieve true overlap with P2P transfers. Fig. 2-a shows the profiling results for a naive three-stream design based on a single NCCL communicator. In this case, only one communication operation overlaps with computation, while the others remain queued until the active transfer finishes. As discussed in Sec. III-A2, irregular P2P communication is required to fetch remote x values, which are packed before transfer and unpacked on arrival. In the naive design, however, NCCL serializes the two communication operations and, in this case, prioritizes the collective. Consequently, in Pipe-PCG implementation, the P2P transfer is delayed until the Allreduce completes, which in turn causes the off-diagonal SpMV to execute much later than the diagonal SpMV because the required remote x values are not yet available. Similarly in Pipe-BICGSTAB, as shown in Fig. 1-b, we start overlapping halo exchange operations after the first group of AXPYs, and since NCCL serializes communications in the background, Allreduce delays until the completion of halo exchange opera-tions and we waste the opportunity of having a wider overlap window. Rather than overlapping diagonal SpMV, Allreduce a. Naive Three-Stream Implementation   
+
+> b. Our Three-Stream Implementation
+> pack
+> kernel un-pack
+> kernel
+> P2P communication
+> SpMV diagonal SpMV off-diagonal
+
+Fig. 2: Nsight Systems profiling results of naive three-stream vs our three-stream implementation TABLE I: System configurations.                
+
+> MareNostrum5 (ACC) Leonardo (Booster)
+> CPU 2×Xeon Platinum 8460Y+ (40c) 1×Xeon Platinum 8358 (32c) GPU 4×H100, 64 GB HBM2e 4×A100 SXM4, 64 GB @ 1,640 GB/s Intra-node NVLink 4.0, 300 GB/s bi-dir. per pair NVLink 3.0, 200 GB/s per pair NIC ConnectX-7, 200 Gb/s uni-dir. per GPU 2×dual-port HDR100 ConnectX-6, 400 Gb/s Network NDR IB, 3-layer fat-tree [23] IB [24] Software HPC SDK 25.1, CUDA 12.6, HPC-X 2.21, NCCL 2.18.5 HPC SDK 24.3, CUDA 12.3, HPC-X 2.17.1, NCCL 2.18.5
+
+and P2P together we end up overlapping halo exchanges with AXPYs, DOT products and diagonal SpMV; and Allreduce with off-diagonal SpMV. To address this problem, separate communicators must be used for different communication operations. There are two ways to achieve this. The first is to create two independent communicators and use each for a different type of commu-nication. However, this approach requires additional resource management as well as careful handling of possible deadlocks due to the order of host-side launches. The second is to split an existing communicator using NCCL’s ncclCommSplit 
+
+feature. ncclCommSplit partitions an existing communica-tor into multiple sub-communicators, enabling different com-munication operations to proceed on separate communicators and thereby allowing true overlap. This overlap is illustrated in Figure 2-b in the profiling results. In our implementation, we adopt ncclCommSplit because it simplifies resource management internally and avoids possible deadlocks. IV. E XPERIMENTS AND EVALUATION 
+
+We compare our proposed three-stream implementation with the state-of-the-art two-stream Pipe-PCG and Pipe-BiCGStab and the PETSc’s implementations, which are based on NCCL and CUDA-aware MPI, respectively. 
+
+A. Experimental Setup a) Supercomputers : We evaluated our implementations on two leading supercomputers, MareNostrum5 and Leonardo. Table IV details their configurations and software stacks. 
+
+b) Matrices : We use two groups of test instances. The first is taken from Suitesparse [25] where we select the six largest positive definite symmetric real-valued matrices. Since TABLE II: Sparse matrices used in experiments.                               
+
+> Matrix Rows Nonzeros Nonzeros/Row Queen 4147 4,147,110 316,548,962 76.33 Bump 2911 2,911,419 127,729,899 43.87 Flan 1565 1,564,794 114,165,372 72.96 audikw 1 943,695 77,651,847 82.28 Serena 1,391,349 64,131,971 46.09 Geo 1438 1,437,960 60,236,322 41.89 poisson3da 12 144,515,663 2,239,624,249 15.5 heart15 874,424,445 7,185,411,541 8.2 heart12 139,589,939 2,144,835,461 15.4
+
+TABLE III: Speed-ups of three-stream (ours) over PETSc and two-stream for Pipe-PCG on MareNostrum5 (H100) and Leonardo (A100) using 64 GPUs.                                  
+
+> MareNostrum5 (H100) Leonardo (A100) Matrix vs. PETSc vs. 2-stream vs. PETSc vs. 2-stream
+> Queen 4147 1.08 ×1.25 ×1.93 ×1.12 ×
+> Bump 2911 1.69 ×1.23 ×1.69 ×1.18 ×
+> Flan 1565 1.31 ×1.42 ×1.56 ×1.47 ×
+> audikw 1 1.26 ×1.32 ×1.82 ×1.31 ×
+> Serena 1.80 ×1.33 ×1.66 ×1.26 ×
+> Geo 1328 1.30 ×1.44 ×1.68 ×1.09 ×
+> Geomean 1.38 1.33 1.72 1.23
+
+they are not large enough to scale beyond 64 GPUs, we also add three very large test instances. The first is a matrix from discretising a 3D Poisson equation on a unit cube geometry. The other two are derived from a 3D cardiac monodomain simulation of the human heart at different resolutions [26]. They represent an unstructured, tetrahedral mesh based and are thus highly irregular and very sparse. Table II lists the instances, their sizes, and their nonzero distribution by row. 
+
+c) Measurement : Execution time is measured on the host CPU for each MPI process using clock_gettime .To ensure accurate timings, all solvers execute 10 warmup iterations, followed by an MPI barrier and CPU-GPU syn-chronization (e.g., cudaDeviceSynchronize ), before the timer begins. A final CPU-GPU synchronization occurs before stopping the timer to guarantee that all GPU tasks are fully completed. We then report the maximum execution time across all participating processes. We evaluate all solvers including PETSc within the same job submission for a given matrix and GPU count. This ensures the use of identical matrix partitioning, compute nodes, and GPUs. We repeat each measurement three times and report the average with error bars showing the range across three runs. To avoid outliers across the iterations in the solver loop, we ran each solver for 10,000 iterations for Pipe-PCG runs and 1,000 iterations for Pipe-BiCGStab. Finally, for an in-depth analy-sis of the two-stream and three-stream implementations, we conducted additional fine-grained measurements of individual GPU kernel times using cudaEventRecord .
+
+B. Experimental Results 
+
+We first present experimental results for the Suitesparse matrices. Figure 3 shows results on MareNostrum5. In all 4 8 16 32 64                                                                                 
+
+> # of GPUs
+> 0246810
+> Time (s)
+> vs PETSC 1.07× 1.10× 1.16× 1.16× 1.08× vs Two-Stream 1.02× 1.05× 1.11× 1.15× 1.25×
+> Queen_4147
+> 4816 32 64
+> # of GPUs
+> 012345
+> Time (s)
+> vs PETSC 1.12× 1.17× 1.14× 1.21× 1.69× vs Two-Stream 1.04× 1.11× 1.15× 1.19× 1.23×
+> Bump_2911
+> 4816 32 64
+> # of GPUs
+> 01234
+> Time (s)
+> vs PETSC 1.13× 1.20× 1.34× 1.38× 1.31× vs Two-Stream 1.04× 1.11× 1.24× 1.22× 1.42×
+> Flan_1565
+> 4816 32 64
+> # of GPUs
+> 0.0 0.5 1.0 1.5 2.0 2.5 3.0
+> Time (s)
+> vs PETSC 1.16× 1.28× 1.16× 1.17× 1.26× vs Two-Stream 1.06× 1.13× 1.16× 1.22× 1.32×
+> audikw_1
+> 4816 32 64
+> # of GPUs
+> 0.0 0.5 1.0 1.5 2.0 2.5 3.0
+> Time (s)
+> vs PETSC 1.18× 1.23× 1.24× 1.45× 1.80× vs Two-Stream 1.06× 1.15× 1.22× 1.18× 1.33×
+> Serena
+> 4816 32 64
+> # of GPUs
+> 0.0 0.5 1.0 1.5 2.0 2.5 3.0
+> Time (s)
+> vs PETSC 1.18× 1.27× 1.27× 1.64× 1.30× vs Two-Stream 1.06× 1.15× 1.26× 1.22× 1.44×
+> Geo_1438
+> Rows under each plot: speedup of Three-Stream (ours) vs PETSC and vs Two-Stream
+
+Pipelined Preconditioned CG in SuiteSparse Matrices | MareNostrum5 | 1e4 Iterations   
+
+> PETSC Two-Stream Three-Stream (ours)
+
+Fig. 3: Performance of the proposed Three-Stream design compared with PETSc and the state-of-the-art Two-Stream implementation [5] on SuiteSparse matrices on the MareNostrum5 supercomputer. Numbers above the Three-Stream bars show the speedup over PETSc (orange) and Two-Stream implementation (green). cases, Three-Stream is ahead of the Two-Stream implemen-tation. Furthermore, the gap widens consistently with growing number of GPUs, from 2–6% at 4 GPUs to 18–47% at 64 GPUs, with only Geo 1438 on MareNostrum5 constituting an outlier due to unstable results (as evidenced by the large variability between the runs). Since the cost of allreduce grows with the number of GPUs, so does the benefit of overlapping it with P2P communication, confirming that the Three-Stream design works as intended. While the relative benefit should be larger for shorter total running times, the 64-GPU running times are too similar across instances for this effect to be visible. In addition to the figures, Table III shows the speedups including the speedup versus PETSc, which uses GPU-aware MPI rather than NCCL. While PETSc is almost always slower than the stream-based implementations, the difference is much more pronounced on Leonardo, where Three-Stream is up to 93% faster with a geometric mean of 1.72 whereas the speedup over Two-Stream is much lower. All matrices show some performance scaling initially, but only for the largest instance, Queen 4147, the scaling is close to linear. None of the instances show any noticeable improvement at 64 GPUs, which implies that our experiments have reached the limits of scalability for these matrices. For Pipe-BiCGStab, Three-Stream again outperforms Two-Stream on every instance and GPU count (Figure 4), with the margin growing from 1–5% at 4 GPUs to 17–42% at 64 GPUs, where the geometric-mean speedup reaches 1.30 × over Two-Stream and 2.01 × over PETSc. For the large matrix instances, Figure 5 shows Pipe-PCG results on Leonardo, while Figure 6 shows the Pipe-BICGStab results on MareNostrum5. Since these problems require more computation, the relative communication overhead is small at lower GPU counts, and the three-stream advantage starts modestly, but grows o 1.52 ×, 1.06 ×, and 1.50 × at 256 GPUs on heart12, heart15, and poisson3da 12, respectively as the collective communications become more expensive relative to the computation, leaving more latency for the third stream to hide. Finally, PETSc is highly competitive on these large in-stances, even beating our design on heart12 at 64 GPUs (where we reach only 0.67 × of its performance). This exposes the pipelined approach’s weak point: massive local work, cheap collectives, and unamortized extra vector operations. At 128 and 256 GPUs, however, this effect disappears, and our three-stream design outpaces PETSc by 1.49 × and 1.74 × on the 4 8 16 32 64                                                                                    
+
+> # of GPUs
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> Time (s)
+> vs PETSC 1.38× 1.56× 1.79× 2.33× 2.65× vs Two-Stream 1.03× 1.12× 1.24× 1.31× 1.34×
+> Bump_2911
+> 14816 32 64
+> # of GPUs
+> 02468
+> Time (s)
+> vs PETSC 1.23× 1.20× 1.29× 1.47× 1.63× 1.73× vs Two-Stream 1.00× 1.01× 1.05× 1.13× 1.33× 1.42×
+> Queen_4147
+> 4816 32 64
+> # of GPUs
+> 0.0 0.2 0.4 0.6 0.8 1.0 1.2 1.4
+> Time (s)
+> vs PETSC 1.41× 1.69× 1.95× 4.94× 2.19× vs Two-Stream 1.04× 1.11× 1.24× 1.35× 1.25×
+> Flan_1565
+> 4816 32 64
+> # of GPUs
+> 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7
+> Time (s)
+> vs PETSC 1.56× 1.85× 1.94× 2.46× 1.57× vs Two-Stream 1.05× 1.17× 1.29× 1.18× 1.17×
+> Geo_1438
+> 4816 32 64
+> # of GPUs
+> 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7
+> Time (s)
+> vs PETSC 1.51× 1.72× 1.68× 1.88× 1.83× vs Two-Stream 1.04× 1.16× 1.29× 1.28× 1.32×
+> audikw_1
+> 4816 32 64
+> # of GPUs
+> 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7
+> Time (s)
+> vs PETSC 1.57× 1.86× 1.96× 2.26× 2.31× vs Two-Stream 1.05× 1.17× 1.28× 1.20× 1.34×
+> Serena
+> Rows under each plot: speedup of Three-Stream (ours) vs PETSC and vs Two-Stream
+
+Pipelined BICGSTAB in SuiteSparse Matrices | MareNostrum5 | 1e3 Iterations   
+
+> PETSC Two-Stream Three-Stream (ours)
+
+Fig. 4: Performance of the proposed Three-Stream design for Pipe-BICGSTAB compared with PETSc and the state-of-the-art Two-Stream implementation [5] on SuiteSparse matrices on the MareNostrum5 supercomputer. Numbers above the Three-Stream bars show the speedup over PETSc (orange) and Two-Stream implementation (green). same matrix. 
+
+C. Performance Analysis 
+
+To better understand the scaling behavior observed in the last section, we profiled the Pipe-PCG experiments on MareNostrum5 at 4 and 64 GPUs for the Queen 4147 and Flan 1565 matrices. We measured the time spent in compute kernels directly using CUDA events. The same method can-not isolate communication time, because such measurements would also capture synchronization and load-imbalance effects among the communicating GPUs. Instead, we estimated the overall communication (i.e., non-compute) time by subtracting the compute-kernel times from the total solver time. To better understand the scaling behavior observed in the last section, we profiled experiments for Pipe-PCG conducted on the MareNostrum5 supercomputer using 4 and 64 GPUs for the Queen 4147 matrix and Flan 1565 matrices. We measure the time spent in compute kernels directly using CUDA events. The same method cannot be used to provide isolated measurements of the communication time, because such mea-surements would also include effects of synchronization and load imbalance among the communicating GPUs. Instead, we estimate the overall time spent in communication (i.e., non-compute ) by subtracting the times for the compute kernels from the total solver time. The effective memory bandwidth of the local SpMV drops from 82% of the theoretical peak at 4 GPUs to 65% at 64 GPUs for Queen 4147, and from 56% to 9.8% for Flan 1565, indicating that the latter matrix is too small to run efficiently at this scale. For reference, our BabelStream measurements show that a single GPU reaches about 90% of the theoretical maximum: SpMV approaches this value only under ideal con-ditions, and not all matrices can do so without reordering [27]. The remaining compute kernels (preconditioner, diagonal SpMV, off-diagonal SpMV, and AXPYs) hardly scale with the number of GPUs. For the off-diagonal SpMV, this is because the number of halo elements to be communicated grows with the number of GPUs. For the others, the work per kernel invocation becomes so small at 64 GPUs that launch overheads dominate. Since these overheads, like Allreduce, are independent of the instance, the 64-GPU running times cluster around 1.5 secs for all instances except the much larger Queen 4147 ( ∼2 secs). For communication, even at 4 GPUs on Queen 4147, Three-Stream communication is 28% faster than Two-Stream. However, since communication accounts for only 14% (Two-64 128 256 512         
+
+> # of GPUs
+> 0510 15 20
+> Time (s)
+> vs PETSC 1.67× 1.87× 2.09× 3.27× vs Two-Stream 1.01× 1.11× 1.12× 1.26×
+
+heart12            
+
+> 64 128 256 512
+> # of GPUs
+> 010 20 30 40 50
+> Time (s)
+> vs PETSC 1.24× 1.24× 1.19× 2.10× vs Two-Stream 1.02× 1.04× 1.03× 1.00×
+
+heart15            
+
+> 64 128 256 512
+> # of GPUs
+> 0510 15 20
+> Time (s)
+> vs PETSC 1.62× 2.06× 1.75× 1.93× vs Two-Stream 1.03× 1.35× 1.35× 1.16×
+
+poisson3da_12 
+
+> Rows under each plot: speedup of Three-Stream (ours) vs PETSC and vs Two-Stream
+
+Pipelined Preconditioned CG Solver in Large Matrices | Leonardo | 1e4 Iterations 
+
+PETSC Two-Stream Three-Stream (ours) Fig. 5: Performance of the proposed Three-Stream design compared with PETSc and the state-of-the-art Two-Stream implementation [5] on larger matrices on the Leonardo supercomputer. Numbers above the Three-Stream bars show the speedup over PETSc (orange) and Two-Stream implementation (green). 64 128 256       
+
+> # of GPUs
+> 0.00 0.25 0.50 0.75 1.00 1.25 1.50
+> Time (s)
+> vs PETSC 0.67× 1.49× 1.74× vs Two-Stream 1.12× 1.28× 1.22×
+
+heart12         
+
+> 64 128 256
+> # of GPUs
+> 0246810 12
+> Time (s)
+> vs PETSC 1.62× 1.62× 3.27× vs Two-Stream 1.03× 1.15× 1.16×
+
+heart15         
+
+> 64 128 256
+> # of GPUs
+> 0.0 0.5 1.0 1.5 2.0
+> Time (s)
+> vs PETSC 1.40× 1.42× 1.43× vs Two-Stream 1.16× 1.31× 1.33×
+
+poisson3da_12 
+
+> Rows under each plot: speedup of Three-Stream (ours) vs PETSC and vs Two-Stream
+
+Pipelined BICGSTAB Solver in Large Matrices | MareNostrum5 | 1e3 Iterations 
+
+PETSC Two-Stream Three-Stream (ours) 
+
+Fig. 6: Performance of the proposed Three-Stream design for Pipe-BiCGStab compared with PETSc and the state-of-the-art Two-Stream implementation [5] on larger matrices on the MareNostrum5 supercomputer. Numbers above the Three-Stream bars show the speedup over PETSc (orange) and Two-Stream implementation (green). Stream) and 12% (Three-Stream) of the total time, the overall improvement is marginal. At 64 GPUs, in contrast, commu-nication is %48 faster and accounts for 55% (Two-Stream) and 46% (Three-Stream) of the total time, yielding the overall speedup of 24%. V. R ELATED WORKS 
+
+The Pipelined-CG was introduced to reduce the cost of global synchronization in Krylov methods. Ghysels and Van-roose reformulated PCG so that a single nonblocking reduction is issued per iteration and overlapped with the matrix-vector product and preconditioner [8]. Later work extended this idea with deep pipelines that hide a reduction behind multiple future SpMVs when one iteration does not provide sufficient work [9]. More recent pipelined-PCG variants further reduce reduction frequency by overlapping one allreduce with work from two iterations [10]. However, this line of work only targets global dot product latency. Moreover, although non-blocking collectives were introduced in MPI-3, their effective-ness on CPU clusters depends on factors such as asynchronous progress and runtime support [28]. A separate line of work focuses on halo/P2P commu-nication overlap in iterative solvers and multigrid meth-ods. These approaches aim to overlap halo exchange in the SpMV or smoother/preconditioner phases with computation. For example, Nakajima et al. combine halo overlap with OpenMP dynamic loop scheduling [12], and later study pro-cess/thread allocation in hybrid MPI+OpenMP settings to optimize communication-computation overlap in a CG solver with a multigrid preconditioner [13]. Thus, these works do not address the joint scheduling of halo exchange and collective reductions. On GPU systems, Bernaschi et al. combine communication-reduced CG with overlap in the multi-GPU SpMV [14]. Ismayilov et al. use persistent kernels, device-side barriers, and device-initiated communication to remove the CPU from the critical path in multi-GPU CG [15]. Trotter et al. [5] compare CPU- and GPU-initiated communication strategies for CG and pipelined CG across GPU-aware MPI, NCCL/RCCL, and NVSHMEM. However none of these works consider triple overlap in their implementations. The closest prior work to ours is Selvitopi et al. [29], who propose a rearrangement for iterative solvers in which irregular SpMV P2P messages are embedded into a collective commu-nication phase so that P2P and collective communication can be performed in a single phase. Although this mixes the two communication classes, it is not a pipelined-CG formulation that treats collective reduction, halo exchange, and SpMV as three concurrent components. Outside CG, MPI+ULT [30] argues that user-level threads can overlap computation with both P2P and collective MPI communication, but it does not demonstrate a true three-way overlap of collective, P2P, and compute. Lina [31] studies distributed Mixture-of-Experts training, where all-to-all and allreduce coexist with computation on separate streams. It shows that naive concurrency between these communication classes can hurt performance due to network contention, and therefore prioritizes all-to-all over allreduce. Our approach differs in that we overlap collective communication with P2P exchange, yielding a different communication pattern and less pressure on the network bandwidth. VI. C ONCLUSION 
+
+We have introduced the three-stream technique for over-lapping two different types of communication - high volume, bandwidth limited P2P messages and low volume latency limited collectives. The idea can be implemented efficiently on GPU systems using three separate streams for concurrency, making use of modern GPU communication libraries such as NCCL or RCCL which can handle communication in streams. Our experimental results on Pipe-PCG and Pipe-BICGStab indicate that the technique works as intended, yielding sub-stantial performance improvements when scaling to a large number of GPUs. In future work, we intend to explore other applications and plan to implement the three-stream technique for AMD GPUs. ACKNOWLEDGMENTS 
+
+Authors from Koc ¸ University have received funding from the European Research Council (ERC) under the European Union’s Horizon 2020 research and innovation programme (grant agreement No 949587). We acknowledge EuroHPC Joint Undertaking for awarding access to the MareNostrum5 supercomputer in Spain and the Leonardo supercomputer in Italy (Project IDs: EHPC-DEV-2024D10-091, EUHPC D21 118). Various AI-based tools, including Claude Opus, OpenAI’s ChatGPT, and Google’s Gemini Pro, were used throughout the preparation of this manuscript to assist with language editing and LaTeX formatting. All scientific content, data, analyses, and conclusions were independently reviewed and verified by the authors. REFERENCES [1] L. Spies, A. Bienz, D. Moulton, L. Olson, and A. Reisner, “Tausch: A halo exchange library for large heterogeneous computing systems using MPI, OpenCL, and CUDA,” Parallel Comput. , vol. 114, no. C, Dec. 2022. [Online]. Available: https://doi.org/10.1016/j.parco.2022.102973 [2] M. Horikoshi, B. Gerofi, Y. Ishikawa, and K. Nakajima, “Exploring communication-computation overlap in parallel iterative solvers on manycore CPUs using asynchronous progress control,” in International Conference on High Performance Computing in Asia-Pacific Region Workshops , ser. HPCAsia ’22 Workshops. New York, NY, USA: Association for Computing Machinery, 2022, p. 29–39. [Online]. Available: https://doi.org/10.1145/3503470.3503474 [3] J. Langguth, M. Sourouri, G. T. Lines, S. B. Baden, and X. Cai, “Scalable Heterogeneous CPU-GPU Computations for Unstructured Tetrahedral Meshes,” IEEE Micro , vol. 35, no. 04, pp. 6–15, Jul. 2015. [Online]. Available: https://doi.ieeecomputersociety.org/10.1109/ MM.2015.70 [4] A. Ruhela, H. Subramoni, S. Chakraborty, M. Bayatpour, P. Kousha, and D. K. Panda, “Efficient asynchronous communication progress for mpi without dedicated resources,” in Proceedings of the 25th European MPI Users’ Group Meeting , ser. EuroMPI ’18. New York, NY, USA: Association for Computing Machinery, 2018. [Online]. Available: https://doi.org/10.1145/3236367.3236376 [5] J. D. Trotter, S. Ekmekc ¸ibas ¸ı, D. Sa˘ gbili, J. Langguth, X. Cai, and D. Unat, “CPU- and GPU-initiated Communication Strategies for Conjugate Gradient Methods on Large GPU Clusters,” in Proceedings of the International Conference for High Performance Computing, Networking, Storage and Analysis , ser. SC ’25. New York, NY, USA: Association for Computing Machinery, 2025, p. 298–315. [Online]. Available: https://doi.org/10.1145/3712285.3759774 [6] D. Sa˘ gbili, S. Ekmekc ¸ibas ¸ı, K. Z. Ibrahim, T. Nguyen, and D. Unat, “Uniconn: A Uniform High-Level Communication Library for Portable Multi-GPU Programming,” in 2025 IEEE International Conference on Cluster Computing (CLUSTER) , 2025, pp. 1–12. [Online]. Available: https://doi.org/10.1109/CLUSTER59342.2025.11186498 [7] M. R. Hestenes and E. Stiefel, “Methods of conjugate gradients for solving linear systems,” Journal of research of the National Bureau of Standards , vol. 49, pp. 409–435, 1952. [Online]. Available: https://api.semanticscholar.org/CorpusID:2207234 [8] P. Ghysels and W. Vanroose, “Hiding global synchronization latency in the preconditioned conjugate gradient algorithm,” Parallel Comput. ,vol. 40, no. 7, p. 224–238, Jul. 2014. [Online]. Available: https: //doi.org/10.1016/j.parco.2013.06.001 [9] J. Cornelis, S. Cools, and W. Vanroose, “The communication-hiding conjugate gradient method with deep pipelines,” CoRR , vol. abs/1801.04728, 2018. [Online]. Available: http://arxiv.org/abs/1801. 04728 [10] M. Tiwari and S. Vadhiyar, “Pipelined preconditioned conjugate gradient methods for distributed memory systems,” in 2020 IEEE 27th International Conference on High Performance Computing, Data, and Analytics (HiPC) , 2020, pp. 151–160. [Online]. Available: https://doi.org/10.1109/HiPC50609.2020.00029 [11] P. Sanan, S. Schnepp, and D. May, “Pipelined, flexible Krylov subspace methods,” SIAM Journal on Scientific Computing , vol. 38, no. 5, pp. C441–C470, 2016. [Online]. Available: https://doi.org/10.1137/ 15M1049130 [12] K. Nakajima, B. Gerofi, M. Horikoshi, and Y. Ishikawa, “Communication-Computation Overlapping for Preconditioned Parallel Iterative Solvers with Dynamic Loop Scheduling,” 
+
+International Conference on High Performance Computing in Asia-Pacific Region Workshops , 2022. [Online]. Available: https://api.semanticscholar.org/CorpusID:245909051 [13] K. Nakajima, “Optimization of communication-computation overlapping in parallel multigrid methods by process/thread allocation,” Japan Journal of Industrial and Applied Mathematics , vol. 42, no. 3, pp. 1029–1062, 2025. [Online]. Available: https://doi.org/10.1007/ s13160-025-00732-3 [14] M. Bernaschi, M. Carrozzo, A. Celestini, G. Piperno, and P. D’Ambra, “Communication-reduced Conjugate Gradient Variants for GPU-accelerated Clusters,” 03 2025, pp. 178–186. [Online]. Available: https://doi.org/10.1109/PDP66500.2025.00032 [15] I. Ismayilov, J. Baydamirli, D. Sa˘ gbili, M. Wahib, and D. Unat, “Multi-GPU Communication Schemes for Iterative Solvers: When CPUs are Not in Charge,” in Proceedings of the 37th ACM International Conference on Supercomputing , ser. ICS ’23. New York, NY, USA: Association for Computing Machinery, 2023, p. 192–202. [Online]. Available: https://doi.org/10.1145/3577193.3593713 [16] T. Ma, Z. Gou, N. Xu, and S. Sun, “Efficient multi-GPU implementations of preconditioned conjugate gradient method,” Advances in Engineering Software , vol. 207, p. 103936, 2025. [Online]. Available: https: //www.sciencedirect.com/science/article/pii/S0965997825000742 [17] NVIDIA Corporation, “NVIDIA collective communications library (NCCL),” https://developer.nvidia.com/nccl, 2026, [Online; accessed April 2026]. [18] S. Cools and W. Vanroose, “The communication-hiding pipelined BiCGStab method for the parallel solution of large unsymmetric linear systems,” Parallel Computing , vol. 65, pp. 1–20, 2017. [19] T. Deakin, J. Price, M. Martineau, and S. McIntosh-Smith, “Evalu-ating attainable memory bandwidth of parallel programming models via babelstream,” International Journal of Computational Science and Engineering , vol. 17, no. 3, pp. 247–262, 2018. [20] D. De Sensi, L. Pichetti, F. Vella, T. De Matteis, Z. Ren, L. Fusco, M. Turisini, D. Cesarini, K. Lust, A. Trivedi, D. Roweth, F. Spiga, S. Di Girolamo, and T. Hoefler, “Exploring GPU-to-GPU communication: Insights into supercomputer interconnects,” in 
+
+Proceedings of the International Conference for High Performance Computing, Networking, Storage, and Analysis , ser. SC ’24. IEEE Press, 2024. [Online]. Available: https://doi.org/10.1109/SC41406.2024.00039 [21] R. T. Mills, M. Adams, S. Balay, J. Brown, J. Faibussowitsch, T. Isaac, M. Knepley, T. Munson, H. Suh, S. Zampini, H. Zhang, and J. Zhang, “PETSc/TAO Developments for GPU-Based Early Exascale Systems,” 2024. [Online]. Available: https://arxiv.org/abs/2406.08646 [22] D. Merrill and M. Garland, “Merge-based parallel sparse matrix-vector multiplication,” in SC ’16: Proceedings of the International Conference for High Performance Computing, Networking, Storage and Analysis ,2016, pp. 678–689. [Online]. Available: https://doi.org/10.1109/SC. 2016.57 [23] F. Banchelli, M. Garcia-Gasulla, F. Mantovani, J. Vinyals, J. Pocurull, D. Vicente, B. Eguzkitza, F. C. Galeazzo, M. C. Acosta, and S. Girona, “Introducing MareNostrum5: A European pre-exascale energy-efficient system designed to serve a broad spectrum of scientific workloads,” Future Generation Computer Systems , p. 108125, 2025. [Online]. Available: https://www.sciencedirect.com/science/article/pii/ S0167739X25004194 [24] M. Turisini, G. Amati, and M. Cestari, “LEONARDO: A Pan-European Pre-Exascale Supercomputer for HPC and AI Applications,” 2023. [Online]. Available: https://arxiv.org/abs/2307.16885 [25] T. A. Davis and Y. Hu, “The university of florida sparse matrix collection,” ACM Trans. Math. Softw. , vol. 38, no. 1, Dec. 2011. [Online]. Available: https://doi.org/10.1145/2049662.2049663 [26] H. Martinez-Navarro, B. Rodriguez, A. Bueno-Orovio, and A. Minchole, “Repository for modelling acute myocardial ischemia: simulation scripts and torso-heart mesh,” 2019. [Online]. Available: https: //ora.ox.ac.uk/objects/uuid:951b086c-c4ba-41ef-b967-c2106d87ee06 [27] J. D. Trotter, S. Ekmekc ¸ibas ¸ı, J. Langguth, T. Torun, E. D¨ uzakın, A. Ilic, and D. Unat, “Bringing Order to Sparsity: A Sparse Matrix Reordering Study on Multicore CPUs,” in Proceedings of the International Conference for High Performance Computing, Networking, Storage and Analysis , ser. SC ’23. New York, NY, USA: Association for Computing Machinery, 2023. [Online]. Available: https://doi.org/10.1145/3581784.3607046 [28] A. Denis, J. Jaeger, E. Jeannot, and F. Reynier, “A methodology for assessing computation/communication overlap of MPI nonblocking collectives,” Concurrency and Computation: Practice and Experience ,vol. 34, no. 22, p. e7168, 2022. [Online]. Available: https: //onlinelibrary.wiley.com/doi/abs/10.1002/cpe.7168 [29] R. O. Selvitopi, M. M. Ozdal, and C. Aykanat, “A novel method for scaling iterative solvers: Avoiding latency overhead of parallel sparse-matrix vector multiplies,” IEEE Transactions on Parallel and Distributed Systems , vol. 26, no. 3, pp. 632–645, 2015. [Online]. Available: https://doi.org/10.1109/TPDS.2014.2311804 [30] H. Lu, S. Seo, and P. Balaji, “Mpi+ult: Overlapping communication and computation with user-level threads,” in 2015 IEEE 17th International Conference on High Performance Computing and Communications, 2015 IEEE 7th International Symposium on Cyberspace Safety and Security, and 2015 IEEE 12th International Conference on Embedded Software and Systems , 2015, pp. 444–454. [Online]. Available: https://doi.org/10.1109/HPCC-CSS-ICESS.2015.82 [31] J. Li, Y. Jiang, Y. Zhu, C. Wang, and H. Xu, “Accelerating distributed MoE training and inference with Lina,” in 2023 USENIX Annual Technical Conference (USENIX ATC 23) . Boston, MA: USENIX Association, Jul. 2023, pp. 945–959. [Online]. Available: https://www.usenix.org/conference/atc23/presentation/li-jiamin Appendix: Artifact Description/Artifact Evaluation 
+
+Artifact Description (AD) 
+
+VII. O VERVIEW OF CONTRIBUTIONS AND ARTIFACTS 
+
+A. Computational Artifacts 
+
+All computational artifacts have been archived on Zenodo: 
+
+A1 https://doi.org/10.5281/zenodo.22973787 
+
+A2 https://doi.org/10.5281/zenodo.22973707 The main computational artifacts are included in A1. Addi-tional input files are provided in A2, related to the matrix poisson3da 12, which is used for some of the large-scale experiments in the paper. VIII. A RTIFACT IDENTIFICATION 
+
+A. Computational Artifact A1
+
+Relation To Contributions 
+
+Artifact A1 includes: 1) Source code for the solvers, which implement the various two-stream and three-stream multi-GPU CG solvers that are used for the performance benchmarks presented in the paper. 2) This dataset contains the row partitioning files for six matrices selected from the SuiteSparse Collection (Davis and Hu, 2011): Bump 2911, Geo 1438, Flan 1565, Queen 4147, Serena, and audikw 1. Using the METIS graph partitioner (Karypis and Kumar, 1998), each matrix was partitioned into 4, 8, 16, 32 and, 64 parts. 3) Included here are the job submission scripts used to benchmark the multi-GPU CG solvers (two- and three-stream implementattions and PETSc) on the MareNos-trum 5, and Leonardo clusters. 
+
+Expected Results 
+
+By executing the two-stream, three-stream, and PETSc experiments using the provided source code and open datasets, users can reproduce the solver runtimes and speedups illus-trated in the paper. 
+
+Expected Reproduction Time (in Minutes) 
+
+The anticipated computational time for the SuiteSparse matrix experiments ranges from 30 seconds to 15 minutes for each combination of solver, matrix, and GPU count. For the large-scale experiments, executing each solver and GPU configuration requires approximately 10 to 15 minutes for the ”poisson3da 12”, ”heart12” and ”heart15” matrices on the MareNostrum 5 and Leonardo clusters. 
+
+Artifact Setup (incl. Inputs) 
+
+Hardware and their configurations used in the experiments can be seen in Table IV. TABLE IV: System configurations.                
+
+> MareNostrum5 (ACC) Leonardo (Booster)
+> CPU 2×Xeon Platinum 8460Y+ (40c) 1×Xeon Platinum 8358 (32c) GPU 4×H100, 64 GB HBM2e 4×A100 SXM4, 64 GB @ 1,640 GB/s Intra-node NVLink 4.0, 300 GB/s bi-dir. per pair NVLink 3.0, 200 GB/s per pair NIC ConnectX-7, 200 Gb/s uni-dir. per GPU 2×dual-port HDR100 ConnectX-6, 400 Gb/s Network NDR IB, 3-layer fat-tree [23] IB [24] Software HPC SDK 25.1, CUDA 12.6, HPC-X 2.21, NCCL 2.18.5 HPC SDK 24.3, CUDA 12.3, HPC-X 2.17.1, NCCL 2.18.5
+
+Software: Introduce all required software packages, includ-ing the computational artifact. For each software package, specify the version and provide the URL. The following software is used on all systems:  
+
+> •
+
+CG Solvers: (https://doi.org/10.5281/zenodo.22973787)  
+
+> •
+
+PETSc 3.21.5 (https://petsc.org/release/)  
+
+> •
+
+METIS 5.1.0 (https://github.com/KarypisLab/METIS) On the different clusters, we also use some additional software packages, which are provided by their respective 
+
+module environments. They can be seen in Table IV, software row. 
+
+Datasets / Inputs: Input matrices can be downloaded from the SuiteSparse collection at https://sparse.tamu.edu/, in the Matrix Market file format. The following six matrices from SuiteSparse are used: Bump 2911, Geo 1438, Flan 1565, Queen 4147, Serena and audikw 1. For each matrix, parti-tionings are included in artifact A1.
+
+Installation and Deployment: To install the program the following minimum software dependencies must be satisfied:  
+
+> •
+
+CMake 3.12 or newer  
+
+> •
+
+A C/C++ compiler compatible with C++-17  
+
+> •
+
+For NVIDIA GPUs: NVIDIA CUDA Compiler (NVCC), cuBLAS and cuSPARSE from CUDA Toolkit 11.6 or newer The following optional software packages are needed to enable some features:  
+
+> •
+
+METIS 5.1.0 is required for multi-GPU matrix parti-tioning, unless using precomputed partitions (e.g., from artifact A1).  
+
+> •
+
+NVIDIA Collective Communications Library (NCCL) version 2.18.5 or newer is needed to use NCCL-based communication for NVIDIA GPUs  
+
+> •
+
+PETSc 3.17 or newer with CUDA support enabled is needed to use PETSc’s PIPE-PCG solver  
+
+> •
+
+zlib is needed to use gzip-compressed Matrix Market files as input  
+
+> •
+
+If the compiler supports OpenMP, then it can be enabled to use multiple threads to speed up preprocessing steps. Artifact Execution 
+
+The experimental workflow consists of a single task: run-ning the compiled executable three times for each matrix, solver, and GPU configuration. The program outputs detailed metrics, such as runtime and iteration counts. For further details and the job submission scripts used on the three clusters, please refer to artifact A1
+
+Artifact Analysis (incl. Outputs) 
+
+To analyze the experimental outputs, we extract the solver runtimes from the log files and calculate the average across the three trials for each configuration of matrix, solver, and GPU count. Using these average runtimes, we compute the performance speedup for N GPUs by dividing the baseline two-stream runtime by the runtime of the three-stream imple-mentation for that specific matrix and GPU allocation. 
+
+Artifact Evaluation (AE) 
+
+A. Computational Artifact A1
+
+Artifact Setup (incl. Inputs) 
+
+All commands are run from the root directory of the artifact, 
+
+> ${artifact_root }
+
+, on a login node of the cluster. Below,  
+
+> ${system }
+
+is marenostrum5 or leonardo . Each system directory scripts/$ {system }/ contains a README with further details. 
+
+Environment setup: METIS 5.1.0 and PETSc 3.21.5 (with 32-bit indices) must be installed in a directory given by  
+
+> ACG_PKGS_DIR
+
+(default: ${HOME }/pkgs ), in the subdirecto-ries metis-32-5.1.0 and petsc-32-3.21.5 ; on Leonardo,  
+
+> glibc-2.29
+
+is also needed. The module files for these pack-ages are included in scripts/$ {system }/modulefiles 
+
+and are loaded from there. The Slurm account is given through environment variables:       
+
+> $export ACG_PKGS_DIR=/path/to/pkgs $export SBATCH_ACCOUNT=<project> $export SBATCH_QOS=acc_ehpc
+
+where the QOS is needed on MareNostrum 5 only and depends on the type of allocation. The environment is then set up by sourcing the script for the system, which loads the modules and creates the directory logs/ for the Slurm output:   
+
+> $.scripts/$ {system }/envsetup-$ {system }.sh
+
+aCG Library Install: aCG is built with the build script for the system:  
+
+> $scripts/$ {system }/build-acg-cuda.sh
+
+The script copies src/aCG to build/$ {system }/src , ap-plies scripts/$ {system }/$ {system }.patch (which dis-ables NCCL CollNet for the split communicators, and on Leonardo also the internal profiling, as in the binaries used for the paper), configures the CUDA version of aCG with CMake and compiles it. The executable is installed as bin/acg-cuda .On MareNostrum 5, the configuration uses nvc , CUDA 12.9  
+
+> nvcc
+
+and an empty CMAKE_BUILD_TYPE ; on Leonardo, it uses 
+
+> nvc
+
+, CUDA 12.3 nvcc , CMAKE_BUILD_TYPE=release and 
+
+> CMAKE_CUDA_ARCHITECTURES=80
+
+.
+
+Input matrices and partitions: The six SuiteSparse ma-trices ( audikw_1 , Bump_2911 , Flan_1565 , Geo_1438 ,
+
+Queen_4147 and Serena ) are not included in the artifact because of their size; only their METIS row partitions are. Before running any job, download the matrices in Matrix Market format from the SuiteSparse Matrix Collection [25] by running, from the artifact root directory: 
+
+> scripts/download-matrices.sh
+
+The script downloads each matrix from https: //sparse.tamu.edu/MM/ ⟨group ⟩/⟨matrix ⟩.tar.gz, extracts it to data/suitesparse/mtx/<matrix>.mtx ,decompresses the partitions in 
+
+data/suitesparse/partitions/ , and verifies all files against the checksums in data/SHA256SUMS . It requires 
+
+curl and about 3.5 GB of disk space for the downloads and 11 GB for the extracted matrices; the downloaded archives are deleted after extraction unless --keep-tarballs is given. Individual matrices can be downloaded by naming them, e.g. 
+
+scripts/download-matrices.sh Queen_4147 .Re-running the script skips matrices that are already present. The matrix poisson3da 12 and its partitions are obtained by downloading and unpacking A2 and placing the files at: 
+
+> data/poisson3da/mtxbin32/ poisson3da_12_A.mtxbin32.gz data/poisson3da/partitions/ poisson3da_12_A_rowpart_metis_ <num_of_part>_parts.mtx.gz
+
+Artifact Execution 
+
+Each experiment is a Slurm job script that runs the six solver variants, three times each, for one matrix and one number of nodes. The job scripts are located in 
+
+> scripts/$ {system }/suitesparse/$ {matrix }/scripts/$ {system }/poisson3da/poisson3da_12/
+
+and are named 
+
+> ${matrix }-rtol-0-$ {nodes }-nodes-${gpus }-procs.sh
+
+where ${nodes } and ${gpus } are zero-padded to three and four digits. For example, Queen 4147 on 4 nodes (16 GPUs) of Leonardo is run with:   
+
+> $sbatch scripts/leonardo/suitesparse/ Queen_4147/ Queen_4147-rtol-0-004-nodes-0016-procs.sh
+
+There are 30 SuiteSparse jobs per system (6 matrices on 1, 2, 4, 8 and 16 nodes) and 3 (MareNostrum 5: 16, 32 and 64 nodes) or 4 (Leonardo: 16, 32, 64 and 128 nodes) jobs for poisson3da 12. All jobs of a system can be submitted with:       
+
+> $for jin scripts/$ {system }/*/*/*.sh; do sbatch $j; done
+
+Within the 8-hour evaluation budget, we suggest running the 30 SuiteSparse jobs on one system (about 30 node hours) and, if the allocation permits, the 16-node poisson3da 12 job. The output of each run is written to 
+
+> results/acg/$ {date }/$ {variant }/$ {matrix }/
+
+A run that exits with a non-zero status keeps the suffix .tmp ;this is expected for the PCG variants, which stop at the iteration limit, and these files are used in the analysis. 
+
+Artifact Analysis (incl. Outputs) 
+
+The solver times of all runs of a given date are collected into a CSV file, with one row per variant, matrix and number of GPUs and one column per run:      
+
+> $python3 scripts/collect/collect_results.py results/acg/$ {date }H100 >results.csv
+
+(A100 on Leonardo). From this file, the figures of the paper are produced with Python 3, pandas and matplotlib. The script figure2x3.py plots the six SuiteSparse matrices and  
+
+> figure1x3_large_matrices.py
+
+the large matrices, for the solver family given by --solver , for example:        
+
+> $python3 scripts/figures/figure2x3.py results.csv --solver pcg --system MareNostrum5 -o ss_pcg
+
+which writes ss_pcg.png and ss_pcg.pdf . Each bar is the mean of the three runs, with the standard deviation as error bar, and the speedups of the three-stream solver are printed under each panel. The variants PIPE-*-PETSC , PIPE-*-nccl and  
+
+> PIPE-*-nccl-split
+
+correspond to “PETSc”, “Two-Stream” and “Three-Stream” in the paper. For the SuiteSparse matrices, the resulting figures correspond to Figure 3 and Figure 4 (MareNostrum 5); for poisson3da 12, they correspond to the poisson3da 12 panels of Figure 5, Figure 6.The three-stream solvers are expected to have the lowest solver times, with speedups over the two-stream and PETSc solvers similar to those reported in the paper. 
+
+References

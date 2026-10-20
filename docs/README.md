@@ -48,17 +48,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-09-21 ~ 2026-10-20</span>
+      <span class="dpr-home-dashboard-kicker">2026-10-20</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 19 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 7 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>12</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>7</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>2</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>5</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-10-20 11:29:39 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-10-20 22:48:45 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -69,7 +69,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>本期（9/21–10/20）共读19篇（精读12、速读7），焦点集中在分布式训练通信与集合通信优化。最值得看两篇满分工作：NCCL M2N用布局与拓扑感知优化张量重分片集合通信，DualColl用分数树打包逼近带宽受限集合通信的吞吐最优。普通读者可先读这两篇的动机与评测，再结合速读中的AutoLoCo与MoE专家路由，理解通信节省如何落地。</p>
+<p>今日精读2篇、速览5篇，聚焦数据中心网络拥塞控制与RDMA可观测性。最值得看的是高分《MailRail》用用户态、基于节点的流控缓解Incast拥塞，以及《SigmaTrace》面向CPU/GPU发起RDMA通信的库无关可观测方案。普通读者可先读这两篇精读，再按兴趣补看Coflow调度近似算法等速读内容。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -78,12 +78,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">精读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">12 篇</strong>
+    <strong class="dpr-home-dashboard-count">2 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="NCCL M2N: A Layout- and Topology-Aware Collective for Distributed Tensor Resharding">NCCL M2N: A Layout- and Topology-Aware Collective for Distributed Tensor Resharding</span></li><li><span class="dpr-home-dashboard-paper-title" title="DualColl: Throughput-Optimal Bandwidth-Bound Collective Communications via Fractional Tree Packing">DualColl: Throughput-Optimal Bandwidth-Bound Collective Communications via Fractional Tree Packing</span></li><li><span class="dpr-home-dashboard-paper-title" title="SP-Allreduce: Symmetric Tree Schedules for Tori and Beyond">SP-Allreduce: Symmetric Tree Schedules for Tori and Beyond</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="MailRail: Mitigating Incast Congestion with User-Space, Node-Based Flow Control">MailRail: Mitigating Incast Congestion with User-Space, Node-Based Flow Control</span></li><li><span class="dpr-home-dashboard-paper-title" title="SigmaTrace: Library-Agnostic Observability for CPU/GPU-Initiated RDMA Communication">SigmaTrace: Library-Agnostic Observability for CPU/GPU-Initiated RDMA Communication</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">dcn-comm <strong>12</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">dcn-comm <strong>2</strong></span></div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-skim-card">
   <div class="dpr-home-dashboard-header">
@@ -91,12 +91,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">7 篇</strong>
+    <strong class="dpr-home-dashboard-count">5 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Balancing Generality and Specialization: A Survey on AI Datacenter Hardware Architecture">Balancing Generality and Specialization: A Survey on AI Datacenter Hardware Architecture</span></li><li><span class="dpr-home-dashboard-paper-title" title="AutoLoCo: Communication Efficient Distributed LLM Training via Adaptive Synchronization">AutoLoCo: Communication Efficient Distributed LLM Training via Adaptive Synchronization</span></li><li><span class="dpr-home-dashboard-paper-title" title="Memory-Efficient Expert Routing for Distributed MoE Training">Memory-Efficient Expert Routing for Distributed MoE Training</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Improved Approximations for Coflow Scheduling via Iterated Rounding and Stable Matchings">Improved Approximations for Coflow Scheduling via Iterated Rounding and Stable Matchings</span></li><li><span class="dpr-home-dashboard-paper-title" title="CALIPER: Calibrating HPC/AI Network Simulators">CALIPER: Calibrating HPC/AI Network Simulators</span></li><li><span class="dpr-home-dashboard-paper-title" title="FlashMask-3: Efficient and Expressive Mask-Aware Distributed Attention">FlashMask-3: Efficient and Expressive Mask-Aware Distributed Attention</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">dcn-comm <strong>7</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">dcn-comm <strong>5</strong></span></div>
 </section>
 </div>
 

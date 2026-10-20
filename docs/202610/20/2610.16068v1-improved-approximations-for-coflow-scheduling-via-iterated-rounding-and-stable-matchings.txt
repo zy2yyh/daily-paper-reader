@@ -1,0 +1,1265 @@
+Title: Improved Approximations for Coflow Scheduling via Iterated Rounding and Stable Matchings
+
+URL Source: https://arxiv.org/pdf/2610.16068v1
+
+Published Time: Wed, 14 Oct 2026 02:18:48 GMT
+
+Number of Pages: 23
+
+Markdown Content:
+# Improved Approximations for Coflow Scheduling via Iterated Rounding and Stable Matchings 
+
+Mikhail Cherniavskii, Arseni Fedorovich, Mikhail Koshelev, Andrey Kupavskii, Stanislav Moiseev, Fedor Ozhegov, Alexander Shekhovtsov 
+
+Abstract 
+
+We study Coflow Scheduling, introduced by Chowdhury, Zhong, and Stoica (2014). We give deterministic polynomial-time algorithms achieving a 2.77 -approximation without release dates and a 3.17 -approximation with integer release dates. These improve the 3.42 and 4.36 
+
+guarantees of Rohwedder and Schnaars (2025). Our approach combines two ideas: (1) a novel iterated rounding scheme, and (2) Galvin’s list edge coloring method, which is based on the Gale–Shapley stable matching algorithm. 
+
+# 1 Introduction 
+
+Coflow scheduling, introduced by Chowdhury, Zhong, and Stoica [7], models collections of data transfers with a common completion requirement. Examples motivating the coflow abstraction in-clude MapReduce shuffles [7], broadcast and aggregation stages in Spark [6], and message exchanges within a Pregel superstep [16, 6]. A coflow completes only when all its transfers have finished, so op-timizing individual transfer need not optimize the completion of the corresponding communication stage. The Varys system demonstrated that coordinating transfers at the coflow level can improve completion times compared with per-flow mechanisms [7]. We study the offline, discrete unit-transfer model: input and output ports form the two sides of a bipartite multigraph, each unit transfer is an edge, and each time slot processes a matching. The edges are partitioned into coflows with positive weights, and the objective is the weighted sum of their completion times. The release-date variant additionally requires each edge to be scheduled after the release date of its coflow. A concurrent-open-shop relaxation treats each port as a machine and each coflow as a job. The job’s processing requirement on a machine is its total load at that port. These workloads can be processed independently, dropping the requirement that a transfer use its input and output simultaneously [13]. For concurrent open shop without release dates, Mastrolilli et al. [17] give a primal–dual 2-approximation. Concurrent open shop also embeds as a special case of coflow scheduling using disjoint input–output port pairs. Thus the (2 − ε)-inapproximability of Sachdeva and Saket [22], obtained through structural hardness for hypergraph vertex cover, applies to coflows as well: for every fixed ε > 0, a (2 − ε)-approximation would imply P = N P . Qiu, Stein, and Zhong [18] gave the first constant-factor approximation algorithms using interval-indexed LP rounding, geometric batching, and matching decompositions. Khuller and Purohit [13] instead obtain a coflow ordering from a concurrent-open-shop relaxation and schedule geometric batches in that order. They give deterministic factors 8 and 12 without and with release dates, respectively, and a randomized (3+2 √2) -approximation without release dates. Shafiee and Ghaderi [23] combine an LP with ordering variables and randomly shifted geometric batching to obtain randomized factors 
+
+2e and 3e, respectively. 1arXiv:2610.16068v1 [cs.DS] 12 Oct 2026 Ahmadi et al. [2] obtain deterministic factors 4 and 5 without and with release dates, respec-tively, using primal–dual coflow ordering, moving edges into earlier batches without increasing their maximum degrees, and decomposing the batches into matchings. Shafiee and Ghaderi [24] obtain the same factors with a strengthened ordering-variable LP followed by preemptive list scheduling. Sincronia [1] connects approximation guarantees to system design: primal–dual coflow ordering combined with work-conserving, preemptive, order-preserving flow scheduling gives a factor 4 when all coflows arrive at time zero. Fukunaga [8] obtains factors 4 and 5 from a time-indexed LP and greedy scheduling. Separately, a hypergraph-matching argument gives a nonconstructive upper bound of 4 on the LP’s integrality gap even with release dates. Several earlier claims of 2- or 
+
+(2 + ε)-approximations for general bipartite coflow scheduling were subsequently found to rely on incorrect arguments; see Ahmadi et al. [2] and the authors’ error notice in Im and Purohit [12], as also discussed by Rohwedder and Schnaars [19]. Im et al. [11] give a 2-approximation for unit-length matroid coflows using LP-based deadline construction and matroid intersection. Rohwedder and Schnaars [19] improve the factors 4 and 5 for bipartite coflows to 140 /41 < 3.42 without release dates and 4.36 with release dates. They construct fractionally feasible deadlines and compare a greedy schedule with one obtained by Beck–Fiala-inspired iterated rounding. The latter assigns edges to time blocks with additive load violation at most two. The analysis exploits the com-plementary behavior of these schedules for small and large deadlines. The same work establishes valid asymptotic (2 + ε) guarantees when the optimum is sufficiently large relative to the sum of coflow weights [19]. Table 1 summarizes the multiplicative approximation guarantees for the general bipartite problem. Rohwedder and Schnaars [21] also study Graph Scheduling with Group Completion Times , which allows arbitrary multigraphs and possibly overlapping edge groups. De-gree and odd-set constraints, iterated rounding, and multigraph edge coloring yield a bound of 
+
+(2 + ε) OPT + O(1 /ε ) P 
+
+> j
+
+ωj . Comparing the rounding-based schedule with a greedy-type schedule gives a 1104 /281 < 3.93 -approximation. They also improve the guarantee for unit-size Data Mi-gration. Our focus here is on stronger multiplicative guarantees for bipartite coflows, both without and with release dates. 
+
+1.1 Our Contribution 
+
+We give improved approximation algorithms for both variants of Coflow Scheduling. Our algorithms use an iterated rounding procedure and, for release dates, a scheduling construction based on stable matchings. 
+
+Theorem 1 (Without release dates) . There is a deterministic polynomial-time algorithm achieving a 58 /21 ( < 2.77) -approximation for Coflow Scheduling without release dates. 
+
+Theorem 2 (With release dates) . There is a deterministic polynomial-time algorithm achieving a 
+
+1821 /575 ( < 3.17) -approximation for Coflow Scheduling with nonnegative integer release dates. 
+
+Iterated rounding Our rounding procedure improves over the scheme of Rohwedder and Schnaars [19], in which they used the result of Beck and Fiala [4] to bound the error in terms of column spar-sity of the matrix. Our method builds on ideas from iterative rounding techniques (see Lau, Ravi, and Singh [15]). Our algorithm selects a subset of tight capacity constraints and walks orthogonal to them to round the fractional solution. To perform this walk, we need to show that at every step the number of fractional variables is more than the number of selected rows. By doing a careful summation of capacity and assignment constraints we show that the number of fractional variables is at least the number of selected rows. Then, we show that equality cannot take place, because 2Table 1: Approximation guarantees for Coflow Scheduling. Decimal bounds are rounded upward to two places. D denotes a deterministic algorithm and R an expected guarantee for a randomized algorithm.                                     
+
+> Work Type No release dates Release dates Qiu–Stein–Zhong (2015) [18] D64 3(21 .34) 76 3(25 .34) †
+> Qiu–Stein–Zhong (2015) [18] R8 + 16 √23(15 .55) —Khuller–Purohit (2016) [13] D8.00 12 .00
+> Khuller–Purohit (2016) [13] R3 + 2 √2 (5 .83) —Shafiee–Ghaderi (2017) [23] R2e(5 .44) 3e(8 .16)
+> Ahmadi et al. (2017) [2] D4.00 5.00
+> Rohwedder–Schnaars ( 2025) [19] D140 /41 (3 .42) 4.36
+> This paper D58 /21 ( 2.77 )1821 /575 ( 3.17 )
+> †The release-date bound uses the correction of Ahmadi et al. [2] to the originally claimed 67 /3guarantee.
+
+it would imply linear dependence between the subset of capacity constraints that we have chosen and assignment constraints. Our intricate analysis yields two improvements. (1) The rounding error for capacity constraints is bounded by 1 instead of 2 as in [19]. (2) For one designated block, we can completely eliminate the error for capacity constraints in that block. Each block is a seg-ment of timeslots, and by protecting one of the first blocks from the error, we greatly improve the approximation factor. 
+
+Release-aware scheduling through stable matchings For release dates, we use list-coloring algorithms after running our iterated rounding. Our idea to use list-coloring comes from the fact that for each edge e, we have a list of timeslots Le = {re + 1 , r e + 2 , . . . , r e + de} in which it can be scheduled ( re is a release date of edge e, de is how many slots we allow for this edge), and the list-coloring permits to assign an edge while preserving release and capacity constraints. The list-coloring method that we use is based on Galvin’s method [10], which is implemented through Gale–Shapley stable matchings [9]. For the beautiful connection between stable matchings and list coloring, see its application to the Dinitz problem in Proofs from THE BOOK [3, Chapter 38] and the extensions of Galvin’s method by Borodin, Kostochka, and Woodall [5]. Moreover, we introduce an extension of greedy algorithm that achieves better guarantees than the standard greedy algorithm. Our extended algorithm uses a novel idea that we can reverse the priority of edges to balance out demand in a prefix of timeslots. This idea is of independent interest as it can be applied to other scheduling problems. Combined, our iterated rounding and the use of Galvin’s method improve approximation factor for the setting with release dates. 31.2 Organization 
+
+Section 2 introduces the notation and recalls the required background. Section 3 introduces frac-tional schedules and proves the iterated rounding theorem. Section 4 constructs the schedules without release dates, establishes their completion-time bounds, and proves Theorem 1. Section 5 develops the release-date construction and its polynomial implementation before proving Theorem 2. 
+
+# 2 Definitions and Known Results 
+
+We introduce the basic notation, formulate the Coflow Scheduling problem, and recall the graph-theoretic results used in our proofs. 
+
+2.1 Basic graph notions 
+
+A multigraph is a triple G = ( V, E, ∂ ), where V is the vertex set, E is the edge set, and ∂ : E →  V
+
+> 2
+
+
+
+assigns to each edge its unordered pair of endpoints. Distinct edges may have the same endpoints; such edges are called parallel . If ∂ is injective, G is a simple graph .A multigraph is bipartite if its vertex set admits a partition V = V1 ⊔ V2 such that every edge has one endpoint in V1 and the other in V2.For each vertex v ∈ V , let δ(v) = {e ∈ E : v ∈ ∂(e)} denote the set of edges incident with v.For F ⊆ E, define 
+
+deg F (v) = |F ∩ δ(v)|, ∆( F ) = max  
+
+> v∈V
+
+deg F (v).
+
+We also write ∆( G) = ∆( E) for the maximum degree of G. A set M ⊆ E is a matching if ∆( M ) ≤ 1.
+
+2.2 Coflow scheduling problem 
+
+In this section, we introduce the coflow scheduling problem. An instance consists of n bipartite multigraphs Gj = ( V, E j , ∂ j ) on a common bipartition V = V1 ⊔ V2, together with positive weights 
+
+ωj and release dates rj ∈ Z≥0, where j ∈ [n] := {1, . . . , n }. Each Gj is called a coflow , which we identify with its edge set Ej . We assume that all coflows are nonempty. Let 
+
+E = G
+
+> j∈[n]
+
+Ej , G = ( V, E, ∂ ),
+
+where ∂|Ej = ∂j . All edge copies are treated as distinct, including parallel copies within the same coflow or in different coflows. For e ∈ Ej , write j(e) = j and re = rj . Later, we will introduce coflow deadlines C1, . . . , C n. The deadlines on coflows induce the same deadlines on edges Ce = Cj(e).Sometimes we abuse the notation and write e = {u, v } instead of ∂(e) = {u, v }.Each edge requires one time slot of processing, and slot t corresponds to the interval (t − 1, t ].A feasible schedule is a map σ : E → Z≥1 such that σ−1(t) is a matching for every slot t and 
+
+σ(e) ≥ rj(e) + 1 for each e ∈ E. Thus each vertex participates in at most one scheduled edge per slot, and no edge is processed before its coflow’s release date. The completion time of coflow Ej and the cost of a schedule σ are 
+
+C∗ 
+
+> j
+
+(σ) = max 
+
+> e∈Ej
+
+σ(e), cost( σ) = X
+
+> j∈[n]
+
+ωj C∗ 
+
+> j
+
+(σ).
+
+Definition 2.1 (Coflow Scheduling with Release Dates) . Given coflows G1, . . . , G n, positive weights 
+
+ω1, . . . , ω n, and nonnegative integer release dates r1, . . . , r n, find a feasible schedule σ of minimum 
+
+cost( σ).
+
+4We denote the minimum cost by OPT . The special case rj = 0 for every j ∈ [n] is called Coflow Scheduling without Release Dates .To formally illustrate the problem, let us reformulate Coflow Scheduling with Release Dates as an integer linear program. Note that we will not use this program in our proofs. Let 
+
+R = max  
+
+> j∈[n]
+
+rj , T = R + |E|.
+
+We may restrict attention to schedules that finish by T , because each edge can be scheduled in its own slot. For each e ∈ E and t ∈ [T ], introduce a binary variable xe,t indicating whether edge e is scheduled in slot t. For each coflow Ej , introduce an integer variable Cj bounding its completion time from above. The formulation is 
+
+min X
+
+> j∈[n]
+
+ωj Cj (ILP.1) subject to X 
+
+> t∈[T]
+
+xe,t = 1 ∀e ∈ E, (ILP.2) 
+
+X
+
+> e∈δ(v)
+
+xe,t ≤ 1 ∀v ∈ V, ∀t ∈ [T ], (ILP.3) 
+
+xe,t = 0 ∀e ∈ E, ∀t ∈ [T ] : t ≤ re, (ILP.4) 
+
+X 
+
+> t∈[T]
+
+t x e,t ≤ Cj(e) ∀e ∈ E, (ILP.5) 
+
+xe,t ∈ { 0, 1} ∀e ∈ E, ∀t ∈ [T ], (ILP.6) 
+
+Cj ∈ { rj + 1 , . . . , T } ∀j ∈ [n]. (ILP.7) Constraints (ILP.2) schedule every edge exactly once, and (ILP.3) ensure that the edges sched-uled in each slot form a matching. Constraints (ILP.4) forbid processing before the coflow’s release date, while (ILP.5) require Cj to be at least the slot assigned to every edge of Ej . Constraints (ILP.6) and (ILP.7) specify the variable domains. Every feasible solution defines a feasible schedule by setting σ(e) = t whenever xe,t = 1 . Since all weights are positive, every optimal solution satisfies 
+
+Cj = max 
+
+> e∈Ej
+
+X 
+
+> t∈[T]
+
+t x e,t = C∗ 
+
+> j
+
+(σ) (j ∈ [n]) .
+
+When all release dates are zero, T = |E| and (ILP.4) is vacuous, recovering the formulation without release dates. 
+
+2.3 Known graph results 
+
+In this section, we provide necessary background definitions and results about graphs and matchings that we will use in our algorithms. We say an edge coloring is proper if two different edges sharing a vertex have different colors. Consider timeslots 1, 2, 3, . . . as different colors. In this view, a proper edge coloring partitions the edges into matchings and therefore gives a schedule when release constraints are absent (color corresponds to timeslot in which the edge is scheduled). We use the following classical theorem. 5Lemma 2.1 (Kőnig [14]) . Every bipartite multigraph F admits a proper edge coloring with ∆( F )
+
+colors, and such a coloring can be found in polynomial time. Equivalently, its edges can be scheduled in ∆( F ) slots. 
+
+Our algorithm for instances with release dates uses stable matchings and the Gale–Shapley theorem. We recall the relevant definitions and theorem below. For each vertex v ∈ V , fix a strict total order ≻v on its incident edges δ(v), where e ≻v f means that v prefers e to f . A matching 
+
+F ⊆ E is stable if, for every edge e ∈ E \ F , there exist an endpoint v of e and an edge f ∈ F ∩ δ(v)
+
+such that f ≻v e.
+
+Theorem 3 (Gale–Shapley [9]) . Every finite bipartite multigraph equipped with strict total orders on the incident edges at each vertex admits a stable matching. Such a matching can be found in polynomial time. 
+
+# 3 Fractional Scheduling and Iterated Rounding 
+
+In this section, we prove our main iterated rounding result. Given an instance of Coflow Scheduling without release dates, with coflows E1, . . . , E n and weights ω1, . . . , ω n, we first use Lemma 3.1 to compute fractionally feasible deadlines C1, . . . , C n. We then enlarge these deadlines to obtain integer-length blocks and apply iterated rounding to assign each edge to one allowed block. The rounding guarantees will also be used for instances with release dates. 
+
+3.1 Fractional Schedule 
+
+Let C1, . . . , C n be deadlines for coflows E1, . . . , E n, respectively. We assume that the coflows are relabeled so that C1 ≤ · · · ≤ Cn, and set C0 = 0 . We say that the deadlines are fractionally feasible 
+
+if the following linear program admits a solution: 
+
+X
+
+> s∈[n]
+
+xs,e = 1 ∀e ∈ E, (LP I.1) 
+
+X
+
+> e∈δ(v)
+
+xs,e ≤ Cs − Cs−1 ∀s ∈ [n], ∀v ∈ V, (LP I.2) 
+
+xs,e = 0 ∀j ∈ [n], ∀e ∈ Ej , ∀s > j, (LP I.3) 
+
+xs,e ≥ 0 ∀s ∈ [n], ∀e ∈ E. (LP I.4) Here, the timeslots are partitioned into blocks (0 , C 1] ⊔ (C1, C 2] ⊔ . . . ⊔ (Cn−1, C n], and xs,e is the fraction of edge e assigned to the block (Cs−1, C s]. Constraints (LP I.1) ensure that every edge of each coflow is fully scheduled, and (LP I.2) ensure that the fractional degree of each vertex in every block does not exceed the block size Cs − Cs−1. Constraints (LP I.3) forbid edge scheduling after the coflow’s deadline. To construct fractionally feasible deadlines, we use the result of [11, Section 4]. We use its deter-ministic, real-deadline form described by Rohwedder and Schnaars [19, Lemma 5 and Section 3.1]. 
+
+Lemma 3.1 (Im–Moseley–Pruhs–Purohit [11]) . In deterministic polynomial time one can compute deadlines 1 ≤ C1 ≤ · · · ≤ Cn, after relabeling the coflows, for which (LP I) is feasible and 
+
+X
+
+> j∈[n]
+
+ωj (Cj + 1) ≤ 2 OPT . (3.2) 6The deadlines provided by Lemma 3.1 need not be integer. We will round them upward. The following lemma shows that this preserves fractional feasibility. 
+
+Lemma 3.2 (Deadline monotonicity) . If (LP I) is feasible for C1 ≤ · · · ≤ Cn, then it remains feasible after replacing Cj by Cj for every j, provided that C1 ≤ · · · ≤ Cn and Cj ≥ Cj for all j.Proof. Let x be feasible for the original deadlines Cj . Let us smear edges over the timeline. More precisely, on each positive-length block (Cs−1, C s], process edge e at the constant rate xs,e /(Cs −
+
+Cs−1), with no processing outside (0 , C n]. The constraints of (LP I) ensure one unit of processing per edge, total rate at most one at each vertex at any given time, and no processing of Ej after Cj .Set C0 = 0 , and let xs,e be the amount of this processing in (Cs−1, C s]. Since Cn ≥ Cn, these variables are nonnegative and satisfy 
+
+X
+
+> s∈[n]
+
+xs,e = 1 , X
+
+> e∈δ(v)
+
+xs,e ≤ Cs − Cs−1.
+
+For e ∈ Ej and s > j , we have Cs−1 ≥ Cj ≥ Cj , so xs,e = 0 . Hence x satisfies (LP I) with the enlarged deadlines. 
+
+3.2 The Iterated Rounding Procedure 
+
+We now round a feasible solution of (LP I) for the enlarged deadlines Cj . The procedure preserves the assignment and deadline constraints and allows an additive violation of at most one in each capacity constraint. In any designated block p, it preserves all capacities exactly. Thus the load at each vertex is at most Cs − Cs−1 + 1 in every block s̸ = p, and at most Cp − Cp−1 in block p. For the algorithm without release dates, we choose p = 1 .We state the rounding result in a general form. Let B be a finite set of blocks, and let each edge 
+
+e ∈ E have a nonempty subset Be ⊆ B of blocks in which it can be scheduled. A set C ⊆ V × B 
+
+specifies the vertex–block pairs with nonnegative integer capacities cv,b . One designated block p ∈ B 
+
+is called the protected block ; all other blocks are ordinary . For (LP I) with the enlarged deadlines, we take B = [ n], Be = {1, . . . , j (e)}, C = V × [n], and cv,b = Cb − Cb−1.
+
+Theorem 4 (Iterated rounding) . Let G = ( V1 ⊔ V2, E ) be a bipartite multigraph, and let B denote a set of blocks. Let Be ⊆ B be nonempty for every e ∈ E, and let C ⊆ V × B be a subset that indexes constraints (3.4), with cv,b ∈ Z≥0 for (v, b ) ∈ C . Given a fractional solution zb,e ∈ [0 , 1] of the system 
+
+X
+
+> b∈B e
+
+zb,e = 1 (e ∈ E), (3.3) 
+
+X 
+
+> e∈δ(v): b∈B e
+
+zb,e ≤ cv,b (( v, b ) ∈ C ), (3.4) 
+
+and any p ∈ B , one can compute in polynomial time xb,e ∈ { 0, 1} satisfying 
+
+X
+
+> b∈B e
+
+xb,e = 1 (e ∈ E), X 
+
+> e∈δ(v): b∈B e
+
+xb,e ≤ cv,b + 1{b̸=p} (( v, b ) ∈ C ). (3.5) 
+
+Proof. We refer to constraints (3.3) as assignment constraints and to constraints (3.4) as capacity constraints. Initialize xb,e ← zb,e . Let F denote the set of current variables (xb,e ), and let F(v,b ) =
+
+7{xb,e ∈ F | e ∈ E, e ∋ v}. For A ⊆ F , write S(A) = P 
+
+> xb,e ∈A
+
+xb,e . Note that with this notation a capacity constraint (v, b ) ∈ C can be written as S(F(v,b )) ≤ cv,b .The algorithm repeatedly applies one of the following three rules. We show that at least one rule is available whenever a coordinate remains. 1. Look for variables xb,e that are already rounded xb,e ∈ { 0, 1}. We drop such variables from our system F ← F \ xb,e , simplifying it. We also remove b from Be. If xb,e = 1 , we also decrease the corresponding integers cv,b by 1 and remove E ← E \ { e} since the edge e is assigned to block b. Therefore, w.l.o.g. we may assume that xb,e ∈ (0 , 1) for every variable in our system. 2. Look for capacity constraints S(F(v,b )) ≤ cv,b ((v, b ) ∈ C ), such that |F (v,b )| ≤ cv,b + 1 if 
+
+p̸ = b and |F (v,b )| ≤ cv,b if p = b. In this case we can drop this constraint from consideration (C ← C \ (v, b )) since any rounding of the remaining variables will violate it only by 1 if p̸ = b
+
+and will not violate it at all if p = b.3. Consider the set Ctight ⊆ C of capacity constraints that are tight: S(F(v,b )) = cv,b . Let C′ ⊆Ctight be a subset of tight constraints that together with all hard constraints P 
+
+> b∈B e
+
+xb,e = 1 
+
+forms a linearly independent basis. Here we view a constraint as a vector from {0, 1}F (1 if a corresponding variable is in a constraint and 0 otherwise). If |F| > |E|+C′, then there is a non-zero vector y ∈ RF that is orthogonal to all constraints from our basis: P  
+
+> e∈δ(v): b∈B e
+
+yb,e = 0 
+
+and P 
+
+> b∈B e
+
+yb,e = 0 . We slide along this vector until some variable gets rounded or some other constraint becomes tight: x ← x + ty .See Algorithm (1) for the pseudocode. Note that rules 1 and 2 reduce the number of variables or constraints at least by 1. The 3rd rule either increases the number of rounded variables or the number of tight constraints. Therefore, our algorithm makes at most polynomially many steps before terminating (it terminates when |F| = 0 ). It remains to show that at least one of three rules is always applicable. The rest of the proof is devoted to this. 
+
+Warm-up: +1 error for all constraints. Firstly, suppose that we do not need to protect block p (e.g. p = −1). Let us show that in this case at least one rule can be applied (we also assume that there is at least one variable in our system). Towards contradiction, assume that no rule is applicable. Rules 2 and 3 imply that for any (v, b ) ∈ C ′, we have |F (v,b )| ≥ cv,b + 2 since |F (v,b )| and 
+
+cv,b are integers. Since (v, b ) ∈ C tight , we also have S(F(v,b )) = cv,b . Substitution gives 
+
+|F (v,b )| ≥ S(F(v,b )) + 2 . (3.6) Note that if we sum assignment constraints P 
+
+> b∈B e
+
+xb,e = 1 over all e ∈ E, we get that S(F) = |E|.Our goal is to show that |F| > |E| + |C ′|, which would produce the desired contradiction since the rule 3 can be applied. Note that (3.6) states that "the number of variables in the constraint is at least their sum +2 ", while we also know that the sum of all variables is |E|. Let us sum inequalities (3.6) over all (v, b ) ∈ C ′. For t ∈ { 0, 1, 2}, denote by Ft ⊆ F variables that are summed t times (F0 ⊔ F 1 ⊔ F 2 = F holds since every edge is incident to at most two vertices). With this notation, the summation gives 
+
+|F 1| + 2 |F 2| ≥ S(F1) + 2 S(F2) + 2 |C ′|. (3.7) Let us show that |F 0| + |F 1| > 0. If |F 0| = |F 1| = 0 , then C′ = C since only by including every constraint in the basis can we make each variable appear twice in the sum. However, in this case 8capacity constraints C and assignment constraints E are not linearly independent. The sum of the first ones equals twice the sum of second ones, implying that C′ cannot equal C. Thus, |F 0|+|F 1| > 0.Since every variable is strictly between 0 and 1, we also get that 2|F 0| + |F 1| > 2S(F0) + S(F1).Adding this inequality to (3.7) we obtain |F| > S (F) + |C ′|. Substituting S(F) = |E|, implies 
+
+|F| > |E| + |C ′| as desired by the 3rd rule. 
+
+Protecting block p. Now, let us modify the proof above to handle the case p ∈ B . Towards contradiction, assume that no rule is applicable. Due to the 2nd rule, for any (v, b ) ∈ C ′ we have 
+
+|F (v,b )| ≥ S(F(v,b )) + 2 − 1{b=p}. (3.8) We are going to do a more careful summation than we did in the warm-up. For this, for a vertex 
+
+v ∈ V , define Fv = {xb,e ∈ F | e ∋ v} and C′ 
+
+> v
+
+= {(v, b ) ∈ C ′ | b ∈ B} to be the set of variables and constraints adjacent to vertex v. We show the following claim. 
+
+Claim 3.1. For any vertex v ∈ V , |F v| ≥ S(Fv) + 2 |C ′
+
+> v
+
+|. Moreover, for at least one v ∈ V the inequality is strict (assuming |F| > 0). 
+
+First, let us show why this inequality implies contradiction. Summing the inequality over v ∈ V
+
+every variable gets summed exactly twice since it is adjacent to exactly two vertices. Therefore, we have 2|F| > 2S(F) + 2 |C ′|, implying |F| > |E| + |C ′|, contradicting the assumption that Rule 3 is unavailable.. It remains to prove the claim. Fix vertex v ∈ V , and sum inequalities (3.8) over (v, b ) ∈ C ′
+
+> v
+
+.Denoting by Fvt ⊆ F v the subset of variables that appears t times in the sum, we get 
+
+|F v 
+
+> 1
+
+| ≥ S(Fv 
+
+> 1
+
+) + 2 |C ′
+
+> v
+
+| − I{(v,p )∈C ′ 
+
+> v}
+
+. (3.9) Assume |F v| > 0 (otherwise the first part of the claim is trivial). Let us establish that |F v 
+
+> 0
+
+| > 0
+
+and that S(Fv 
+
+> 0
+
+) is integer, which would imply that |F v 
+
+> 0
+
+| ≥ S(Fv 
+
+> 0
+
+) + 1 . Adding this inequality to (3.9) would prove the first part of the claim (note that Fv = Fv 
+
+> 0
+
+⊔ F v 
+
+> 1
+
+). If |F v 
+
+> 0
+
+| = 0 , then C′ 
+
+> v
+
+must include all capacity constraints adjacent to vertex v. However, in this case constraints C′ 
+
+> v
+
+are linearly dependent with assignment constraints of edges Ev (edges adjacent to v), contradicting definition of C′ (see Figure 1 for illustration). Therefore, |F v 
+
+> 0
+
+| > 0. By summing assignment constraints of edges Ev, we get S(Fv 
+
+> 0
+
+) + S(Fv 
+
+> 1
+
+) = |Ev| ∈ Z. Note that S(Fv 
+
+> 1
+
+) = P 
+
+> (v,b )∈C ′
+> v
+
+cv,b ∈ Z, since cv,b ∈ Z,implying that S(Fv 
+
+> 0
+
+) is integer as well. Thus, the first part of the claim is established. Let us establish the second part of the claim. Note that if for at least one vertex v ∈ V , such that |F v| > 0, we have (v, p ) /∈ C ′
+
+> v
+
+, then |F v| ≥ S(Fv) + 2 |C ′
+
+> v
+
+| + 1 . Towards contradiction, assume that for any v ∈ V , such that |F v| > 0, we have (v, p ) ∈ C ′
+
+> v
+
+. Then, let us show that constraints from C′ are not linearly independent. Indeed, the sets of constraints {(v, p ) | v ∈ V1, |F v| > 0}
+
+and {(v, p ) | v ∈ V2, |F v| > 0} touch every variable xp,e exactly once. Therefore, the sum of the coefficient vectors of the first ones equals the sum of the second ones, exhibiting linear dependence. Thus, there is at least one vertex v for which the inequality is strict, finishing the proof of the claim. 9Block 1 
+
+v
+
+x1,e x1,e ′
+
+x1,e ′′ 
+
+Block 2 
+
+x2,e 
+
+x2,e ′′ 
+
+Block 3 
+
+x3,e ′
+
+x3,e ′′ 
+
+Block 1 
+
+v
+
+x1,e x1,e ′
+
+x1,e ′′ 
+
+Block 2 
+
+x2,e 
+
+x2,e ′′ 
+
+Block 3 
+
+x3,e ′
+
+x3,e ′′ 
+
+Figure 1: Illustration of the linear dependence between the assignment constraints and the capacity constraints adjacent to vertex v. In the top row, we have capacity constraints 
+
+x1,e + x1,e ′ + x1,e ′′ = cv, 1, x2,e + x2,e ′′ = cv, 2, and x3,e ′ + x3,e ′′ = cv, 3. In the bottom row, we have assignment constraints x1,e + x2,e = 1 , x1,e ′ + x3,e ′ = 1 , x1,e ′′ + x2,e ′′ + x3,e ′′ = 1 . Each variable oc-curs exactly once in capacity constraints and exactly once in assignment constraints, implying that the two families of constraints are linearly dependent. 
+
+Algorithm 1 Iterated rounding procedure 
+
+Require: A fractional solution zb,e ∈ [0 , 1] to the system (3.3)–(3.4) with integer capacities and a designated block p. Assignment and capacity constraints are indexed by edges E and a subset C ⊆ V × B of vertex-block pairs, respectively. 
+
+Ensure: An integer solution xb,e ∈ { 0, 1} satisfying (3.5). 
+
+1: Initialize xb,e ← zb,e 
+
+2: F ← { xb,e | e ∈ E, b ∈ B e} ▷ Set of current variables 
+
+3: while F̸ = ∅ do 
+
+4: if there is xb,e ∈ F with xb,e ∈ { 0, 1} then 
+
+5: F ← F \ { xb,e } ▷ Rule 1: Drop rounded variables 
+
+6: Be ← B e \ { b}
+
+7: if xb,e = 1 then 
+
+8: for v ∈ e with (v, b ) ∈ C do 
+
+9: cv,b ← cv,b − 1
+
+10: end for 
+
+11: E ← E \ { e}
+
+12: end if 
+
+13: else if there is (v, b ) ∈ C s.t. |F (v,b )| ≤ cv,b + 1 (if p̸ = b) or |F (v,b )| ≤ cv,b (if p = b) then 
+
+14: C ← C \ { (v, b )} ▷ Rule 2: Drop relaxed constraints 
+
+15: else 
+
+16: Ctight ← { (v, b ) ∈ C | S(F(v,b )) = cv,b }
+
+17: Define a(e) ∈ { 0, 1}F as indicator of variables present in the assignment constraint e ∈ E
+
+18: Define a(v,b ) ∈ { 0, 1}F as indicator of variables present in the capacity constraint (v, b ) ∈ C 
+
+19: Find 0̸ = y ∈ RF s.t. ⟨a(e), y ⟩ = 0 for all e ∈ E and ⟨a(v,b ), y ⟩ = 0 for all (v, b ) ∈ C tight 
+
+20: Choose t ∈ R such that x′ = x + ty ∈ [0 , 1] F and ⟨a(v,b ), x ′⟩ ≤ cv,b for all (v, b ) ∈ C , with the property that either x′ 
+
+> b,e
+
+∈ { 0, 1} for some variable or ⟨a(v,b ), x ′⟩ = cv,b for some (v, b ) /∈ C tight 
+
+21: x ← x + ty ▷ Rule 3: Slide along kernel 
+
+22: end if 
+
+23: end while 
+
+10 4 Coflow Scheduling without Release Dates 
+
+Fix deadlines C1 ≤ · · · ≤ Cn for which (LP I) is feasible. We first construct schedules by iterated rounding and then establish their approximation guarantee. 
+
+4.1 Scheduling via Iterated Rounding 
+
+For any positive integers λ, τ , we define a scheduling algorithm IRA τλ, which takes as input deadlines 
+
+C1, . . . , C n for which (LP I) is feasible and constructs a valid coflow schedule in three steps: 
+
+1. Deadline Rounding 
+
+The algorithm rounds each deadline Cj up to the smallest element of {λ + iτ : i ∈ Z≥0} that is at least Cj . Denoting the rounded deadline by Cj , we have 
+
+Cj = λ + τ max 
+
+
+
+0,
+
+ Cj − λτ
+
+ 
+
+. (4.1) 
+
+2. Block Formation and Iterated Rounding 
+
+Rounded deadlines may coincide. Let 0 < T 1 < · · · < T B be the distinct values of the rounded deadlines C1, . . . , C n. In other words, {T1, . . . , T B } = {C1, . . . , C n}. We set T0 = 0 , and form blocks (Tb−1, T b] for b ∈ [B]. Their lengths are integers, with T1 ≥ λ and Tb − Tb−1 ≥ τ for b ≥ 2.Since Cj ≥ Cj for all j, Lemma 3.2 ensures that (LP I) remains feasible for the rounded deadlines. We apply Theorem 4 with 
+
+B = [ B], Be = {b ∈ [B] : Tb ≤ Cj(e)}, C = V × [B],
+
+and 
+
+cv,b = Tb − Tb−1.
+
+Take a feasible solution of (LP I) for the rounded deadlines, discard its zero-length blocks, and index the remaining blocks by b ∈ [B]. Let zb,e be the resulting assignment. Then z satisfies (3.3)–(3.4) with the parameters above. Applying Theorem 4 with protected block p = 1 assigns every edge to one block b ∈ B e, while violating each vertex–block capacity by at most 1 for b̸ = 1 and not violating it for b = 1 .
+
+3. Scheduling via Kőnig’s Theorem 
+
+Finally, the algorithm applies Kőnig’s theorem (Lemma 2.1) to decompose the edges assigned to each block into matchings, forming a schedule for each block, and then concatenates these schedules for b = 1 , . . . , B .Write IRA τλ(Cj ) for the finishing time of Ej in this schedule. We will show that IRA τλ(Cj ) ≤
+
+Pλ,τ (Cj ) where 
+
+Pλ,τ (x) = λ + ( τ + 1) max 
+
+
+
+0,
+
+ x − λτ
+
+ 
+
+, x ≥ 1. (4.2) 
+
+Lemma 4.1. For deadlines C1, . . . , C n for which (LP I) is feasible and positive integers λ, τ , algo-rithm IRA τλ constructs in polynomial time a valid coflow schedule satisfying 
+
+IRA τλ(Cj ) ≤ Pλ,τ (Cj ) (j ∈ [n]) .
+
+Proof. By Theorem 4, the edge-to-block assignment obtained in Step 2 guarantees that the edges assigned to the first block have maximum degree at most T1, while for each block b ≥ 2, the maximum degree is at most Tb − Tb−1 + 1 .11 By Kőnig’s theorem (Lemma 2.1), the edges of each block graph can be partitioned into as many matchings as its maximum degree. This gives a valid schedule using at most T1 slots for the first block and Tb − Tb−1 + 1 slots for each block b ≥ 2.Fix j, and let q satisfy Tq = Cj . Every edge of Ej is scheduled within the first q blocks, and 
+
+Cj ≥ λ + ( q − 1) τ . Hence 
+
+IRA τλ(Cj ) ≤ Cj + q − 1 ≤ Cj + Cj − λτ = Pλ,τ (Cj ).
+
+Since B ≤ n, the block LP has polynomial size. Solving it, applying iterated rounding, and edge-coloring the block graphs all take polynomial time. We use the deadline-preprocessing trick of Rohwedder and Schnaars [20, Lemma 23] to obtain a variant KIRA τλ of IRA τλ. For the original fractionally feasible deadlines C1, . . . , C n, the edges 
+
+J = {e ∈ E : Cj(e) < 2} form a matching. Algorithm KIRA τλ schedules J in slot one and removes its coflows. It then applies IRA τλ to the remaining coflows, if any, with their unchanged deadlines, and shifts the resulting schedule by one slot. Write KIRA τλ(Cj ) for the finishing time of Ej in this schedule. Lemma 4.1 immediately yields the following guarantee. 
+
+Lemma 4.2. For deadlines C1, . . . , C n for which (LP I) is feasible and positive integers λ, τ , algo-rithm KIRA τλ constructs in polynomial time a valid coflow schedule satisfying 
+
+KIRA τλ(Cj ) ≤
+
+(
+
+1, Cj < 2,
+
+1 + Pλ,τ (Cj ), Cj ≥ 2, (j ∈ [n]) . (4.3) 
+
+4.2 Final Bound for Coflow Scheduling without Release Dates 
+
+Compute a single set of deadlines using Lemma 3.1. Run each of the six algorithms in Table 2 on these deadlines and return a schedule of minimum weighted completion cost. We use the weights 1 in the table to show that the performance of the best algorithm is bounded by the average performance. Table 2: The six algorithms (first row) and their weights (second row). 
+
+IRA 23 IRA 24 IRA 34 IRA 33 KIRA 24 KIRA 35
+
+3/21 2/21 5/21 5/21 1/21 5/21 
+
+Proof of Theorem 1. Let σ1, . . . , σ 6 be the schedules produced by algorithms IRA and KIRA in table order. Let a1, . . . , a 6 be corresponding weights given by the table. Recall that C∗ 
+
+> j
+
+(σi) denotes the completion time of the j-th coflow in schedule σi. If schedule σi is chosen with probability ai, the expected completion time of coflow Ej is 
+
+Dj =
+
+> 6
+
+X
+
+> i=1
+
+aiC∗ 
+
+> j
+
+(σi).
+
+Claim 4.1. For every j ∈ [n], 21 Dj ≤ 29( Cj + 1) .
+
+> 1The parameter choices in Tables 2 and 3 were obtained by a computer search that enumerated candidate parameter combinations and compared the resulting approximation bounds. The guarantees for the selected combinations are proved analytically in Appendices A and B.
+
+12 The claim follows from Lemmas 4.1 and 4.2 and an explicit calculation, given in Appendix A. Let σ minimize cost among the six schedules. Since ai ≥ 0 and P6 
+
+> i=1
+
+ai = 1 , the minimum cost is at most the weighted average: 
+
+cost( σ) = min  
+
+> i∈[6]
+
+cost( σi) ≤
+
+> 6
+
+X
+
+> i=1
+
+ai cost( σi)= X
+
+> j∈[n]
+
+ωj Dj ≤ 29 21 
+
+X
+
+> j∈[n]
+
+ωj (Cj + 1) ≤ 58 21 OPT ,
+
+where the last inequality is guaranteed by (3.2). The deadline construction and all six scheduling algorithms take polynomial time. 
+
+# 5 Coflow Scheduling with Release Dates 
+
+In this section we prove 3.17 approximation for coflow scheduling with release dates. For this, we define three types of algorithms: SARA H , LARA L 
+
+> p
+
+, and KLARA L 
+
+> p
+
+. All three algorithms receive as an input a set of deadlines. To compute it, we use a result of [11], which is described in Section 5.1. All algorithms will also use list coloring lemmas, which are stated in Section 5.2. Finally, we define algorithms SARA in Section 5.3 and LARA together with KLARA in Section 5.4. In Section 5.5, we combine all these algorithms to obtain the desired 3.17 approximation. 
+
+5.1 Fractional Schedule with Release Dates 
+
+Let C1, . . . , C n be deadlines for coflows E1, . . . , E n, respectively. Set t0 = 0 , and let t1 < · · · < t k
+
+be the distinct positive release dates and deadlines, so that k ≤ 2n. We say that the deadlines are 
+
+fractionally feasible if the following linear program admits a solution xs,e ∈ [0 , 1] :
+
+X
+
+> s∈[k]
+
+xs,e = 1 ∀e ∈ E, (LP R.1) 
+
+X
+
+> e∈δ(v)
+
+xs,e ≤ ts − ts−1 ∀s ∈ [k], ∀v ∈ V, (LP R.2) 
+
+xs,e = 0 ∀e ∈ E, ∀s ∈ [k] : ts−1 < r e or ts > C e (LP R.3) 
+
+xs,e ≥ 0 ∀s ∈ [k], ∀e ∈ E. (LP R.4) Here xs,e is the fraction of the edge e assigned to the block (ts−1, t s]. Constraints (LP R.1) ensure that every edge of each coflow is fully scheduled, and (LP R.2) ensure that the fractional degree of each vertex in every block does not exceed the block size ts − ts−1. Constraints (LP R.3) forbid edge scheduling before the coflow’s release date or after its deadline. The deadline construction of Im, Moseley, Pruhs, and Purohit [11] also applies with release dates. We use its deterministic, real-deadline form described by Rohwedder and Schnaars [19, Section 5]. 
+
+Lemma 5.1 (Im–Moseley–Pruhs–Purohit [11]) . In deterministic polynomial time one can compute deadlines Cj ≥ rj + 1 for which (LP R) is feasible and 
+
+X
+
+> j∈[n]
+
+ωj (Cj + 1) ≤ 2 OPT . (5.2) Every valid schedule satisfies C∗ 
+
+> j
+
+≥ rj + 1 , so 
+
+X
+
+> j∈[n]
+
+ωj (rj + 1) ≤ OPT . (5.3) 13 5.2 List Coloring Lemmas 
+
+In this section we describe list-coloring algorithms that we will later use as a subroutine in algorithms 
+
+SARA H , LARA L 
+
+> p
+
+and KLARA L 
+
+> p
+
+. A list edge coloring assigns each edge e a color in a specified finite set Le, with incident edges receiving different colors. We use the following rank-based formulation. Its proof follows the stable-matching method of Galvin [10] and the related list-coloring arguments of Borodin, Kostochka, and Woodall [5]. 
+
+Lemma 5.2 (List Coloring) . Let G = ( V, E ) be a bipartite multigraph and let bijection rv : δG(v) →
+
+[deg G(v)] specify an ordering of edges incident to vertex v. Suppose every edge e = {u, v } ∈ E has a finite color list satisfying 
+
+|Le| ≥ ru(e) + rv(e) − 1. (5.4) 
+
+Then G admits a proper edge coloring with col( e) ∈ Le for all e ∈ E. Such a coloring can be found in polynomial time. Proof. We argue by induction on the number of edges. The case E = ∅ is trivial. Fix some color c
+
+that occurs in at least one list, and denote by Ec ⊆ E the subset of edges that have this color in the list. For each vertex v, rv defines a preferences order: e ≻v e′ iff rv(e) < r v(e′). We apply Theorem 3 to graph (V, E c) to find a stable matching F ⊆ Ec. Note that F̸ = ∅ because Ec̸ = ∅. We color each edge in F by c and consider the remaining set of edges E \ F . For v ∈ V and e ∈ δG(v) \ F ,define r′
+
+> v
+
+(e) = |{ e′ ∈ E \ F | rv(e′) < r v(e), e ′ ∈ δG(v)}| + 1 as a new rank function for the graph where we deleted edges F .
+
+Claim 5.1. For any e ∈ E \ F, e = {u, v }, we have |Le \ { c}| ≥ r′
+
+> u
+
+(e) + r′
+
+> v
+
+(e) − 1.
+
+Note that if the claim is true, then we can just proceed by induction on the graph (V, E \F ). Let us prove the claim. Consider an edge e ∈ E \F . If c / ∈ Le, then Le \{ c} = Le and so the bound holds. If c ∈ Le, then e has not been chosen in the stable matching, implying that there is an edge e′ ∈ F ,such that either ru(e′) < r u(e) or rv(e′) < r v(e). Both cases imply r′
+
+> u
+
+(e) + r′
+
+> v
+
+(e) < r u(e) + rv(e),proving the claim. Finally, note that the algorithm works in polynomial time because stable matching can be computed in polynomial time and after each step we reduce the number of edges at least by 1.We use the following consequence of Lemma 5.2, which is Galvin’s list edge-coloring theorem. It also follows from the stronger local bound in [5, Theorem 3]. 
+
+Corollary 5.1 (Galvin [10]) . Let G = ( V, E ) be a bipartite multigraph with maximum degree ∆.Suppose for each edge, there is a list Le of size at least ∆. Then G admits a proper edge coloring with col( e) ∈ Le for all e ∈ E. Such a coloring can be found in polynomial time. Proof. By Lemma 2.1, we can partition edges of G into ∆ matchings: E = E1 ⊔ . . . ⊔ E∆. For an edge e ∈ E, let pe be the matching in which it lies e ∈ Epe . Let V = V1 ⊔ V2 be the parts of 
+
+G. For a vertex v ∈ V , order incident edges δG(v) to it by an increasing value of pe if v ∈ V1 and by decreasing value of pe if v ∈ V2. Let e1, . . . , e k be the obtained order. Define ranks by setting 
+
+ρv(ei) = i.Let us show that the condition of Lemma 5.2 is satisfied. Let e ∈ E, e = {u, v }, u ∈ V1, v ∈ V2
+
+be an edge. At most pe − 1 edges are before the edge e in the order for vertex u. Similarly, at most 
+
+∆ − pe edges are before e in the order for vertex v. Therefore, ρu(e) ≤ pe and ρv(e) ≤ ∆ − pe + 1 ,implying that ρu(e) + ρv(e) − 1 ≤ ∆. Therefore, the desired coloring exists and can be found in polynomial time. 14 5.3 Scheduling via Rank Assignment 
+
+In this section we define the scheduling algorithm SARA H . This algorithm also receives as an input deadlines C1 ≤ . . . ≤ Cn, such that LP R is fractionally feasible for them, after relabeling coflows. First, the algorithm constructs ranks that satisfy the following guarantees. 
+
+Lemma 5.3. Let G = ( V1 ⊔ V2, E ) be a bipartite multigraph. Suppose for each e ∈ E, there is a deadline Ce ≥ 0, such that the following holds. For any v ∈ V1 ⊔ V2 and t ≥ 0, there is at most 
+
+⌊t⌋ edges e ∈ E, such that v ∈ e and Ce < t . Then, for every integer H ≥ 1, one can construct in polynomial time bijective ranks ρv : δG(v) → [deg G(v)] , such that for any edge e = {u, v }, it holds 
+
+ρu(e) + ρv(e) − 1 ≤
+
+(
+
+H, Ce < H + 1 ,
+
+2⌊Ce⌋ − 1 Ce ≥ H + 1 . (5.5) 
+
+Proof. Denote V = V1 ⊔ V2. Let E′ = {e ∈ E | Ce < H + 1 } be the set of edges with deadline before H + 1 . Note that each vertex is incident to at most H edges from E′. By Lemma 2.1, we can partition them into at most H matchings: E′ = E1 ⊔ . . . ⊔ EH . For an edge e ∈ E′, let pe denote the matching to which it belongs e ∈ Epe . For a vertex v ∈ V , let us order all edges incident to it: 
+
+e1, e 2, . . . , e k as follows. (1) Edges with Ce < H + 1 precede all edges with Ce ≥ H + 1 . (2) Edges with Ce ≥ H + 1 are ordered by an increasing value of Ce. (3) Edges with Ce < H + 1 are ordered by an increasing value of pe if v ∈ V1 and by a decreasing value of pe if v ∈ V2. Define ρv(e) as the index of e in this order. Let us show that the constructed ranks ρv satisfy the conditions of the lemma. Let e ∈ E′, e = {u, v }, where u ∈ V1, v ∈ V2. Then, the index ρu(e) of e in the order for vertex 
+
+u is at most pe, while the index ρv(e) of e in the order for vertex v is at most H − pe + 1 . So, 
+
+ρu(e) + ρv(e) − 1 ≤ H, satisfying the condition. Now consider the case e ∈ E \ E′. In this case there are at most ⌊Ce⌋ − 1 edges that precede e
+
+both in the order for v and u. Therefore, the sum ρv(e) + ρu(e) is at most 2⌊Ce⌋.Finally, note that König and computing orders for each vertex can be done in polynomial time. Recall that for an edge e ∈ E, we set Ce as a deadline of its coflow. Since the deadlines 
+
+C1, . . . , C n are fractionally feasible, for any vertex v and t ≥ 0, at most ⌊t⌋ edges e ∈ E are incident to it such that Ce < t , because we cannot schedule more than ⌊t⌋ edges in a time window of length less than t. Therefore, the conditions of Lemma 5.3 are satisfied. SARA H computes ranks ρv given by Lemma 5.3. Then, SARA H defines Le = {re + 1 , r e + 2 , . . . , r e + ρu(e) + ρv(e) − 1} as a list of possible colors for an edge e ∈ E, e = {u, v }. It then applies Lemma 5.2 to lists Le to get a coloring c : E → N with a guarantee that c(e) ∈ Le. The algorithm assigns edge e to slot c(e).By construction, this is a valid schedule since every vertex is incident to at most one edge of a given color. Let SARA H (Cj , r j ) denote the finishing time of coflow Ej . Let us formally state the guarantee that the algorithm has: 
+
+Lemma 5.4. For deadlines C1 ≤ . . . ≤ Cn for which (LP R) is feasible and any integer H ≥ 1,algorithm SARA H constructs in deterministic polynomial time a valid schedule satisfying, for every 
+
+j ∈ [n],
+
+SARA H (Cj , r j ) ≤ rj +
+
+(
+
+H, Cj < H + 1 ,
+
+2 ⌊Cj ⌋ − 1, Cj ≥ H + 1 . (5.6) 
+
+Proof. The lists satisfy Lemma 5.2, and every listed slot is after the edge’s release date. The bound follows from (5.5). 15 Each list has at most 2|E| − 1 slots because the ranks are positions among incident edges. Thus the total list size is O(|E|2). Matching search in Lemma 5.2 works in polynomial time. Therefore, the whole procedure is polynomial. 
+
+5.4 Scheduling Algorithms LARA and KLARA 
+
+Algorithms LARA L 
+
+> p
+
+and KLARA L 
+
+> p
+
+take a coflow instance with integer release dates, fractionally feasible deadlines C1 ≤ · · · ≤ Cn and two additional parameters: a positive integer p, and a nonempty list L = ( l1, . . . , l s) of positive integers. Let x be a feasible solution of (LP R), with LP boundaries 0 = t0 < t 1 < · · · < t k. The last entry of L repeats: set ℓb = lmin {b,s } for every b ≥ 1.
+
+1. Blocks and Fractional Assignment. Set T0 = 0 and Tb = Pbh=1 ℓh. Choose the smallest 
+
+B ≥ max {p, s } with TB > C n, and form blocks (T0, T 1] ⊔ (T1, T 2] ⊔ . . . ⊔ (TB−1, T B ]. One feasible fractional assignment to these blocks is 
+
+zb,e =
+
+> k
+
+X
+
+> s=1
+
+|(ts−1, t s] ∩ (Tb−1, T b]||(ts−1, t s]| xs,e , b ∈ [B], e ∈ E. (5.7) Intuitively, zb,e denotes a fraction of the edge that is scheduled in block b according to the fractional schedule xs,e . A slightly relaxed version of condition LP R.3 holds for zb,e :
+
+Claim 5.2. For every e ∈ E and b ∈ [B],
+
+zb,e = 0 if Tb ≤ re or Tb−1 ≥ Ce.
+
+Proof. In either case, the block (Tb−1, T b] has no positive-length intersection with the processing window (re, C e].
+
+2. Rounding. Next, we round the fractional schedule zb,e . We apply Theorem 4 with 
+
+B = [ B], C = V × [B], cv,b = Tb − Tb−1,
+
+and 
+
+Be = {b ∈ [B] : re < T b and Tb−1 < C e}. (5.8) Note that Be is defined as a subset of blocks having non-empty intersection with (re, C e]. The assignment z satisfies (3.3)–(3.4). Applying Theorem 4 with protected block p assigns every edge to one block b ∈ B e, while violating each vertex–block capacity by at most one for b̸ = p and not violating it for b = p. Let Fb ⊆ E be the edges assigned to block b. Then 
+
+∆( Fb) ≤ db, db = ℓb + 1 − 1{b=p}. (5.9) 
+
+3. Scheduling via List Edge Coloring. 
+
+Let us process blocks b = 1 , . . . , B in order. Sb will upper bound the maximum finishing time of an edge in block b. Initially, S0 = 0 . For every edge e ∈ Fb, form the list 
+
+Le = {max {Sb−1, r e} + 1 , . . . , max {Sb−1, r e} + db}. (5.10) The subgraph (V, F b) has degree at most db. Therefore, we can apply Corollary 5.1 to properly color the edges of Fb from these lists, and schedule each edge in the slot given by its color. Therefore, the upper bound for block b can be set as 
+
+Sb = max {Sb−1, T b − 1} + db, (5.11) 16 since edges e ∈ Fb satisfy re < T b by (5.8), and both re and Tb are integers. Write LARA L 
+
+> p
+
+(Cj , r j ) for the finishing time of Ej in this schedule. We have the following bound on the schedule: 
+
+KLARA Algorithm. 
+
+Using the same preprocessing as KIRA , we define a variant KLARA of LARA . KLARA will act as LARA but with one more phase in the beginning. It takes edges J = {e ∈ E : Cj(e) < 2} with deadline less than 2 and schedules them in the first slot. J forms a matching because otherwise it is impossible to schedule two edges sharing a vertex in window of size less than 2, even fractionally. Note also any edge e ∈ J should have release date re = 0 because re + 1 ≤ Ce < 2 and re is integer. 
+
+KLARA schedules J in slot one and removes its coflows. After that, it executes steps 1, 2, 3 on the remaining instance. Note that we have the same guarantees as for LARA , since the removed part J
+
+only simplifies the problem. In the third step, we initialize S0 = 1 instead of S0 = 0 , since the first slot is already engaged. Write KLARA L 
+
+> p
+
+(Cj , r j ) for the resulting finishing time of Ej .Let us state the final guarantees that we have on the finishing time for LARA and KLARA :
+
+Lemma 5.5. Let C1 ≤ . . . ≤ Cn be deadlines for which LP R is feasible after relabeling the coflows. For a sequence of natural numbers L = ( ℓ1, . . . , ℓ b) and a natural number p, define 
+
+Tb = Tb−1 + ℓb, db = ℓb + 1 − 1b=p, Sqb = max {Sqb−1, T b − 1} + db
+
+with T0 = 0 and Sq 
+
+> 0
+
+= q for q ∈ { 0, 1}.Let b ∈ [B] be such that Cj ∈ (Tb−1, T b]. Then, 
+
+LARA L 
+
+> p
+
+(Cj , r j ) ≤ max {S0
+
+> b−1
+
+, r j } + db, (5.12) 
+
+and 
+
+KLARA L 
+
+> p
+
+(Cj , r j ) ≤
+
+(
+
+1, Cj < 2,
+
+max {S1
+
+> b−1
+
+, r j } + db, Cj ≥ 2. (5.13) 
+
+Proof. Let e ∈ Ej be an edge. By Claim 5.2, this edge lies in block b or an earlier one. Therefore, it is scheduled by max {S0
+
+> b−1
+
+, r j } + db for LARA and by max {S1
+
+> b−1
+
+, r j } + db for KLARA . Moreover, if Cj < 2, it is scheduled in the first slot in case of KLARA .Finally, let us remark that both algorithms can be implemented in polynomial time. Note that the only issue is that release dates can take exponentially large values. Assume we have a release date rj , such that for any other release date ri < r j , it holds that 
+
+ri + |E| < r j . Then, without loss of generality we may assume that for release dates ri < r j all edges are scheduled before rj . If it does not hold, then we can take an edge that is scheduled after rj and move it to an earlier slot (there should be a free slot since we have at most |E| edges). Therefore, our instance partitions into two independent instances: with release dates < r j and with release dates ≥ rj . So, w.l.o.g. we can assume that |rj − ri| ≤ n · (|E| + 1) .The slots before the minimal release date min ni=1 ri are not used. Thus, we can only consider slots after min ni=1 ri. There are polynomially many of them, implying that the whole algorithm can be implemented in polynomial time. 
+
+5.5 Final Bound for Coflow Scheduling with Release Dates 
+
+The final procedure works as follows. We compute deadlines using Lemma 5.1 and relabel the coflows so that C1 ≤ · · · ≤ Cn. We then run each of the seven algorithms in Table 3 on these deadlines and return a schedule of minimum weighted completion cost. The weights in the table are used only to bound the minimum cost by the weighted average. 17 Table 3: The seven scheduling algorithms: indices i (first row), algorithms (second row), and analysis weights ai (third row). The last entry of each block-length tuple L of LARA L 
+
+> p
+
+and KLARA L 
+
+> p
+
+repeats indefinitely. 
+
+1 2 3 4 5 6 7
+
+SARA 3 SARA 4 SARA 5 LARA (1 ,2) 2 LARA (1 ,3,2) 2 LARA (1 ,2,2,1) 2 KLARA (2) 1
+
+16 /575 2/575 3/575 258 /575 74 /575 42 /575 180 /575 
+
+Proof of Theorem 2. Let σi be the schedule produced by the algorithm in column i of Table 3, with corresponding weight ai. If schedule σi is chosen with probability ai, the expected completion time of coflow Ej is 
+
+Dj =
+
+> 7
+
+X
+
+> i=1
+
+aiC∗ 
+
+> j
+
+(σi).
+
+We have the following bound. 
+
+Claim 5.3. For every j ∈ [n], 575 Dj ≤ 900( Cj + 1) + 21( rj + 1) .
+
+The claim follows from Lemma 5.4, (5.12), (5.13), and the parameters in Table 3. Its proof is given in Appendix B. Let σ be the schedule returned. Since ai ≥ 0 and P7 
+
+> i=1
+
+ai = 1 , we obtain 
+
+cost( σ) = min  
+
+> i∈[7]
+
+cost( σi) ≤
+
+> 7
+
+X
+
+> i=1
+
+ai cost( σi)= X
+
+> j∈[n]
+
+ωj Dj
+
+≤ 900 575 
+
+X
+
+> j∈[n]
+
+ωj (Cj + 1) + 21 575 
+
+X
+
+> j∈[n]
+
+ωj (rj + 1) 
+
+≤
+
+
+
+2 · 900 575 + 21 575 
+
+
+
+OPT = 1821 575 OPT ,
+
+where the last inequality follows from (5.2) and (5.3). The deadline construction, all seven scheduling algorithms, and the final cost comparison take polynomial time. Fixed tie-breaking makes the procedure deterministic. 
+
+# References 
+
+[1] Saksham Agarwal, Shijin Rajakrishnan, Akshay Narayan, Rachit Agarwal, David Shmoys, and Amin Vahdat. 2018. Sincronia: Near-optimal network design for coflows. In Proceedings of the 2018 Conference of the ACM Special Interest Group on Data Communication (SIGCOMM ’18) .Association for Computing Machinery, New York, NY, USA, 16–29. doi: 10.1145/3230543. 3230569 
+
+[2] Saba Ahmadi, Samir Khuller, Manish Purohit, and Sheng Yang. 2017. On Scheduling Coflows. In Integer Programming and Combinatorial Optimization (IPCO 2017) (Lecture Notes in Com-puter Science, Vol. 10328) , Friedrich Eisenbrand and Jochen Koenemann (Eds.). Springer In-ternational Publishing, Cham, Switzerland, 13–24. doi: 10.1007/978-3-319-59250-3_2 
+
+18 [3] Martin Aigner and Günter M. Ziegler. 2018. Proofs from THE BOOK (6th ed.). Springer, Berlin, Heidelberg. doi: 10.1007/978-3-662-57265-8 Chapter 38, “The Dinitz problem”, pp. 271–276. [4] József Beck and Tibor Fiala. 1981. “Integer-making” theorems. Discrete Applied Mathematics 
+
+3, 1 (1981), 1–8. doi: 10.1016/0166-218X(81)90022-6 
+
+[5] Oleg V. Borodin, Alexandr V. Kostochka, and Douglas R. Woodall. 1997. List Edge and List Total Colourings of Multigraphs. Journal of Combinatorial Theory, Series B 71, 2 (1997), 184–204. doi: 10.1006/jctb.1997.1780 
+
+[6] Mosharaf Chowdhury and Ion Stoica. 2012. Coflow: A networking abstraction for cluster applications. In Proceedings of the 11th ACM Workshop on Hot Topics in Networks (HotNets-XI) . Association for Computing Machinery, New York, NY, USA, 31–36. doi: 10.1145/2390231. 2390237 
+
+[7] Mosharaf Chowdhury, Yuan Zhong, and Ion Stoica. 2014. Efficient coflow scheduling with Varys. In Proceedings of the 2014 ACM Conference on SIGCOMM (SIGCOMM ’14) . Associa-tion for Computing Machinery, New York, NY, USA, 443–454. doi: 10.1145/2619239.2626315 
+
+[8] Takuro Fukunaga. 2022. Integrality Gap of Time-Indexed Linear Programming Relaxation for Coflow Scheduling. In Approximation, Randomization, and Combinatorial Optimization. Al-gorithms and Techniques (APPROX/RANDOM 2022) (Leibniz International Proceedings in Informatics (LIPIcs), Vol. 245) , Amit Chakrabarti and Chaitanya Swamy (Eds.). Schloss Dagstuhl – Leibniz-Zentrum für Informatik, Dagstuhl, Germany, 36:1–36:13. doi: 10.4230/ LIPIcs.APPROX/RANDOM.2022.36 
+
+[9] David Gale and Lloyd S. Shapley. 1962. College Admissions and the Stability of Marriage. The American Mathematical Monthly 69, 1 (1962), 9–15. doi: 10.2307/2312726 
+
+[10] Fred Galvin. 1995. The List Chromatic Index of a Bipartite Multigraph. Journal of Combina-torial Theory, Series B 63, 1 (1995), 153–158. doi: 10.1006/jctb.1995.1011 
+
+[11] Sungjin Im, Benjamin Moseley, Kirk Pruhs, and Manish Purohit. 2019. Matroid Coflow Scheduling. In 46th International Colloquium on Automata, Languages, and Programming (ICALP 2019) (Leibniz International Proceedings in Informatics (LIPIcs), Vol. 132) , Christel Baier, Ioannis Chatzigiannakis, Paola Flocchini, and Stefano Leonardi (Eds.). Schloss Dagstuhl – Leibniz-Zentrum für Informatik, Dagstuhl, Germany, 145:1–145:13. doi: 10.4230/LIPIcs. ICALP.2019.145 
+
+[12] Sungjin Im and Manish Purohit. 2018. A Tight Approximation for Co-flow Scheduling for Minimizing Total Weighted Completion Time. arXiv:1707.04331 [cs.DS] doi: 10.48550/arXiv. 1707.04331 Version 2. Includes an authors’ note identifying an error in the claimed approxi-mation guarantee. [13] Samir Khuller and Manish Purohit. 2016. Brief Announcement: Improved Approximation Algorithms for Scheduling Co-Flows. In Proceedings of the 28th ACM Symposium on Parallelism in Algorithms and Architectures (SPAA ’16) . Association for Computing Machinery, New York, NY, USA, 239–240. doi: 10.1145/2935764.2935809 
+
+[14] Dénes Kőnig. 1916. Über Graphen und ihre Anwendung auf Determinantentheorie und Men-genlehre. Math. Ann. 77 (1916), 453–465. doi: 10.1007/BF01456961 
+
+19 [15] Lap Chi Lau, R. Ravi, and Mohit Singh. 2011. Iterative Methods in Combinatorial Optimization .Cambridge University Press, Cambridge, UK. doi: 10.1017/CBO9780511977152 
+
+[16] Grzegorz Malewicz, Matthew H. Austern, Aart J. C. Bik, James C. Dehnert, Ilan Horn, Naty Leiser, and Grzegorz Czajkowski. 2010. Pregel: A System for Large-Scale Graph Processing. In Proceedings of the 2010 ACM SIGMOD International Conference on Management of Data .ACM, 135–146. doi: 10.1145/1807167.1807184 
+
+[17] Monaldo Mastrolilli, Maurice Queyranne, Andreas S. Schulz, Ola Svensson, and Nelson A. Uhan. 2010. Minimizing the Sum of Weighted Completion Times in a Concurrent Open Shop. 
+
+Operations Research Letters 38, 5 (2010), 390–395. doi: 10.1016/j.orl.2010.04.011 
+
+[18] Zhen Qiu, Cliff Stein, and Yuan Zhong. 2015. Minimizing the Total Weighted Completion Time of Coflows in Datacenter Networks. In Proceedings of the 27th ACM Symposium on Parallelism in Algorithms and Architectures (SPAA ’15) . Association for Computing Machinery, New York, NY, USA, 294–303. doi: 10.1145/2755573.2755592 
+
+[19] Lars Rohwedder and Leander Schnaars. 2025. 3.415-Approximation for Coflow Scheduling via Iterated Rounding. In 52nd International Colloquium on Automata, Languages, and Program-ming (ICALP 2025) (Leibniz International Proceedings in Informatics (LIPIcs), Vol. 334) ,Keren Censor-Hillel, Fabrizio Grandoni, Joël Ouaknine, and Gabriele Puppis (Eds.). Schloss Dagstuhl – Leibniz-Zentrum für Informatik, Dagstuhl, Germany, 128:1–128:19. doi: 10.4230/ LIPIcs.ICALP.2025.128 
+
+[20] Lars Rohwedder and Leander Schnaars. 2025. 3.415-Approximation for Coflow Scheduling via Iterated Rounding. arXiv:2502.21197 [cs.DS] doi: 10.48550/arXiv.2502.21197 Full version of the ICALP 2025 paper. [21] Lars Rohwedder and Leander Schnaars. 2026. Graph Scheduling with Group Completion Times. In 34th Annual European Symposium on Algorithms (ESA 2026) (Leibniz International Pro-ceedings in Informatics (LIPIcs), Vol. 388) , Philip Bille, Seth Pettie, and Sabine Storandt (Eds.). Schloss Dagstuhl – Leibniz-Zentrum für Informatik, Dagstuhl, Germany, 100:1–100:22. doi: 10.4230/LIPIcs.ESA.2026.100 
+
+[22] Sushant Sachdeva and Rishi Saket. 2013. Optimal Inapproximability for Scheduling Problems via Structural Hardness for Hypergraph Vertex Cover. In 2013 IEEE Conference on Computa-tional Complexity . IEEE, 219–229. doi: 10.1109/CCC.2013.30 
+
+[23] Mehrnoosh Shafiee and Javad Ghaderi. 2017. Scheduling Coflows in Datacenter Networks: Improved Bound for Total Weighted Completion Time. ACM SIGMETRICS Performance Evaluation Review 45, 1 (2017), 29–30. doi: 10.1145/3143314.3078548 SIGMETRICS 2017 extended abstract. [24] Mehrnoosh Shafiee and Javad Ghaderi. 2018. An Improved Bound for Minimizing the Total Weighted Completion Time of Coflows in Datacenters. IEEE/ACM Transactions on Networking 
+
+26, 4 (2018), 1674–1687. arXiv:1704.08357 [cs.DS] doi: 10.1109/TNET.2018.2845852 
+
+20 A Proof of the Completion-Time Bound 
+
+Proof of Claim 4.1. Fix j ∈ [n]. Recall that 
+
+Dj =
+
+> 6
+
+X
+
+> i=1
+
+aiC∗ 
+
+> j
+
+(σi), (a1, . . . , a 6) = 121 (3 , 2, 5, 5, 1, 5) .
+
+We apply Lemmas 4.1 and 4.2 and distinguish three cases. If 1 ≤ Cj < 2, the six completion-time bounds are 3, 4, 4, 3, 1, 1, respectively. Therefore, 
+
+21 Dj ≤ 3 · 3 + 2 · 4 + 5 · 4 + 5 · 3 + 1 + 5 = 58 ≤ 29( Cj + 1) .
+
+If Cj = 2 , the last two bounds become 5 and 6, while the first four remain unchanged. Hence 
+
+21 Dj ≤ 3 · 3 + 2 · 4 + 5 · 4 + 5 · 3 + 5 + 5 · 6 = 87 = 29( Cj + 1) .
+
+Suppose now that Cj > 2, and put m = ⌈Cj ⌉. The bounds for the six schedules give 
+
+21 Dj ≤ 3P3,2(Cj ) + 2 P4,2(Cj ) + 5 P4,3(Cj ) + 5 P3,3(Cj )+  1 + P4,2(Cj ) + 5  1 + P5,3(Cj )
+
+= 3  P3,2(Cj ) + P4,2(Cj )
+
++ 5  P3,3(Cj ) + P4,3(Cj ) + P5,3(Cj ) + 6 .
+
+The constant 6 = 1 + 5 accounts for the one-slot shifts in the two KIRA schedules. To evaluate the two sums, we use 
+
+> t−1
+
+X
+
+> h=0
+
+ z − ht
+
+
+
+= ⌈z⌉ (z ∈ R, t ∈ Z≥1).
+
+Indeed, writing ⌈z⌉ = qt + r with integers q, r and 0 ≤ r < t , the summands equal q + 1 for h < r 
+
+and q otherwise. Since Cj > 2, all ceiling terms in the five relevant P -functions are nonnegative, so the maxima with zero can be omitted. Applying the identity with z = Cj − 3 and t ∈ { 2, 3} yields 
+
+P3,2(Cj ) + P4,2(Cj ) = 7 + 3 
+
+> 1
+
+X
+
+> h=0
+
+ Cj − 3 − h
+
+2
+
+
+
+= 7 + 3( m − 3) = 3 m − 2,P3,3(Cj ) + P4,3(Cj ) + P5,3(Cj ) = 12 + 4 
+
+> 2
+
+X
+
+> h=0
+
+ Cj − 3 − h
+
+3
+
+
+
+= 12 + 4( m − 3) = 4 m. 
+
+Consequently, 
+
+21 Dj ≤ 3(3 m − 2) + 5(4 m) + 6 = 29 m ≤ 29( Cj + 1) ,
+
+which completes the proof. 21 B Proof of the Completion-Time Bound with Release Dates 
+
+Proof of Claim 5.3. Fix j ∈ [n] and put 
+
+m = ⌊Cj ⌋ ≥ 1, 0 ≤ rj ≤ m − 1, (B.1) where the latter inequality follows from Cj ≥ rj + 1 and the integrality of rj . Lemma 5.4 gives 
+
+C∗ 
+
+> j
+
+(σi) ≤ rj + hi+2 (m) (i ∈ { 1, 2, 3}),
+
+where, for k ∈ { 3, 4, 5},
+
+hk(m) = 
+
+(
+
+k, 1 ≤ m ≤ k, 
+
+2m − 1, m ≥ k + 1 .
+
+For i ∈ { 4, 5, 6, 7}, let Ui(m) be the bound listed for σi in Table 4. We first show that C∗ 
+
+> j
+
+(σi) ≤
+
+Ui(m).Table 4: Upper bounds Ui(m) on C∗ 
+
+> j
+
+(σi) for the four block schedules in Table 3, where m = ⌊Cj ⌋.Schedule m = 1 m = 2 m = 3 m ≥ 4
+
+σ4 4 4 7 1 + 3 ⌈m/ 2⌉
+
+σ5 5 5 5 3 + 3 ⌊m/ 2⌋
+
+σ6 4 4 7 2m − 1
+
+σ7 1 6 6 3 + 3 ⌊m/ 2⌋
+
+For each fixed schedule, Tb and db refer to its own block parameters. We write Sb = S0 
+
+> b
+
+for 
+
+σ4, σ 5, σ 6 and Sb = S1 
+
+> b
+
+for σ7. Substituting the initial block lengths into (5.11) and then applying induction gives 
+
+σ4 S1 = 2 , Sb = 3 b − 2 ( b ≥ 2) ,σ5 S1 = 2 , Sb = 3 b (b ≥ 2) ,σ6 S1 = 2 , S2 = 4 , Sb = 2 b + 1 ( b ≥ 3) ,σ7 S0 = 1 , Sb = 3 b (b ≥ 1) .
+
+(B.2) For σ7, the case m = 1 is handled by the initial matching, so U7(1) = 1 . In every other case, let k
+
+be the first index with Tk > m . Since the boundaries are integers, Tk−1 ≤ Cj < T k. If Cj = Tk−1,all edges of Ej finish by Sk−1; otherwise apply (5.12) for σ4, σ 5, σ 6, or (5.13) for σ7. Thus, in either case, 
+
+C∗ 
+
+> j
+
+(σi) ≤ max {Sk−1, r j } + dk.
+
+The indices below and (B.2) give Sk−1 ≥ m − 1 ≥ rj , so this bound reduces to Sk−1 + dk.For σ4, k = ⌈m/ 2⌉ + 1 . The bound is 4 for m = 1 , 2 and 3k − 2 = 1 + 3 ⌈m/ 2⌉ otherwise. For σ5,
+
+m = 1 , 2, 3 gives k = 2 and S1 + d2 = 2 + 3 = 5 . For m ≥ 4, k = ⌊m/ 2⌋ + 1 gives 3k = 3 + 3 ⌊m/ 2⌋.For σ6, m = 1 , 2, 3, 4 gives bounds 4, 4, 7, 7; for m ≥ 5, k = m − 1 gives 2k + 1 = 2 m − 1. For σ7
+
+and m ≥ 2, k = ⌊m/ 2⌋ + 1 gives 3k = 3 + 3 ⌊m/ 2⌋. This proves all bounds in Table 4, including at integral deadlines. Set 
+
+Q(m) = 16 h3(m) + 2 h4(m) + 3 h5(m)+ 258 U4(m) + 74 U5(m) + 42 U6(m) + 180 U7(m).
+
+22 We show that 
+
+Q(m) ≤ 900 m + 921 (m ≥ 1) . (B.3) For m = 1 , 2, 3, 4, 5, direct substitution gives 
+
+m 1 2 3 4 5
+
+Q(m) 1821 2721 3621 4521 5421 
+
+and hence Q(m) = 900 m + 921 in these cases. For m ≥ 6, all three h-functions equal 2m − 1.Writing εm = 0 for even m and εm = 1 for odd m, we obtain 
+
+Q(m) = 21(2 m − 1) + 258(1 + 3 ⌈m/ 2⌉)+ 254(3 + 3 ⌊m/ 2⌋) + 42(2 m − 1) = 894 m + 957 + 6 εm.
+
+Since m − εm ≥ 6 for every integer m ≥ 6,
+
+900 m + 921 − Q(m) = 6( m − 6 − εm) ≥ 0,
+
+proving (B.3). Finally, the weights in Table 3 give 
+
+575 Dj ≤ (16 + 2 + 3) rj + Q(m)
+
+≤ 21 rj + 900 m + 921 = 900( m + 1) + 21( rj + 1) 
+
+≤ 900( Cj + 1) + 21( rj + 1) .
+
+23

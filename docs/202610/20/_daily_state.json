@@ -1,0 +1,121 @@
+{
+  "date": "20261020",
+  "date_label": "",
+  "generated_at": "2026-10-20 22:48:45 UTC",
+  "recommend_exists": true,
+  "run_count": 1,
+  "papers": [
+    {
+      "paper_id": "2610.22890v1",
+      "route": "202610/20/2610.22890v1-mailrail-mitigating-incast-congestion-with-user-space-node-based-flow-control",
+      "title": "MailRail: Mitigating Incast Congestion with User-Space, Node-Based Flow Control",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 9.0,
+      "evidence": "面向大规模并行环境的用户态节点级信用流控缓解Incast拥塞",
+      "first_seen_at": "2026-10-20 22:48:45 UTC",
+      "updated_at": "2026-10-20 22:48:45 UTC"
+    },
+    {
+      "paper_id": "2610.24328v1",
+      "route": "202610/20/2610.24328v1-sigmatrace-library-agnostic-observability-for-cpugpu-initiated-rdma-communication",
+      "title": "SigmaTrace: Library-Agnostic Observability for CPU/GPU-Initiated RDMA Communication",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "面向CPU/GPU发起RDMA通信的细粒度剖析",
+      "first_seen_at": "2026-10-20 22:48:45 UTC",
+      "updated_at": "2026-10-20 22:48:45 UTC"
+    },
+    {
+      "paper_id": "2610.16068v1",
+      "route": "202610/20/2610.16068v1-improved-approximations-for-coflow-scheduling-via-iterated-rounding-and-stable-matchings",
+      "title": "Improved Approximations for Coflow Scheduling via Iterated Rounding and Stable Matchings",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "面向数据中心Coflow调度的改进近似算法",
+      "first_seen_at": "2026-10-20 22:48:45 UTC",
+      "updated_at": "2026-10-20 22:48:45 UTC"
+    },
+    {
+      "paper_id": "2610.16477v1",
+      "route": "202610/20/2610.16477v1-caliper-calibrating-hpcai-network-simulators",
+      "title": "CALIPER: Calibrating HPC/AI Network Simulators",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "面向集合通信HPC/AI网络仿真器的校准方法",
+      "first_seen_at": "2026-10-20 22:48:45 UTC",
+      "updated_at": "2026-10-20 22:48:45 UTC"
+    },
+    {
+      "paper_id": "2610.17901v1",
+      "route": "202610/20/2610.17901v1-flashmask-3-efficient-and-expressive-mask-aware-distributed-attention",
+      "title": "FlashMask-3: Efficient and Expressive Mask-Aware Distributed Attention",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "多节点上下文并行下零通信的掩码定位，服务分布式训练",
+      "first_seen_at": "2026-10-20 22:48:45 UTC",
+      "updated_at": "2026-10-20 22:48:45 UTC"
+    },
+    {
+      "paper_id": "2610.25058v1",
+      "route": "202610/20/2610.25058v1-triple-overlap-in-pipelined-krylov-methods-on-multi-gpu-systems",
+      "title": "Triple Overlap in Pipelined Krylov Methods on Multi-GPU Systems",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "在多GPU系统上通过集合通信库重叠集合通信、点对点通信与计算内核",
+      "first_seen_at": "2026-10-20 22:48:45 UTC",
+      "updated_at": "2026-10-20 22:48:45 UTC"
+    },
+    {
+      "paper_id": "2610.25173v1",
+      "route": "202610/20/2610.25173v1-an-information-geometric-framework-for-ocs-reconfigurable-interconnect-topology-in-large-scale-ai-clusters",
+      "title": "An Information-Geometric Framework for OCS-Reconfigurable Interconnect Topology in Large-Scale AI Clusters",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "面向大规模 AI 集群的 OCS 可重构互连拓扑",
+      "first_seen_at": "2026-10-20 22:48:45 UTC",
+      "updated_at": "2026-10-20 22:48:45 UTC"
+    }
+  ]
+}
