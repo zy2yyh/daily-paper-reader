@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "extractor": "pymupdf-images",
+  "figures": [
+    {
+      "url": "assets/figures/osdi-2026-usenix/osdi-2026-the-abstention-protocol-rca-for-clos-fabrics/fig-001.webp",
+      "caption": "",
+      "page": 2,
+      "index": 1,
+      "width": 1314,
+      "height": 1074
+    }
+  ]
+}
