@@ -1,0 +1,853 @@
+Title: Balancing Generality and Specialization: A Survey on AI Datacenter Hardware Architecture
+
+URL Source: https://arxiv.org/pdf/2609.26829v1
+
+Published Time: Thu, 24 Sep 2026 00:02:22 GMT
+
+Number of Pages: 34
+
+Markdown Content:
+# Balancing Generality and Specialization: A Survey on AI Datacenter Hardware Architecture 
+
+YUFENG GU, University of Michigan, USA 
+
+JIAZHEN WANG, University of Michigan, USA 
+
+REETUPARNA DAS, University of Michigan, USA Rapidly growing AI workloads are driving large investments in AI datacenters. This survey classifies industrial AI accelerators into four architectural categories and compares their compute and memory organizations. It examines how node-, rack-, and pod-scale interconnects support collective communication, and traces architectural evolution across accelerator generations. The analysis connects advances in arithmetic throughput with changes in precision, data delivery, execution coordination, communication, power delivery, and cooling. It also discusses future design challenges arising from workload diversity, data movement, infrastructure constraints, and model evolution, showing how the trade-off between generality and specialization extends from individual accelerators to datacenter-scale systems. GitHub: github.com/Yufeng98/AI-datacenter Additional Key Words and Phrases: AI datacenters, AI accelerators, hardware specialization, memory hierarchy, scale-up interconnects, collective communication 
+
+1 Introduction 
+
+AI workloads execute on systems ranging from individual accelerators to datacenter-scale de-ployments. Large models may distribute both computation and model state across many devices, making execution dependent not only on the resources within each accelerator but also on the communication and system infrastructure that connects and supports them. Figure 1 illustrates this physical hierarchy, spanning servers, racks, pods, and datacenters. At the server level, accelerators are integrated with local communication resources; racks and pods aggregate these servers into progressively larger systems, while datacenter infrastructure provides power delivery and thermal management. These physical levels, however, do not impose rigid communication boundaries, as scale-up fabrics may span multiple servers, racks, or even an entire pod. Large-model execution therefore engages every level of the hierarchy: computation and model state are distributed across devices, partitions exchange data over the interconnect fabrics, and facility-level power and cooling constrain how much of the installed hardware can operate concurrently. Examining these levels together is increasingly important because the growth of AI model size can exceed the scaling of individual hardware resources. Across the selected observations in Figure 2, total model parameter counts grow at an endpoint annualized rate of approximately 248% per year, compared with 67% for per-accelerator dense compute, 47% and 42% for HBM bandwidth and capacity, and 30% for scale-up interconnect bandwidth. Much of the growth in compute throughput is enabled by specialized arithmetic, including matrix engines and tensor cores, whereas memory and communication capabilities have scaled more slowly. Performance constraints therefore extend beyond arithmetic units to the broader hierarchy in Figure 1. This survey therefore examines industrial AI datacenter architectures across this hierarchy, with particular emphasis on how specialization and generality are balanced across accelerator architectures, interconnect technologies, and successive hardware generations. Industrial AI accelerators address these increasing demands through several distinct organi-zations. Table 1 groups representative accelerator families into four categories. GPUs combine  
+
+> Authors’ Contact Information: Yufeng Gu, University of Michigan, Ann Arbor, Michigan, USA, yufenggu@umich.edu; Jiazhen Wang, University of Michigan, Ann Arbor, Michigan, USA, linusw@umich.edu; Reetuparna Das, University of Michigan, Ann Arbor, Michigan, USA, reetudas@umich.edu. arXiv:2609.26829v1 [cs.AR] 21 Sep 2026 2Yufeng Gu, Jiazhen Wang, and Reetuparna Das Top of Rack Switch (ToR)
+
+Rack     
+
+> Leaf Leaf Leaf Leaf
+> Spine Spine
+
+Pod  Server 
+
+> Host
+> NIC
+> NIC
+> NIC
+> NIC
+> NIC
+> NIC
+> NIC
+> NIC
+> Scale-up Interconnect
+> Scale-out Interconnect
+
+Datacenter 
+
+> Power plants
+> Power grids
+> Power distribution units (PDU)
+> Pod Pod Pod Pod
+
+Fig. 1. Architecture of datacenter, pod, rack and server. 
+
+single-instruction, multiple-thread (SIMT) execution with dedicated tensor cores or matrix units. Neural processing units (NPUs) typically integrate matrix engines with vector, scalar, or other programmable execution units and explicitly managed local storage. Spatial dataflow architectures distribute computation and data across interconnected compute and memory resources, while compute-in-memory architectures place arithmetic units within or adjacent to memory arrays. These categories capture the dominant organization of execution and data movement rather than four uniform implementations. 
+
+Table 1. High-level taxonomy of AI accelerator architectures. 
+
+Category Computer Architecture Representative Platforms GPU General-purpose SIMT architecture with dedicated tensor/matrix units NVIDIA GPU [36], AMD GPU [117] 
+
+NPU Heterogeneous domain-specific architecture combining matrix, vector, and scalar engines around a shared on-chip scratchpad Google TPU [69], AWS Trainium/Inferentia [22, 26], Qualcomm Cloud AI series [34], Huawei Ascend [128], Intel Gaudi [70], Microsoft Maia [130], Cambricon MLU [33] 
+
+Spatial Dataflow 
+
+Computation graph mapped onto distributed compute, memory, and communication resources; three styles: PE array, reconfigurable architecture, and functional-slice streaming processor 
+
+PE array: Tenstorrent [126], Meta MTIA [42], Tesla Dojo [122], Graphcore IPU [68], Cerebras [80]; 
+
+Reconfigurable: SambaNova [106]; 
+
+Functional-slice: Groq [2] 
+
+Compute-in-Memory 
+
+Memory-centric architecture that integrates compute logic in or near SRAM or DRAM modules to reduce data movement d-Matrix [119], SK hynix AiM [75], Samsung PIM [71] 
+
+Designs within the same category can differ in supported operations, memory organization, and the balance between specialized and general-purpose resources. For example, GPUs retain general-purpose SIMT cores alongside dedicated matrix units, while NPUs such as Google TPUs and AWS NeuronCore combine specialized matrix engines with vector, scalar, or SIMD execution capabili-ties [23, 36, 69, 117]. Memory systems can exhibit a similar mixture, combining hardware-managed Balancing Generality and Specialization in AI Datacenters 3
+
+mechanisms with software-managed storage for explicit data reuse. Thus, the key distinction is not simply the accelerator label, but which computations and data movements receive dedicated hardware support and which remain under more general-purpose hardware or software control. Table 1 provides an entry point to the detailed comparison in Section 3, where these differences in compute engines and memory hierarchies are examined in greater detail. At system scale, communication introduces architectural choices beyond the accelerator itself. Scale-up fabrics tightly couple groups of accelerators, whereas scale-out networks connect these groups across a broader cluster. The performance of distributed workloads depends not only on the physical network but also on how communication is scheduled over it. For example, an AllReduce operation specifies that participating devices combine their inputs and receive the reduced result, but it does not prescribe a particular ring- or tree-based schedule. Different schedules exercise the available paths differently, and their costs depend on factors such as message size, group size, and network topology [97, 124]. Relating collective algorithms to node-, rack-, and pod-scale fabrics therefore helps explain why the same operation may encounter different communication bottlenecks across system configurations. Examining accelerator families across successive generations provides an additional perspective on architectural evolution. Changes in numerical formats or peak throughput capture only part of how one generation differs from the next. NVIDIA’s Tensor Core evolution, for example, in-cludes redesigned operand-delivery mechanisms and tighter coordination among execution units, enabling greater overlap between data movement and computation and supporting larger matrix operations [81, 121]. This generational view complements the architectural taxonomy by distin-guishing features that persist within an accelerator family from those that change across releases. Accordingly, this survey traces the evolution of NVIDIA and AMD GPUs, Google TPUs, and AWS Neuron accelerators, including a detailed case study of NVIDIA’s Tensor Core data path and control flow. The analysis considers not only advances in arithmetic capability but also accompanying changes in memory systems, communication infrastructure, and cooling requirements. Together, these three perspectives motivate the challenges discussed in Section 6. Specialized hardware can execute target workloads efficiently but may be difficult to repurpose as demand shifts. Meanwhile, memory capacity, communication latency, power delivery, and cooling can constrain performance independently of workload evolution. These challenges highlight the tension between specialization and adaptability and the difficulty of supporting evolving algorithms within existing infrastructure. This survey makes four main contributions: (1) We organize representative industrial accelerator families into a four-category taxonomy and compare their compute engines and memory organizations, providing a common framework for understanding how different designs execute operations and manage data. (2) We analyze node-, rack-, and pod-scale interconnect topologies together with collective communication algorithms, showing how communication schedules exploit physical connec-tivity and how their efficiency depends on workload characteristics and fabric organization. (3) We trace architectural evolution across accelerator generations, showing how increases in arithmetic throughput are accompanied by changes in precision, data delivery, execution coordination, communication, and deployment infrastructure. (4) We synthesize future design challenges arising from workload evolution, memory and communication constraints, power delivery and cooling, identifying implications for system flexibility and deployment longevity. Our investigation spans the broader industrial AI datacenter and accelerator landscape; the platforms analyzed in this survey are a representative selection from that study. We provide 4 Yufeng Gu, Jiazhen Wang, and Reetuparna Das 
+
+detailed comparisons of major platforms with sufficient public architectural information. The broader research corpus is publicly available at https://github.com/Yufeng98/AI-datacenter. Section 2 introduces the workload and infrastructure background and positions this survey relative to prior work. Sections 3–5 present the accelerator taxonomy, scale-up interconnect analysis, and generational case studies, respectively. Section 6 discusses future design challenges, and Section 7 concludes the survey. 
+
+2 Background and Related Works 
+
+The scaling of modern AI workloads has shifted architectural design from individual processors toward the datacenter as a whole. Section 2.1 introduces energy demand, Section 2.2 examines compute, memory, and communication scaling, and Section 2.3 presents a timeline of accelerator disclosures. We then position this survey relative to prior work and state its scope and evidence conventions. 
+
+2.1 The Rise of Industrial-Scale AI Infrastructure 
+
+Recent advances in artificial intelligence have been driven not only by algorithmic innovation but also by an unprecedented expansion of compute infrastructure. Nearly 90% of notable AI models in 2024 originated from industry, up from 60% in 2023, and the training compute required by frontier models continues to double approximately every five months [120]. It is estimated that training compute for frontier language models has grown by approximately 5 × per year since 2020 [47]. As a result, progress in AI capability is increasingly coupled to the ability to provision and operate large-scale computing infrastructure rather than to improvements in single-processor performance alone. This growing compute demand has made energy a first-order architectural constraint. The International Energy Agency estimates that global datacenter electricity consumption reached approximately 415 TWh in 2024 and could more than double to about 945 TWh by 2030, with AI representing a major source of growth [64]. In the United States, Lawrence Berkeley National Laboratory reports that datacenters accounted for approximately 4.4% of total electricity consump-tion in 2023 and projects this share to rise to 6.7%–12% by 2028 [114]. These trends position AI datacenters not only as a computer-architecture challenge but also as an energy-infrastructure and deployment challenge, motivating the recurring emphasis in this survey on power delivery, cooling, and system-level resource constraints. 
+
+2.2 Why Specialization Is Necessary 
+
+Figure 2 compares selected model and hardware observations. Total model parameters have the largest endpoint annualized increase (248%/yr) [44, 85], followed by dense FP16/BF16 throughput (67%/yr), HBM bandwidth (47%/yr), HBM capacity (42%/yr), and the NVLink-only interconnect series (30%/yr). Thus, model scale is increasing faster than compute capability, while compute capability is improving faster than memory and communication resources, placing increasing pressure on the broader system stack. Independent analyses of the memory wall report a consistent high-level trend [50]. Accelerator architectures respond to these imbalances through coordinated advances in com-putation, memory, and communication. Specialized matrix engines and low-precision arithmetic improve the efficiency and throughput of common AI operations, while higher memory bandwidth and greater on-chip data reuse reduce the need to access external memory for every operand. High-bandwidth interconnects further enable model state and computation to be distributed across multiple accelerators, extending effective compute and memory resources beyond a single device. Because these mechanisms target different system bottlenecks, their relative emphasis varies across Balancing Generality and Specialization in AI Datacenters 52017 2019 2021 2023 2025 2026 Public disclosure year 10 0
+
+> 10 1
+> 10 2
+> 10 3
+> 10 4
+> Value / first observation
+> Model size: 248%/yr Dense FP16/BF16 compute: 67%/yr HBM bandwidth: 47%/yr HBM capacity: 42%/yr NVLink bandwidth: 30%/yr
+
+Fig. 2. Normalized scaling of representative frontier-model parameter count, per-accelerator dense FP16/BF16 compute, HBM bandwidth and capacity, and per-GPU bidirectional NVLink bandwidth. Each series is normalized to its first observation; legend percentages are endpoint annualized growth rates between the first and last observation of that series. Model points use total parameter counts rather than active parameters. 
+
+architectures, giving rise to the diverse accelerator designs introduced below and examined in Section 3. 
+
+2.3 A Decade of Datacenter AI Accelerators 
+
+Figure 3 traces selected accelerator generations from NVIDIA, AMD, Google, Amazon, Meta, and Microsoft. In parallel with continued GPU development, cloud and platform providers have introduced custom accelerators for the AI services they operate. Google publicly disclosed its TPU in 2016 [51], AWS announced Inferentia in 2018 [4], and Meta and Microsoft introduced MTIA and Maia, respectively, in 2023 [48, 83]. These accelerators reflect different optimization objectives. NVIDIA and AMD datacenter GPUs provide programmable platforms for a broad range of AI training and inference workloads, combin-ing specialized matrix computation with general-purpose parallel execution [91, 117]. By contrast, in-house accelerators from cloud and platform providers are often tailored to the models, service requirements, and cost constraints of their own deployments, including the distinct demands of training and inference. AWS introduced Inferentia to reduce inference cost while maintaining high throughput and low latency, followed by Trainium for model training [4, 29]. Google’s first TPU targeted inference, whereas TPU v2 and v3 extended the family to training [89]. More recently, TPU 8t has emphasized large-scale pre-training, while TPU 8i has targeted post-training and latency-sensitive serving [52]. The workloads shaping these designs also evolve across generations. Meta’s MTIA 100 and 200 focused on ranking and recommendation inference [42, 48]; MTIA 300 extends this focus to 6 Yufeng Gu, Jiazhen Wang, and Reetuparna Das 2016  2017  2018  2019  2020  2021  2022  2023  2024  2025  2026                   
+
+> P100 V100 A100 H100 B300 Rubin
+> MI50 MI100 MI200 MI300X MI355X MI400
+> TPU v1 TPU v2 TPU v3 TPU v4 TPU v5p/v5e
+> TPU v6e
+> TPU v7
+> TPU 8t/8i
+> Inferentia Trainium Inferentia2
+> Trainium2
+> Trainium3
+> Maia 100 Maia 200
+> MTIA 100 MTIA 200
+> MTIA 300/400
+> Year
+
+Fig. 3. Selected AI accelerators disclosed from 2016 to 2026. 
+
+recommendation training, while MTIA 400 broadens support to generative AI while retaining recommendation workloads [118]. Microsoft’s Maia family followed a different trajectory: Maia 100 was introduced for cloud AI training and inference, including OpenAI models and Copilot, whereas Maia 200 more explicitly targets the cost of token generation during inference [61, 83]. Section 3 compares the architectural approaches used to serve these different objectives, while Section 5 examines how those designs change across successive generations. 
+
+2.4 Related Work 
+
+Several recent surveys cover overlapping ground. The Lincoln AI Computing Survey (LAICS) catalogs peak-performance and power-envelope data across edge and datacenter AI/ML accelera-tors [111]. Duan et al. survey efficient training infrastructure for large language models, focusing on parallelism strategies, scheduling, and fault tolerance for 10k-GPU-class clusters [46]. Li et al. examine LLM inference acceleration from a hardware perspective spanning CPU, GPU, FPGA, ASIC, and PIM/NDP [78]. Xu et al. provide the closest taxonomy-style survey of neural-network hard-ware, spanning GPUs, TPUs/NPUs, FPGAs, ASICs, in-/near-memory, and neuromorphic designs at both academic and industrial scale [129]. Koilia and Kachris perform a normalized cross-platform comparison of LLM accelerators on a common 16 nm node [72]. Silvano et al. survey deep-learning accelerators for heterogeneous high-performance computing platforms in ACM Computing Sur-veys [116]. Adjacent surveys address inference-engine software stacks [103], hardware/software co-design across the LLM lifecycle [60], and industrial collective-communication libraries [127]. On the facility side, Chen et al. review the electricity demand and grid impacts of AI datacenters [35], and Bashir et al. argue for co-designing AI datacenters with the power grid [30]. Our survey differs from these prior works in its combined treatment of five aspects: (1) it introduces a taxonomy of industrial AI accelerators from the perspective of balancing specialization and generality (Section 3); (2) it focuses on AI datacenter architecture, connecting node-, rack-, and pod-scale scale-up network topologies with the collective-communication operations mapped onto them (Section 4); (3) it traces the evolution of compute precision, execution models, memory hierarchy, and interconnect across accelerator generations (Section 5); (4) it examines power supply and cooling as architectural constraints linking accelerator, rack, and facility design (Sections 5.4 and 6.4); and (5) it discusses the challenges that evolving AI workloads and models pose for hardware specialization and future AI datacenter design (Section 6). Balancing Generality and Specialization in AI Datacenters 7
+
+3 Architectural Categories of AI Accelerators 
+
+Specialized accelerators can provide substantially higher throughput and energy efficiency than general-purpose CPUs on AI workloads. Table 2 summarizes the key characteristics of representative AI accelerators, and Figure 4 illustrates their canonical architectural organizations. Broadly, these architectures can be classified into four categories according to the dominant architectural and programming idiom: (1) GPU-based designs that combine SIMT cores with tensor or matrix units; (2) heterogeneous NPU architectures that integrate matrix, vector, and scalar engines around a shared on-chip scratchpad memory; (3) spatial dataflow architectures that map a computation graph onto distributed compute, memory, and communication resources, spanning PE array, reconfigurable architecture, and functional-slice streaming processors; and (4) compute-in-memory architectures that embed arithmetic within or beside memory arrays. SIMT cores 
+
+> Tensor Unit
+> Shared
+> Memory
+> SIMT cores
+> Tensor Unit
+> Shared
+> Memory
+> SIMT cores
+> Tensor Unit
+> Shared
+> Memory
+
+... 
+
+> L2 Cache
+
+(a) GPU 
+
+> Matrix
+> Engine
+> Vector
+> Engine
+> Scalar /
+> Control
+> Special Function
+
+(b) NPU       
+
+> Mem PE Mem
+> PE Mem PE
+> Mem PE Mem
+
+(c) Spatial Dataflow  (d) Compute-in-Memory  
+
+> L1 Cache L1 Cache L1 Cache
+> Matrix
+> Engine
+> Matrix
+> Engine
+> Matrix
+> Engine
+> Scratchpad Memory
+
+...            
+
+> Memory Bank
+> Compute
+> +×+×
+> Memory Bank
+> Compute
+> +×+×
+> Memory Bank
+> Compute
+> +×+×
+> Bank Interconnect
+> PE
+> Mem
+> PE
+> Mem
+> PE
+> Mem
+> PE
+> Mem
+> PE
+> Mem
+> PE
+> Mem
+> PE
+> Mem
+> PE
+> Mem
+> PE
+> Mem
+> Memory
+> Memory
+> Vector Unit
+> Matrix Unit
+> Matrix Unit
+> PE Array Reconfigurable Functional Slice
+> Compute
+> Memory
+> Legends
+
+Fig. 4. Architectural categories of AI accelerators. (a) GPU : SIMT cores integrated with tensor units and supported by a hybrid memory hierarchy that combines shared memory and caches. (b) NPU : Heterogeneous compute engines, including matrix, vector, scalar, and special-function units, organized around a shared scratchpad memory. (c) Spatial dataflow accelerators: Three representative substyles are illustrated, includ-ing PE array, reconfigurable fabrics, and functional-slice streaming processors. (d) Compute-in-memory :Computational operations are performed within memory arrays or in logic tightly coupled to memory banks. 
+
+These categories represent different approaches to exploiting the inherent properties of AI workloads, including increasing data reuse, specializing compute resources, and improving data locality. In this section, we first introduce these four categories of AI accelerator architectures and then examine their compute engines and memory hierarchies in detail; Section 4 examines their scale-up interconnects. We assign each platform a primary category according to its dominant execution and data-movement model, while recognizing that secondary mechanisms such as systolic execution, compiler-managed placement, and near- or in-memory arithmetic can overlap across categories. 
+
+GPU. The first category is GPU, including NVIDIA [36, 98] and AMD [12, 13, 117] devices. These accelerators preserve the SIMT execution model that gives GPUs broad programmability, while incorporating tensor or matrix cores to accelerate the dense linear algebra operations prevalent in 8 Yufeng Gu, Jiazhen Wang, and Reetuparna Das 
+
+Table 2. Key architectural features of representative AI accelerators. 
+
+Accelerator Architecture Memory Scale-up Topology Category 1: GPU — SIMT and tensor/matrix cores 
+
+NVIDIA GPU [36, 98] SIMT + tensor cores HBM Cube mesh / switched all-to-all 1
+
+AMD GPU [12, 13, 117] SIMT + matrix cores HBM Direct full mesh / switched all-to-all 
+
+Category 2: NPU — heterogeneous matrix, vector, and scalar engines 
+
+Google TPU [52, 53, 55–58, 69] Matrix + vector + scalar; SparseCore or CAE 2
+
+HBM 2D / 3D torus; Boardfly 2
+
+AWS Trainium [25–27] Matrix + vector + scalar + programmable SIMD HBM 2D torus; switched all-to-all 3
+
+Qualcomm AI 100 [34] Matrix + VLIW vector and scalar units LPDDR —Huawei Ascend [79, 128] Matrix + vector + scalar units HBM UB-Mesh: nD full mesh 4
+
+Intel Gaudi [70] Matrix + VLIW vector units HBM Direct full mesh Microsoft Maia [45, 130] Matrix + vector units HBM Switched Ethernet Cambricon MLU [32, 33] Matrix + vector + scalar units DDR4 / LPDDR / HBM —
+
+Category 3: Spatial dataflow — computation graph mapped onto distributed hardware resources 
+
+Tenstorrent [123, 126] RISC-V cores + matrix/vector units GDDR6 2D mesh Ethernet Meta MTIA [42, 87, 118] PE grid with matrix + vector units LPDDR / HBM Switched PCIe / Ethernet-based fabrics 5
+
+Graphcore [59, 68] Tile processors with FP16 vector MAC + FP32 scalar FPU DDR4 2D Torus Tesla Dojo [122] Tile processors matrix + SIMD vector + scalar units On-chip SRAM + HBM 2D mesh die-to-die Cerebras [80] Wafer-scale PE array; SIMD + scalar units; data-triggered execution On-chip SRAM 2D mesh on-wafer 6
+
+SambaNova [106] Reconfigurable SIMD compute + memory tiles HBM + DDR Direct peer-to-peer RDU links (SN40L) Groq [1, 2] Matrix/vector units + SRAM/switch slices; statically scheduled On-chip SRAM Dragonfly 
+
+Category 4: Compute-in-memory — PIM and in-SRAM compute 
+
+d-Matrix [119] Digital in-SRAM MAC array LPDDR5 Switched PCIe SK hynix AiM [75] BF16 MAC-based PIM units GDDR6-AiM —Samsung PIM [71] FP16 SIMD PIM processors HBM-PIM —       
+
+> 1DGX-1 uses hybrid cube mesh; DGX-2 uses NVSwitch-based all-to-all [49, 90, 125].
+> 2TPU engines vary by generation; 8i replaces SparseCores with a Collectives Acceleration Engine (CAE). Torus applies to supported slices; 8i uses Boardfly.
+> 3Trn2 UltraServer adds inter-instance rings; Trn3 UltraServer uses switched all-to-all [19, 20].
+> 4UB-Mesh uses up to 4D full mesh within a pod and Clos beyond it [79].
+> 5MTIA 200 uses switched PCIe; MTIA 300 uses Ethernet/RoCE across 16 devices; MTIA 400 connects 72 devices [87, 118].
+> 6WSE’s mesh is internal to one accelerator. FCQ: fully connected quad. An em dash means the interconnect is not characterized here. Balancing Generality and Specialization in AI Datacenters 9
+
+modern AI workloads. Both NVIDIA and AMD architectures employ HBM to supply data to high-throughput compute units. Representative NVIDIA systems use different NVLink organizations across generations and platforms, including direct-connect and switched fabrics [125]; topology is therefore reported together with the system configuration. AMD deployments likewise range from directly connected GPU baseboards to the switched UALoE fabric of the MI455X-based Helios rack. The combination of programmability, high-bandwidth memory, and high-performance scale-up communication enables GPUs to perform effectively in large-scale AI datacenters. 
+
+NPU. Driven by similar demands for neural-network execution, the second category adopts a more explicitly heterogeneous NPU architecture. As summarized in Table 2, representative examples include Google TPU [52, 53, 55–58, 69], AWS Trainium [25–27], Qualcomm AI 100 [34], Huawei Ascend [79, 128], Intel Gaudi [70], Microsoft Maia [130], and Cambricon MLU [33]. These accelerators integrate matrix engines with vector, scalar, and specialized functional units, enabling different operators within AI models to be mapped onto hardware blocks optimized for specific tasks. Such heterogeneity can improve area and energy efficiency when operators map well to the specialized engines and those engines remain sufficiently utilized. In particular, matrix engines accelerate GEMM-intensive computations, vector units support operations such as activations and normalization, and scalar units manage control-oriented tasks. Some NPUs replicate a complete matrix–vector–scalar core and scale out across several such cores: the Cambricon MLU, for instance, exposes a multi-core neural-processor ISA and runtime rather than a tile-placement programming model, which is why we group it with the NPUs rather than the spatial-dataflow architectures. Table 2 further indicates diverse scale-up interconnect topologies, including 2D or 3D torus, Boardfly, nD full mesh, direct full mesh, switched Ethernet, and switched all-to-all networks. Many NPUs employ systolic arrays as their primary matrix-computation engines. Instead of requiring every processing element (PE) to repeatedly access operands from a centralized register file or SRAM, data streams of activations and weights are injected from boundary PEs, while interior PEs receive operands from neighboring elements and propagate partial sums across the array. This neighbor-to-neighbor data reuse significantly reduces memory-bandwidth requirements and improves energy efficiency by replacing a large fraction of costly memory accesses with localized data transfers. 
+
+Spatial Dataflow. The third category maps a computation graph directly onto distributed compute, memory, and communication resources. In a spatial dataflow architecture, operator placement, local memory allocation, and data movement between operators are explicitly managed by the compiler. These features are exposed to software rather than hidden behind caches or a centralized command stream. Explicit control of data movement reduces coordination overhead, minimizes memory traffic, and improves data locality. As shown in Figure 4(c), spatial dataflow architectures can be grouped into three substyles: PE array, reconfigurable architecture, and functional-slice streaming processors. 
+
+PE array architectures divide the chip into many programmable PEs, each with private SRAM and connected through an on-chip network. The compiler distributes computation across the PEs and explicitly manages data transfers between them. Different PEs can therefore execute different operators or pipeline stages. Examples include Tenstorrent [126], Meta MTIA [42, 87, 118], Tesla Dojo [122], and Graphcore [68]. As shown in Table 2, these systems support a wider range of memory technologies than GPUs and NPUs, including GDDR6, LPDDR, DDR4, and HBM. Cerebras extends this approach to a wafer-scale PE mesh [80]. Fabric packets, called wavelets, carry data and control information and can activate tasks on a PE. This data-triggered task scheduling coexists with local instruction sequencing: each PE executes the instructions of its selected task. The dataflow mechanism therefore determines when work becomes ready. 10 Yufeng Gu, Jiazhen Wang, and Reetuparna Das 
+
+Other spatial dataflow architectures do not use replicated general-purpose PEs. Reconfigurable 
+
+architectures, such as SambaNova [106], consist of configurable compute, memory, and interconnect tiles. The compiler maps operators and data dependencies directly onto the fabric. Functional-slice streaming processors, such as Groq [1, 2], organize the chip into fixed functional units, including matrix engines, vector engines, SRAM blocks, and switches. Data moves through these units according to a compiler-defined schedule. Unlike architectures that rely on caches, speculation, or dynamic arbitration, Groq exposes computation and data movement timing to the compiler, enabling predictable execution. 
+
+Compute-in-Memory. Finally, the fourth category addresses the memory bottleneck most directly through compute-in-memory architectures. Representative designs include d-Matrix [119], SK hynix AiM [75], and Samsung PIM [71]. These accelerators integrate arithmetic into SRAM arrays or DRAM modules, using digital in-SRAM MAC arrays, or MAC-based or SIMD PIM processors. The motivation is that many AI workloads are constrained not only by arithmetic throughput, but also by the energy and latency cost of repeatedly moving weights and activations between memory and compute units. By performing part of the computation inside or near memory, compute-in-memory designs can reduce data movement and improve efficiency for bandwidth-bound operations. Although this category is more specialized than GPUs, heterogeneous NPUs, and spatial dataflow accelerators, it is increasingly important as memory bandwidth becomes a dominant system constraint. 
+
+3.1 Compute Engine 
+
+AI accelerators employ a diverse set of compute engines to improve performance, including SIMT processors, programmable SIMD units, dedicated matrix engines, and vector and scalar execution units. These architectural choices are shaped by several key considerations. First , accelerator designs must balance programmability and specialization. General-purpose execution units and flexible schedulers provide broader programmability and adaptability across workloads, whereas specialized compute engines achieve higher computational efficiency, delivering greater performance and improved FLOPS per mm 2. Second , target kernels vary in computational intensity, that is, the amount of computation performed per byte of data transferred across each memory hierarchy boundary. These differences determine the appropriate balance between compute throughput and memory bandwidth required for efficient execution. The operational characteristics of target workloads, including the different demands of AI training and inference, further influence the selection and composition of compute engines. Graphics processing units (GPUs) were originally developed to execute gaming and graphics workloads characterized by a high degree of parallelism. Over time, GPUs evolved into highly par-allel, multithreaded processors with substantial computational capability and memory bandwidth. This evolution marked the emergence of general-purpose computing on GPUs (GPGPU) and their widespread adoption for accelerating deep learning workloads [74]. Early GPU architectures were primarily dominated by SIMT processors. To improve performance on AI workloads, modern GPUs incorporate dedicated matrix engines, such as NVIDIA’s Tensor Cores, which are accessed through specialized PTX instructions. NVIDIA further supports these capabilities through high-level libraries, including cuDNN and cuBLAS, as well as templated programming abstractions such as CUTLASS and CuTe for fine-grained performance optimization. In addition, specialized functional units are introduced to accelerate transcendental operations. For instance, the B300 GPU doubles exponential operation throughput compared to B200, reflecting the heavy use of such functions in Transformer attention mechanisms [15]. NPUs are designed as domain-specific accelerators for AI workloads and therefore integrate dedicated matrix engines to accelerate GEMM-intensive computations. To support non-GEMM Balancing Generality and Specialization in AI Datacenters 11 
+
+operations, these architectures also incorporate vector processors or specialized functional units. For example, Google TPU architectures employ systolic arrays for GEMM acceleration and inte-grate SparseCores to accelerate embedding operations in recommendation models [69]. Systolic arrays are widely adopted in AI accelerators because they efficiently exploit data reuse across processing elements (PEs) within the array. As a spatial computing architecture, a systolic array reduces off-chip memory traffic by propagating data directly between neighboring PEs. To improve architectural flexibility, some NPUs additionally incorporate programmable SIMD units, thereby increasing generality and enabling support for a broader range of AI workloads and evolving model architectures, as demonstrated in the second-generation AWS NeuronCore [23]. Some architectures rely exclusively on SIMD or vector units without incorporating dedicated matrix engines, such as Cerebras systems and processing-in-memory (PIM) designs. Cerebras reports that its SRAM-centric architecture supports high utilization across selected basic linear algebra subroutines (BLAS), including low-arithmetic-intensity BLAS-1/BLAS-2 kernels that are often memory-bound on HBM-based systems [80]. Similarly, PIM architectures developed by Samsung and SK hynix achieve high effective memory bandwidth by integrating vector or SIMD compute units in close proximity to DRAM banks [71, 75]. 
+
+3.2 Memory Hierarchy 
+
+Across CPUs, GPUs, and domain-specific accelerators, on-chip SRAM spans a spectrum ranging from implicit, hardware-managed caches to explicit, software-managed scratchpad memories, as illustrated in Figure 5. These design choices trade programmability and reduced compiler complexity against performance predictability and quality of service (QoS). CPUs lie at the hardware-managed end of this spectrum (Figure 5(a)), relying on multi-level cache hierarchies in which the hardware determines data placement, replacement, and coherence. This implicit management simplifies programming by allowing software to operate under the abstraction of a flat address space. While such an approach offers strong generality, particularly for irregular or data-dependent access patterns, it also complicates performance and latency analysis, since cache hits, misses, and contention are governed by dynamic execution behavior. L2 Cache   
+
+> L1
+> Shared Mem
+> Hardware managed cache Software managed scratchpad memory
+> Tensor Mem
+> Tensor Core
+> CUDA Core
+> (b) Hybrid SW/HW-managed (a) Fully HW-managed
+> L3 Cache
+> SM SM
+> SM
+> SM
+
+…  
+
+> L1D L1I
+> Compute
+> (c) Fully SW-managed
+> Scratchpad Memory
+> Vector Engine
+> Tensor Engine
+> Tile
+> Tile Tile
+
+… 
+
+> Scratchpad Memory
+> Core
+> AVX AMX
+> ALU L2$
+> Cluster
+> Cluster
+> Cluster
+
+…
+
+Fig. 5. Hardware-managed caches and software-managed on-chip SRAM across CPUs, GPUs, and domain-specific accelerators. 
+
+A fully hardware-managed cache system remains relevant in today’s datacenter AI ASICs. Intel’s Gaudi 3, for example, features configurable SRAM that can operate as either a globally shared L3 cache or as localized L2 caches within each deep learning core. To bridge the gap between hardware transparency and the deterministic memory demands of AI workloads, Intel employs an advanced semantics-aware caching mechanism. Memory Context ID (MCID) is used to tag cache lines with 12 Yufeng Gu, Jiazhen Wang, and Reetuparna Das 
+
+shared algorithmic usage, while developers can use allocation hints to specify whether data should be cached in L2, L3, or both [70]. Nevertheless, GPUs and domain-specific architectures (DSAs) increasingly expose at least por-tions of on-chip SRAM as explicitly software-managed scratchpads to maximize data reuse. In NVIDIA GPUs, the SRAM within each streaming multiprocessor (SM) is configurable and par-titioned into a hardware-managed L1 cache and a software-managed shared memory. Through CUDA, developers explicitly allocate and orchestrate this shared memory for techniques like tiling, while still relying on conventional hardware caching (L1 and L2) for access patterns better served by hardware, as shown in Figure 5(b). Furthermore, the latest Blackwell architecture expands this software-managed paradigm by introducing a dedicated tensor memory within each SM for tensor operations, with explicit software-managed transfers [15]. The explicit scratchpad approach shifts greater responsibility to the programmer and the compiler: tile sizing, double buffering, prefetch scheduling, and synchronization become integral to the performance contract. The benefit, however, is increased control. Data placement and movement are more deterministic, aligning well with requirements for predictable tail latency, interference isolation, and quality of service (QoS). AWS NeuronCore exemplifies this compiler-managed locality model (Figure 5(c)), in which software-managed on-chip memory is used to maximize data locality and prefetch efficiency [24]. Another emerging trend is that memory management increasingly extends beyond the chip. Modern AI systems elevate shared-memory abstractions to the fabric level, enabling programmers or compilers to treat remote memory as part of a global address space rather than relying on explicit message passing. NVSHMEM provides GPUs with a distributed shared memory abstraction: although each GPU maintains local memory, NVSHMEM exposes a symmetric memory region on every device, allowing kernels to directly read from and write to remote GPU memory and to perform atomic operations over NVLink, PCIe, or InfiniBand [92]. Groq further pushes the notion of shared memory over the scale-out network. It exposes a logically shared global address space backed by distributed on-chip SRAM across TSP devices [1]. Instead of relying on adaptive, congestion-aware flow control, Groq adopts software-scheduled networking (SSN), in which the compiler resolves contention, prohibits hardware backpressure, and schedules fine-grained vector flits on each link. This approach removes the overhead associated with conventional per-flit packetization, with packet-encoding overhead of approximately 2.5% (8 bytes per 320-byte vector). Consequently, communication behavior becomes highly determinis-tic, enabling stronger quality-of-service guarantees by eliminating latency variability caused by dynamic arbitration and buffering. Computing-in-memory (CIM) offers a complementary alternative to traditional multi-level caches and scratchpad memories by performing simple arithmetic operations directly at the location where data resides, rather than staging data in separate compute arrays. SRAM-based CIM augments SRAM bit cells and peripheral circuitry to enable computation within SRAM arrays [119]. DRAM-based near- or in-memory processing integrates vector or SIMD units adjacent to DRAM banks and operates directly on data stored in row buffers, enabling bulk computations without trans-ferring operands across the external memory interface [71, 76]. By collapsing the conventional load-compute-store sequence into localized, highly parallel operations that exploit the intrinsic bandwidth of SRAM arrays or DRAM banks, CIM can substantially reduce data movement overhead. CIM is most effective for bandwidth-bound workloads with limited temporal reuse, such as GEMV or matrix-vector operations at small batch sizes, embedding or projection layers, and sparse or irregular computations where conventional systolic arrays cannot fully exploit data reuse. In these scenarios, colocating computation with data minimizes off-chip traffic even when reuse opportunities are limited. In contrast, workloads with high arithmetic intensity, such as large-batch Balancing Generality and Specialization in AI Datacenters 13 
+
+GEMM, are better served by dedicated matrix engines that are explicitly designed to amplify data reuse across processing elements. Architecturally, CIM typically provides high internal parallelism but limited flexibility. Its programmability relies heavily on careful data layout and compiler scheduling to ensure operands remain resident in memory. 
+
+4 Scale-up Interconnect 
+
+To meet the high demands for computation and memory capacity, AI datacenters deploy clusters comprising hundreds of thousands of accelerators, integrating scale-up fabrics with Ethernet or InfiniBand scale-out networks. The scale-up fabric tightly couples accelerators within a server, rack, or pod and is designed for extremely high bandwidth and low latency. In contrast, the scale-out network, typically based on Ethernet or InfiniBand, interconnects these domains across the broader cluster. Because collective communication and model-parallel data movement are often constrained by intra-cluster communication efficiency, the scale-up fabric exerts a first-order influence on end-to-end training and inference performance. Figures 6–8 illustrate scale-up topologies across three tiers: the node-scale groups, typically confined to a single server with 4–8 accelerators; rack-scale groups such as NVL72, comprising multiple servers and aggregating 64–256 accelerators; larger pod (or SuperPod) fabrics, encompassing multiple racks and scaling to thousands of accelerators. 
+
+4.1 Node Scale PCIe Switch  
+
+> Accelerator
+> Accelerator
+> Accelerator
+> Accelerator
+> (a) PCIe Switch
+> (b) Directly Connected
+> All-to-All
+> (c) Switch-based All-to-All (Node scale)
+> AAAA
+> AAAA
+> SSSS
+> x8 Devices
+> x4 Switches
+> A
+> AA
+> A
+> A
+> A
+> A
+> A
+> Legend
+> Accelerator
+> Switch
+> Fig. 6. Node-scale interconnect organizations. (a) PCIe-switched attachment behind a host/root complex. (b) An eight-accelerator physical complete graph. (c) A dedicated switched fabric providing logical any-to-any reachability.
+
+A baseline scale-up design employs one or more PCIe switches to provide packet-switched, any-to-any connectivity among CPUs, accelerators, NICs, and other peripherals, as illustrated in Figure 6(a). This approach remains attractive due to its standards-based nature, flexibility, and relative ease of integration; however, its bandwidth is limited compared with purpose-built accelerator fabrics. Even PCIe 6.0 delivers only about 128 GB/s per direction on a ×16 link, which can become a bottleneck for communication-intensive workloads dominated by collectives such as AllReduce, ReduceScatter, and AllGather. To mitigate the PCIe switch bottleneck, some systems adopt directly connected all-to-all topolo-gies, in which accelerators are interconnected without an intermediate switch, as illustrated in Figure 6(b). Intel’s Gaudi 3 is an explicit example of an 8-accelerator direct all-to-all fabric [70]. AMD Instinct platforms similarly use dense direct Infinity Fabric connectivity across eight GPUs [117]. Such direct-connect designs provide very high local bandwidth with single-hop communication, but their wiring and packaging complexity grows rapidly with system size. To further enhance scalability, an alternative all-to-all topology incorporates dedicated scale-up switching fabrics, as illustrated in Figure 6(c). For example, the NVIDIA HGX H100 platform 14 Yufeng Gu, Jiazhen Wang, and Reetuparna Das 
+
+employs four NVSwitch chips [90] to fully interconnect eight GPUs, and subsequent NVLink generations continue to increase per-GPU fabric bandwidth. 
+
+4.2 Rack Scale (a) Switch-based All-to-All                 
+
+> (Rack scale)
+> AAAA
+> AAAA
+> SSSS
+> (b) 3D Torus (c) Dragonfly
+> AA
+> A
+> A
+> A
+> A
+> A
+> A
+> A
+> AAA
+> …
+> …
+> …AAAA
+> A
+> A
+> A
+> AAA
+> AAA
+> AAA
+> Legend
+> Accelerator
+> Switch
+> Fig. 7. Rack-scale interconnect organizations. (a) A switched rack fabric, illustrated by the NVL72 organization. (b) A generic 4×4×43D torus with wraparound links. (c) A Dragonfly hierarchy with local and global router links.
+
+Switch-based all-to-all interconnects can be extended from the node to the rack level, as shown in Figure 7(a). The NVL72 rack, for instance, integrates 72 GPUs and 18 NVSwitches, organized into 18 compute trays with four GPUs and two Grace CPUs per tray and nine switch trays with two NVSwitches per tray [99]. AWS Trainium 3 [20] follows a similar architectural direction with NeuronSwitch-v1, providing an all-to-all fabric within a Trn3 UltraServer containing either 64 or 144 Trainium 3 chips. Compared with direct-connect designs, switch-based all-to-all topologies scale to larger local domains and simplify board-level wiring, but they incur additional overhead in switch silicon, power consumption, and packaging. Providing high-bandwidth any-to-any connectivity requires increasing link or switch resources as a system grows. Many architectures instead bound the per-accelerator degree and accept a larger network diameter. The torus topology, illustrated in Figure 7(b), is a representative example. AWS Trn1 [18] employs a 2D torus within a single instance, while Trn2 [19] retains a 2D torus within each 16-chip instance and connects four such instances into a 64-chip UltraServer via additional ring links. Google TPU v4 [69], by contrast, adopts three-dimensional nearest-neighbor connectivity and can be configured as a 3D torus on supported slices. Each board integrates four TPUs, and a rack comprises 64 TPUs arranged in a 4 × 4 × 4 mesh. Optical circuit switches (OCS) connect these groups and provide wraparound paths for supported torus slices, enabling reconfiguration and flexible allocation. These designs trade uniform all-to-all connectivity for bounded radix and improved scalability. Another approach to scaling tightly coupled domains is the use of hierarchical high-radix topologies such as Dragonfly, shown in Figure 7(c). Rather than fully interconnecting all endpoints, Dragonfly organizes them into groups with dense local connectivity and a limited number of global links between groups, thereby reducing network diameter without incurring the quadratic wiring cost of a full mesh. Groq’s earlier rack-scale work [1] describes Dragonfly-based expansion. NVIDIA separately describes the 256-LPU Groq 3 LPX rack [14] as using direct chip-to-chip links within trays and a chip-to-chip spine across trays, without identifying that rack as Dragonfly. 
+
+4.3 Pod Scale 
+
+Vendors are increasingly exploring deeper hierarchical designs at the pod scale. Google’s forthcom-ing TPU 8i introduces Boardfly [52], a topology inspired by Dragonfly that aggregates four-chip Balancing Generality and Specialization in AI Datacenters 15 D D                                                                                               
+
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+> DD
+
+Fully-connected 
+
+Groups  2D Full Mesh 2D Full Mesh             
+
+> AAAA
+> AAAA
+> AAAA
+> AAAA
+> S
+> S
+> S
+> S
+> S
+> S
+> S
+> S
+> S
+> S
+> S
+> S
+> S
+> S
+> S
+> S
+
+ToR Switch 
+
+(a) Boardfly  (b) UB-Mesh                 
+
+> AA
+> AA
+> AA
+> AA
+> AA
+> AA
+> AA
+> AA
+> AA
+> AA
+> AA
+> AA
+> AA
+> AA
+> AA
+> AA
+
+A A
+
+A A
+
+…  
+
+> T0 S
+> T0 S
+> T0 S
+> T1 S T1 S
+
+…
+
+A A
+
+A A 
+
+> T1 S T1 S
+
+(c) Ethernet-switched 
+
+Legend 
+
+Accelerator 
+
+Switch 
+
+Fig. 8. Pod-scale interconnect organizations. (a) The announced Boardfly hierarchy. (b) The proposed UB-Mesh hierarchy. (c) The Maia 200 hierarchy combining local fully connected quads with Ethernet switching. 
+
+building blocks into eight-board groups and interconnects 36 such groups via optical circuit switches (Figure 8(a)). Unified scale-up and scale-out network topologies are also deployed at the pod scale, such as Huawei’s UB-Mesh [79] and Microsoft’s Maia [45, 130]. Huawei’s UB-Mesh [79] adopts a different strategy, proposing a hierarchically localized nD-FullMesh built on a unified bus and protocol stack. Its published pod-scale design realizes a 4D FullMesh by composing full-mesh connectivity both within and across racks, supported by dedicated low-radix and high-radix switches (Figure 8(b)). Microsoft Maia adopts an Ethernet-based alternative in scale-up fabrics. As illustrated in Figure 8(c), Maia uses a two-tier Ethernet-switched topology, where the first tier forms a switchless fully connected quad (FCQ), in which four Maia accelerators are directly connected; the second tier uses Ethernet switches to extend the scale-up domain across racks to as many as 6,144 accelerators. Viewed through the topology trade-offs discussed above, PCIe switching provides a broadly supported baseline, although the surveyed deployments generally offer lower per-accelerator band-width than purpose-built scale-up fabrics. Direct full meshes provide single-hop communication, but their link count grows quadratically with the number of endpoints. Switched any-to-any fabrics can accommodate concurrent collectives and irregular traffic when switch capacity, routing, and endpoint injection bandwidth are sufficient, at the cost of additional switch power and packaging complexity. Tori preserve bounded node degree as the system scales, but their larger diameter can increase communication latency. Dragonfly- and Boardfly-like hierarchies reduce path length with-out requiring full-mesh connectivity at system scale, while UB-Mesh and Ethernet-switched designs introduce additional tiers of local and global connectivity. Collectively, these approaches illustrate how topology is co-designed across node-, rack-, and pod-scale systems to balance bandwidth, latency, scalability, and implementation cost. 
+
+4.4 Collective Communications 
+
+The node-, rack-, and pod-scale topologies above define the paths, locality hierarchy, and contention domains available to distributed workloads, while collective algorithms determine how communi-cation is mapped onto those physical resources. Collective operations specify an endpoint data transformation, whereas a collective algorithm specifies the communication schedule used to realize 16 Yufeng Gu, Jiazhen Wang, and Reetuparna Das 
+
+it on a physical topology. Figure 9 illustrates four operations that dominate distributed AI training. AllReduce combines corresponding elements from every rank and returns the complete reduced tensor to every rank. AllGather collects rank-local shards and returns their ordered concatenation to every rank. ReduceScatter first reduces corresponding elements and then leaves rank 𝑖 with only shard 𝑖 of the result. All-to-All instead transposes rank-specific chunks: every rank sends a distinct chunk to every peer and receives one chunk from each source [95]. ReduceScatter followed by AllGather can implement AllReduce, but this decomposition is an algorithmic choice rather than the definition of AllReduce. (a) AllReduce                      
+
+> Input Output
+> R0 R0 0123y0 y1 y2 y3
+> R1 R1 0123y0 y1 y2 y3
+> R2 R2 0123y0 y1 y2 y3
+> R3 R3 0123y0 y1 y2 y3
+> y[j] = REDUCE_i x[i,j]; every rank receives y
+> Replicated data-parallel gradient aggregation
+
+(b) AllGather          
+
+> Input Output
+> R0 R0 x0 x0 x1 x2 x3
+> R1 R1 x1 x0 x1 x2 x3
+> R2 R2 x2 x0 x1 x2 x3
+> R3 R3 x3 x0 x1 x2 x3
+> every rank receives [x0, x1, x2, x3]
+> Materialize parameter or activation shards
+
+(c) ReduceScatter                      
+
+> Input Output
+> R0 R0 0123y0
+> R1 R1 0123y1
+> R2 R2 0123y2
+> R3 R3 0123y3
+> rank Rj receives y[j] = REDUCE_i x[i,j]
+> Reduce while keeping the result sharded
+
+(d) All-to-All                                  
+
+> Input Output
+> R0 R0 01230000
+> R1 R1 01231111
+> R2 R2 01232222
+> R3 R3 01233333
+> rank Rj receives [x[0,j], ..., x[3,j]]
+> Expert-token dispatch and return
+
+Fig. 9. Endpoint semantics of four common collectives for ranks R0–R3. (a) AllReduce returns the elementwise reduction of all inputs to every rank. (b) AllGather concatenates the rank-local shards at every rank. (c) ReduceScatter reduces all inputs and retains one result shard per rank. (d) All-to-All sends a distinct destination chunk to each rank. The panels describe data transformations, not communication routes, algorithms, or physical topologies. 
+
+These operations play different roles in a training stack. Replicated data parallelism typically uses AllReduce to aggregate gradients. Fully sharded data parallelism and ZeRO-style training use AllGather to materialize parameter shards before computation and ReduceScatter to aggregate gradients while preserving sharding [107]. Tensor and sequence parallelism use combinations of AllReduce, AllGather, and ReduceScatter to exchange partial activations or tensor slices [73, 115]. Expert-parallel mixture-of-experts models use All-to-All for token dispatch to experts and again to return expert outputs [77]. Thus, the operation determines the required data movement, but not the best schedule. For large reduction payloads on relatively uniform links, a ring is often attractive. It partitions the tensor and pipelines ReduceScatter and AllGather around a logical cycle, approaching bandwidth-optimal per-rank traffic [104]. Its cost, however, includes a number of startup stages linear in the rank count, so latency becomes increasingly important for small messages or very large groups. Tree algorithms reduce the number of dependent stages to logarithmic depth. Double binary trees process different halves of the tensor on complementary trees, distributing the forwarding load Balancing Generality and Specialization in AI Datacenters 17 
+
+and, with a suitable mapping, retaining high aggregate bandwidth; they are therefore effective for latency-sensitive and medium-sized reductions at scale [66]. A ring or tree is a logical schedule and need not match the physical wiring literally. Several other algorithm families fill the space between these regimes. Recursive halving for ReduceScatter followed by recursive doubling for AllGather, often called a Rabenseifner-style AllReduce, uses logarithmic rounds and works well when the fabric can sustain concurrent partner exchanges. Bruck-style schedules similarly reduce startup rounds for small AllGather and All-to-All messages, whereas pairwise exchange is commonly preferable for bandwidth-dominated All-to-All traffic [124]. Parallel Aggregated Trees (PAT) extend logarithmic-step AllGather and ReduceScatter to arbitrary rank counts while limiting long-distance transfers [67]. For irregular or asymmetric systems, TACCL demonstrates that topology-specific schedules can instead be synthesized from a hardware model and a communication sketch [113]. The physical topology then determines which logical schedule can use the available links without congestion. Direct and switched any-to-any fabrics in Figures 6(b)–(c) and 7(a) can support multiple concurrent rings or trees; their direct reachability also suits pairwise All-to-All. On bounded-degree meshes and tori, a runtime can decompose a collective by dimension or embed multiple rings so that traffic follows local links and avoids oversubscribing a cut [69]. Dragonfly, Boardfly, and node–rack–pod fabrics favor hierarchical local–global–local schedules: reduce or gather within a group, exchange only the necessary data across scarce inter-group links, and distribute within the destination group. This same principle applies to the deeper locality exposed by UB-Mesh and Maia, without requiring a separate collective semantic for each fabric [45, 79]. On fabrics with in-network reduction, CollNet- or NVLS-style schedules can offload the reduction phases of AllReduce or ReduceScatter, but AllGather and All-to-All still require moving their distinct data to the destinations [97]. Consequently, there is no universally best collective algorithm. Practical runtimes select among rings, trees, recursive exchanges, and hierarchical schedules according to the operation, message size, number of ranks, topology, link asymmetry, and current contention [97, 124]. Performance depends on both the fabric’s raw bandwidth and how well the runtime maps the operation onto its locality, path diversity, and hierarchy. 
+
+5 Architecture and System Evolution across Generations 
+
+The rapid scaling of AI model sizes and the continual evolution of model architectures impose new requirements on AI accelerator design. To examine these trends, we analyze the architectural evolution of AI accelerators across multiple generations of NVIDIA and AMD GPUs, as well as Google TPUs and AWS Neuron accelerators. On the compute side, accelerators increasingly adopt lower-precision arithmetic to improve performance, as reduced precision enables higher FLOPS within the same hardware resource constraints. In addition, structured sparsity has been introduced to efficiently accelerate sparse computations by skipping zero-valued operands in matrices. As compute units become more powerful, they demand correspondingly higher data delivery rates. This requirement is reflected in advances in scheduling mechanisms, data movement support, and the continued growth of on-chip SRAM capacity. Moreover, because AI model sizes scale significantly faster than hardware FLOPS and memory capacity (Figure 2), modern AI datacenters increasingly rely on aggregating large numbers of accelerators. To meet the resulting inter-device communication demands, accelerator designs have substantially increased interconnect bandwidth and adopted interconnect topologies that evolve in tandem with emerging AI model architectures. 18 Yufeng Gu, Jiazhen Wang, and Reetuparna Das 
+
+5.1 Lower Precision and Structured Sparsity 
+
+Figure 10 presents a comparative taxonomy of bit allocations across conventional high-performance computing (HPC) and emerging AI-optimized numerical formats. These formats are grouped into four categories: standard IEEE floating-point formats (e.g., FP64 and FP32), AI-optimized floating-point formats (e.g., TF32 and BF16), block-scaled floating-point formats (microscaling), and integer quantization. The horizontal bars depict the internal composition of each format, with segments representing the sign bit, exponent or scale, mantissa or integer data, and shared block scale. This decomposition highlights the fundamental trade-offs between dynamic range, primarily determined by exponent width, and numerical precision, governed by mantissa width, as architectures evolve from general-purpose double precision toward specialized low-precision representations. Sign  Exponent/Scale  Mantissa/Integer  Block Scale                                              
+
+> Standard IEEE
+> Floating Point
+> FP64 (Double) 111 Exp 52 Mantissa
+> FP32 (Single) 18 Exp 23 Mantissa
+> FP16 (Half) 15 Exp 10 Mantissa
+> AI-Optimized Floating Point
+> TF32 (TensorFloat) 18 Exp 10 Mantissa
+> BF16 (Brain) 18 Exp 7 Mantissa
+> FP8 (E4M3) 14 Exp 3
+> FP8 (E5M2) 15 Exp 2
+> Block-Scaled
+> Floating Point (Microscaling)
+> MXFP8 (Block 32) 14/5 3/2 S0.25 bit / element
+> MXFP6 (Block 32) 12/3 3/2 S0.25 bit / element
+> MXFP4 (Block 32) 121S0.25 bit / element
+> NVFP4 (Block 16) 121S0.5 bit / element
+> Integer Quantization
+> INT8 17 Integer
+> INT4 13
+
+Fig. 10. Bit allocation of standard, AI-oriented, block-scaled, and integer formats. For block-scaled formats the shared 8-bit scale is drawn as its amortized per-element cost (0.25 bit per element for 32-element blocks, 0.5 bit for 16-element blocks); tensor-level scales are omitted. MX and NVFP4 layouts follow the OCP MX specification [100] and NVIDIA’s NVFP4 format description [3], respectively. 
+
+The visualization reveals two key trends in modern arithmetic design: the prioritization of dynamic range and the increasing use of amortized scaling. Within the AI-optimized category, formats such as BF16 and TF32 preserve an 8-bit exponent comparable to FP32 to maintain training stability, while substantially reducing mantissa width to lower hardware cost. Block-scaled formats, including MXFP and NVFP, share scale factors across groups of values, trading scale-storage overhead against dynamic range and quantization error. We summarize the peak computational throughput of modern AI accelerators across numerical formats in Table 3. In GPUs, high-precision general-purpose SIMD units, such as FP64 and FP32, exhibit relatively slow scaling compared to the rapid growth of low-precision FP16 matrix engines, together with the introduction of even lower-precision formats, including FP8 and FP4. Figure 11 further compares per-GPU peak FP32 throughput with dense FP16/BF16 matrix throughput across NVIDIA and AMD GPUs. Modern AI accelerators also exploit structured sparsity to improve performance and efficiency by systematically zeroing less important weights. Empirically, trained networks contain substantial redundancy: after pruning or during inference, many weights can be set to zero with little accuracy Balancing Generality and Specialization in AI Datacenters 19 
+
+Table 3. Peak computational throughputs of representative AI accelerators. 
+
+Vendor Year Accelerator FP64 FP32 TF32 FP16/BF16 FP8 INT8 FP4 TFLOPS TFLOPS TFLOPS TFLOPS TFLOPS TOPS TFLOPS NVIDIA 2016 P100 [49] a 5.3 10.6 – 21.2 – – –2017 V100 [38] 7.8 15.7 – 125 – – –2020 A100 [37] 9.7 19.5 156 312 – 624 –2022 H100 [36] 34 67 495 989 1979 1979 –2025 B300 [94] 1.3 80 1250 2500 5000 165 d 15000 2026 Rubin GPU [98] 33 130 2000 4000 17500 – 35000 AMD GPU 2018 MI50 [5] 6.6 13.3 – 26.5 – 53 –2020 MI100 [6, 7] 11.5 23.1 – 184.6 b – 184.6 –2021 MI250X [8] 47.9 47.9 – 383 – 383 –2023 MI300X [10] 81.7 163.4 653.7 1307 2614 2614 –2025 MI355X [9, 11] 78.6 157.3 – 2517 5033 5033 10066 2026 MI455X [12, 13] 5 315 – 5000 20100 5000 40300 Google TPU 2021 TPU v4 [69] – – – 275 – 275 –2023 TPU v5e [55] – – – 197 – 393 –2023 TPU v5p [56] – – – 459 459 c – –2024 TPU v6e [54, 57] – – – 918 918 c 1836 –2025 TPU v7 [58] – – – 2307 4614 – –2026 TPU 8t [52] – – – – – – 12600 2026 TPU 8i [52] – – – – – – 10100 AWS Neuron 2018 Inferentia 1 [21] – – – 64 – 128 –2020 Trainium 1 [25] – 47.5 190 190 190 380 –2022 Inferentia 2 [22] – 47.5 190 190 190 380 –2023 Trainium 2 [26] – 181 667 667 1299 – –2024 Trainium 3 [27] – 183 671 671 2517 – 2500     
+
+> Vendor-reported dense peaks in decimal units; a fused multiply-add counts as two operations. FP32/FP64 use the listed scalar/vector peaks, and lower precisions use matrix engines where available. Years denote first public family disclosure. “–” means not specified by the cited source or unsupported.
+> aP100 FP16 uses CUDA cores; P100/V100 values do not imply BF16 support.
+> bMI100 achieves 184.6 TFLOPS FP16 but 92.3 TFLOPS BF16. TPU/Neuron entries use BF16.
+> cGoogle’s reported FP8 peaks for v5p/v6e equal their BF16 peaks; these should not be interpreted as a native FP8 throughput increase. TPU 8t/8i dashes indicate unreported values in the cited announcement.
+> dB300 denotes the GB300 NVL72 GPU: the cited datasheet reports 330 sparse INT8 TOPS and specifies dense throughput as half. MI455X’s 5 TFLOPS FP64 and 5 POPS INT8 follow AMD’s specification; Trainium 3 processes MXFP4 through its MXFP8 path.
+
+loss. Leveraging these zeros reduces both computation and memory traffic. While fully unstructured sparsity is difficult for hardware due to irregular access and heavy metadata overhead, structured or semi-structured sparsity enforces regular patterns, typically an 𝑀 : 𝑁 rule in which only 𝑀 of every 𝑁 values are nonzero. This regularity preserves locality, enables efficient compression and fetching, and remains compatible with matrix engines [84]. Accelerators realize these benefits by extending tensor or matrix engines with sparsity-aware formats that skip multiplications on zeros without disrupting a regular datapath. NVIDIA and AMD GPUs primarily support a fixed 2:4 pattern, where two of every four elements are zero. An example of 2:4 sparsity is illustrated in Figure 12. Operands are stored in compact form with lightweight metadata, enabling up to ∼2× higher throughput when the constraint is met [10, 91, 105]. AWS Neuron generalizes this approach with flexible 𝑀 : 𝑁 patterns, such as 4:16, 4:12, 4:8, 2:8, 2:4, 1:4, and 1:2, allowing tunable accuracy–throughput trade-offs [24]. 20 Yufeng Gu, Jiazhen Wang, and Reetuparna Das 
+
+> Fig. 11. Per-GPU peak FP32 throughput and dense FP16/BF16 matrix throughput across NVIDIA and AMD GPUs. 2:4 Structured-sparse Matrix W
+> Rows
+> (R)
+> Columns (C)
+> Zero values
+> 2:4 Structured-sparse and compressed matrix W
+> C/2
+> Non-zero values
+> C/2
+> 2-bits indices
+> Rows
+> (R)
+> Fig. 12. Example of 2:4 structured-sparse matrix representation
+
+5.2 Data Path and Control Flow 
+
+As matrix-engine performance has increased, AI accelerators have correspondingly optimized their data paths and control flow to sustain the higher computational throughput. To illustrate this trend, we conduct an evolutionary case study across five generations of NVIDIA Tensor Cores from Volta to Blackwell architectures. NVIDIA GPUs have progressively redesigned both data-feeding mechanisms and control granu-larity across Tensor Core generations. The data path has evolved from conventional per-thread ld 
+
+instructions to warp-level wmma.load , and further to more flexible ldmatrix operations involving groups of four threads, while introducing asynchronous data movement to better overlap data transfer with computation. In parallel, the control granularity of Tensor Core execution has ex-panded from sub-warp groups (8-thread) to full warp (32-thread), warp groups (4-warp), and, more recently, coordinated execution across multiple streaming multiprocessors (SM), as illustrated in Figure 13. 
+
+Volta: sub-warp group control granularity. The first-generation Tensor Cores are exposed as warp-cooperative at the programming level, but their machine-level execution granularity is finer. Each 32-thread warp is executed on Tensor Cores as four 8-thread quadpair -issued micro-operations [96]. Volta also introduces the wmma.load instruction to efficiently feed data to Tensor Cores by loading 𝑁 × 128 bytes of data from shared memory into registers. Balancing Generality and Specialization in AI Datacenters 21 Tensor           
+
+> Core
+> Tensor
+> Core
+> Tensor
+> Core
+> Tensor
+> Core
+> Sub-warp (8-thread) Warp (32-thread) Warp Group (4-warp)
+> SM SM
+> (a) Volta Architecture (b) Turing/Ampere Architecture (c) Hopper Architecture (d) Blackwell Architecture
+> Tensor
+> Core
+> Tensor
+> Core
+> Tensor
+> Core
+> Tensor
+> Core
+> SM
+> TC TC
+> TC TC
+> SM
+> TC TC
+> TC TC
+> SM
+> Thread Block Pair (2 SM)
+
+Fig. 13. Tensor core control flow evolution across NVIDIA GPU architectures 
+
+Turing: full-warp control granularity and flexible data loading. Turing shifts instruction issuing from 8-thread quadpair groups to the full-warp level, distributing operand fragments across all 32 lanes and executing Tensor Core instructions at warp granularity [131]. It also introduces 
+
+ldmatrix , which uses a group of four threads to load 16 consecutive bytes, offering higher effi-ciency than per-thread 4-byte ld operations and better flexibility than earlier warp-level 128-byte granularity of wmma.load . The key advantage is layout flexibility : kernels can apply shared-memory permutations, such as CUTLASS-style swizzles, to reduce bank conflicts. An ablation study shows that replacing a baseline matrix multiply–accumulate ( MMA ) kernel with a permuted shared-memory layout enabled by ldmatrix achieves up to a 3 × speedup over wmma.load [121]. 
+
+Ampere: hiding global-memory latency with asynchronous copy pipelines. As Tensor Core compute continued to scale, shared-memory tiling alone became insufficient when global-to-shared data movement serialized with computation. Ampere introduces cp.async , which trans-forms operand movement into a software pipeline: while Tensor Cores operate on tiles resident in shared memory, subsequent tiles are prefetched asynchronously from global memory, as illustrated in Figure 14. This design reduces synchronization overhead and enables effective overlap between computation and data movement. As a result, the asynchronous implementation of an MMA kernel achieves approximately a 2 × speedup over a synchronous baseline [121]. Global     
+
+> memory
+> Shared
+> memory Computation
+> Global memory
+> Shared memory Computation
+> Global
+> memory
+> Shared
+> memory Computation
+> Global memory
+> Shared memory Computation
+> Global
+> memory
+> Shared
+> memory
+
+(a) Synchronous Data movement and computation 
+
+(b) Asynchronous Data movement and computation 
+
+Fig. 14. Comparison between synchronous and asynchronous data paths 
+
+Hopper: asynchronous warp-group control, bulk transfers, and direct SM-to-SM data movement. Hopper further widens the control scope and deepens the execution pipeline. The 22 Yufeng Gu, Jiazhen Wang, and Reetuparna Das 
+
+introduction of WGMMA instructions expands the unit of issue from a single warp to a warp group, typically comprising four warps. This design addresses utilization limits observed with warp-level MMA on Hopper GPUs, where microbenchmarking reports performance plateaus at approximately 63% of peak without warp-group–level pipelining [81]. On the operand-delivery path, Hopper introduces the Tensor Memory Accelerator (TMA) to offload bulk global-to-shared transfers and their associated address-generation and loop overheads, which increasingly constrain performance as Tensor Core throughput rises. Instead of having many threads cooperatively execute numerous fine-grained copies (e.g., cp.async ) with explicit per-thread addressing, Hopper allows a single designated warp lane (“warp leader”) to enqueue a descriptor-driven, asynchronous tensor transfer. In a GEMM microbenchmark with 𝑀 =128, 𝑁 =4096, and 𝐾 =4096, substituting Ampere-style cp.async staging with TMA increases the profiled global-memory throughput from ∼910 GB/s to 1.45 TB/s (a 59% increase in that kernel’s global-memory throughput) [62]. Hopper further introduces distributed shared memory within an SM cluster, enabling direct SM-to-SM data movement without leveraging global memory. Microbenchmark results report an SM-to-SM latency of approximately 180 cycles, compared to about 265 cycles when accessing data via L2 cache, corresponding to a latency reduction of roughly 32% [81]. 
+
+Blackwell: dedicated Tensor Memory (TMEM) and multi-SM tensor execution. Blackwell further centralizes the datapath around Tensor Cores by introducing 256 KB of Tensor Memory (TMEM) per SM. TMEM can store intermediate operands for Tensor Cores and significantly increases effective data bandwidth. In back-to-back FP8 GEMM experiments, TMEM sustains approximately 8 TB/s, about 2 .1× higher than ld.global -dominated paths that saturate near 3.8 TB/s [65]. Blackwell also extends the cooperation boundary beyond a single SM through SM-pair execution, in which two adjacent thread blocks are co-scheduled within an SM cluster to jointly execute a larger 
+
+MMA kernel. By sharing operands across SMs, this mechanism reduces redundant control overhead and improves utilization. Blackwell continues the trajectory established by Hopper, emphasizing wider cooperation and increasingly asynchronous, specialized data paths to keep rapidly scaling Tensor Cores fully utilized. 
+
+5.3 Memory Hierarchy and Scale-up Interconnect 
+
+AI accelerators have strengthened their data-delivery capabilities to keep pace with rising computa-tional throughput. As shown in Table 4, from the earliest to the latest listed NVIDIA and AMD GPU generations, off-chip high-bandwidth memory (HBM) capacity has increased by approximately 13.5–18 ×, while HBM bandwidth has increased by approximately 23–27 ×. HBM scaling is driven by two largely independent factors. Capacity improvements stem from (i) higher per-stack density, enabled by a greater number of dies per stack and increased DRAM die density, and (ii) a larger number of stacks integrated within a single package. Bandwidth gains arise from (i) higher per-pin signaling rates across successive HBM generations and (ii) expanded aggregate I/O width, primarily through additional stacks and, in some designs, wider interfaces. Chiplet-based packaging further supports these trends by enlarging the effective integration area and enhancing design flexibility, thereby facilitating the attachment of more memory stacks along with their associated PHYs and controllers. Because memory scaling has lagged behind computational growth, modern AI accelerators increasingly rely on larger on-chip SRAM to mitigate the widening performance gap. Through 2025, shared-cache capacity has increased by approximately 32 × for NVIDIA GPUs and 64 × for AMD GPUs relative to the earliest listed devices; here, “shared cache” refers to NVIDIA’s L2 cache and AMD’s large last-level cache. These expanded caches enhance data locality, amplify reuse, and alleviate pressure on off-chip memory bandwidth. Figure 15 compares the scaling trends of dense Balancing Generality and Specialization in AI Datacenters 23 
+
+Table 4. Memory systems and scale-up interconnects of representative AI accelerators. 
+
+Vendor Year Accelerator Memory Memory On-chip Interconnect a
+
+Scale-up Topology Capacity Bandwidth SRAM Bandwidth (GB) (TB/s) (MB; type) (GB/s) NVIDIA GPU 2016 P100 [49] 16 0.7 4 160 Hybrid cube mesh 2017 V100 [38] 32 0.9 6 300 Hybrid cube mesh 2020 A100 [37] 80 2.0 40 600 All-to-All 2022 H100 [36] 80 3.4 50 900 All-to-All 2025 B300 [15, 94] 279 8 126 1800 All-to-All 2026 Rubin [98] 288 19.2 – 3000 All-to-All AMD GPU 2018 MI50 [5] 32 1.0 4 184 Ring 2020 MI100 [6, 7] 32 1.2 8 276 All-to-All 2021 MI250X [8] 128 3.2 16 800 All-to-All 2023 MI300X [10] 192 5.3 256 896 All-to-All 2025 MI355X [9, 11] 288 8 256 1075.2 All-to-All 2026 MI455X [12, 13] 432 23.3 192 3600 All-to-All Google TPU 2021 TPU v4 [69] 32 1.2 – 300 3D mesh/torus 2023 TPU v5e [55] 16 0.8 – 400 2D torus 2023 TPU v5p [56] 95 2.8 – 1200 3D torus 2024 TPU v6e [57] 32 1.6 – 800 2D torus 2025 TPU v7 [58] 192 7.4 – 1200 3D torus 2026 TPU 8t [52] 216 6.5 128 2400 3D torus 2026 TPU 8i [52] 288 8.6 384 2400 Boardfly AWS Neuron 2018 Inferentia 1 [16, 21] 8 0.05 – 32 1D chain 2020 Trainium 1 [18, 25] 32 0.88 – 384 2D torus 2022 Inferentia 2 [17, 22] 32 0.88 – 192 1D torus 2023 Trainium 2 [19, 26] 96 2.9 – 1280 2D torus b
+
+2024 Trainium 3 [20, 27] 144 4.9 – 2560 All-to-All c  
+
+> Topologies refer to representative platforms: P100/V100 to DGX-1 servers (V100 also appears in NVSwitch-based DGX-2 [125]); A100/H100 to DGX A100/H100 servers; B300/Rubin to GB300/Vera Rubin NVL72 racks. AMD MI50/MI100 refer to four-GPU ring/full-mesh hives; MI250X to four fully connected OAM modules; MI300X/MI355X to eight-GPU baseboards; MI455X to the 72-GPU Helios rack. TPU entries refer to supported pod slices. AWS entries refer to Inf1.24xlarge, Trn1.32xlarge, Inf2.48xlarge, Trn2 UltraServer, and Trn3 UltraServer, respectively [16–20]. Years follow first public family disclosure. GPU’s on-chip SRAM refers to L2/shared cache, while NPU’s on-chip SRAM refers to software-managed scratchpad.
+> aAggregate bidirectional bandwidth per accelerator as reported by the vendor. TPU 8 ICI uses 19.2 Tb/s
+
+= 2, 400 GB/s. Inferentia 1 uses DDR4; the other listed devices use HBM.  
+
+> b
+
+4 × 4 2D torus within a 16-chip Trn2 instance (1,024 GB/s per chip) plus same-coordinate rings across the four instances of a Trn2 UltraServer (256 GB/s per chip) [19].  
+
+> cThe interconnect bandwidth uses AWS’s chip specification [27].
+
+FP16/BF16 matrix throughput, shared-cache capacity, and HBM capacity for NVIDIA and AMD GPUs. In the selected observations, total model parameters grow faster than per-accelerator memory capacity and the communication efficiency of scale-up fabrics (Figure 2). As a result, AI datacenters combine a scale-up fabric within each pod with a scale-out network across pods. Within the scale-up domain, interconnect bandwidth has increased steadily, while topologies have evolved to improve scalability and communication efficiency. AWS Trainium [25–27] illustrates this trend. Trn1 and Trn2 connect 16 chips in a 4 × 4 2D torus. Trn2 UltraServer links four such systems into a 64-chip domain through inter-instance rings. Trainium 3 replaces the torus with a switched all-to-all fabric, NeuronSwitch-v1, supporting up to 144 chips. The trade-off is straightforward. A low-radix torus avoids switch silicon and scales incrementally, but its diameter and contention increase with system size. A switched fabric requires more ports, silicon area, and power, but 24 Yufeng Gu, Jiazhen Wang, and Reetuparna Das 
+
+> Fig. 15. Scaling of per-GPU dense FP16/BF16 matrix throughput, shared-cache capacity, and HBM capacity across NVIDIA and AMD GPUs, 2016–2025. Each vendor/metric is normalized to its first observation.
+
+reduces path length and makes communication less sensitive to placement. This is particularly beneficial for communication-intensive collectives, such as mixture-of-experts (MoE) routing. A switched all-to-all fabric is not the only alternative to a torus topology. Google TPU 8i [52] adopts Boardfly, a hierarchical high-radix topology built from four-chip building blocks. Eight boards form a fully connected group, and 36 such groups are interconnected through optical circuit switches, yielding 1,152 physical chip positions with support for up to 1,024 active chips. For the 1,024-chip configuration, Google reports a maximum path length of seven hops, compared with 16 hops for the referenced 3D torus, corresponding to a 56% reduction. Shorter paths are particularly beneficial for latency-sensitive collectives: during autoregressive decoding, small reductions across model-parallel shards can make synchronization latency a substantial fraction of per-token execution time. Boardfly therefore reduces communication distance through hierarchical connectivity, whereas Trainium 3 UltraServers pursue a different approach based on a switched any-to-any fabric. 
+
+5.4 Power Consumption and Cooling 
+
+With the rapid advancement of AI accelerators, device-level power consumption has risen markedly. Over the past decade, the maximum power of high-end NVIDIA and AMD datacenter GPUs have increased from approximately 300 W to beyond 1000 W. This upward trend at the device level aggregates into substantial growth in datacenter electricity demand. The International Energy Agency (IEA) estimates that datacenters consumed roughly 415 TWh in 2024, accounting for about 1.5% of global electricity use [63, 64]. Under this scenario, the IEA projects that the datacenter energy consumption will more than double to around 945 TWh by 2030, growing substantially faster than overall electricity demand. Figure 16(b) summarizes historical trends and near-term projections of datacenter energy consumption. Driven by the rapid escalation of accelerator power consumption, datacenter cooling has evolved through three distinct paradigms. Initially, the standard dual-slot, passively air-cooled PCIe form factor capped thermal design power (TDP) around the 300W mark for years, though recent iter-ations (e.g., H200 NVL) have stretched this to 600W. To break this thermal ceiling, the industry adopted planar-mounted modules such as NVIDIA’s SXM and OCP’s Open Accelerator Module (OAM), equipped with massive vertical tower heat sinks. This shift accommodated TDPs up to 1100W in recent generations like the B300 SXM. Today, the demand for larger parameter models necessitates even tighter cluster integration, accelerating the transition to direct liquid cooling Balancing Generality and Specialization in AI Datacenters 25 (a)  NVIDIA Datacenter GPU TDP Evolution  (b) Datacenter Power Consumption 
+
+> Fig. 16. (a) Maximum reported NVIDIA accelerator power and cooling approach by product generation; power limits depend on the product and platform configuration. (b) Annual datacenter electricity consumption: the IEA supports the 2024 estimate of 415 TWh and 2030 projection of 945 TWh [64]; intervening projected values are an interpolation.
+
+(DLC). By eliminating bulky heatsinks, rack-scale DLC solutions (e.g., NVIDIA GB200) support extreme per-GPU TDPs up to 1400W while drastically shrinking the physical footprint. Crucially, this densification minimizes the copper wire length for scale-up networks like NVLink, thereby optimizing signal integrity and interconnect latency in massive AI clusters. The rapid increase in datacenter electricity demand is also reflected in the scale of planned accelerator deployments. Public disclosures and credible reporting indicate that these deployments are reaching unprecedented levels: Meta planned to deploy approximately 350,000 NVIDIA H100 GPUs by the end of 2024, and about 600,000 H100-equivalent GPUs including other models [108]; xAI brought online a cluster comprising 100,000 NVIDIA Hopper GPUs [93]; and Oracle announced cloud superclusters scaling to 131,072 NVIDIA B200 GPUs [102]. At such scale, infrastructure planning shifts from rack- or building-level considerations to campus-scale provisioning, requiring dedicated substations, expanded transmission capacity, and long-term power purchase agreements (PPAs), and in some cases on-site or near-site generation. As a result, power availability and grid interconnection timelines are increasingly becoming binding constraints on large-scale AI cluster deployment. In response to these constraints, leading technology companies are coupling AI infrastructure expansion with long-horizon electricity procurement strategies and, in some cases, direct investment in generation assets. For example, Google announced significant AI-driven datacenter expansion alongside hydropower procurement at up to gigawatt scale to support rising load [41, 109]. Meta signed a 20-year agreement associated with the 1.1 GW Clinton Clean Energy Center, reflecting a shift toward firm, long-duration supply contracts structured around projected AI demand growth [43, 110]. More broadly, hyperscalers including Amazon, Google, and Microsoft have pursued nuclear-linked procurement strategies, such as long-term offtake agreements and small modular reactor partnerships, to secure reliable low-carbon power for sustained AI expansion [40]. 
+
+6 Challenges of Future AI Datacenter Design 
+
+Designing future AI datacenters requires more than simply scaling today’s accelerators, networks, and racks. Every specialized architecture embodies assumptions about workload characteristics and their computational, memory, and communication requirements. Algorithms and hardware also co-evolve: emerging models and serving techniques alter these demands, while new hard-ware capabilities make previously impractical algorithms economically feasible. However, these 26 Yufeng Gu, Jiazhen Wang, and Reetuparna Das 
+
+components evolve on different timescales. Software and workloads may change during a deploy-ment’s lifetime, whereas architecture decisions remain fixed for substantially longer periods. The following subsections examine five related challenges: workload diversity; data placement and movement; communication across scale-up and scale-out networks; power delivery and cooling; and architectural specialization. 
+
+6.1 Workload Specialization and Fleet Flexibility 
+
+AI workload mix can change even when its installed accelerator capacity stays the same. Specializing hardware for particular workloads can improve efficiency, but can also make it harder to reassign capacity when demand shifts. Training and inference each include workloads with different resource needs. Pre-training maintains optimizer state and uses large collective operations, while online inference is shaped by latency and throughput targets [46, 78]. Inference is also varied and does not describe one fixed balance of hardware resources. Mixture-of-experts models, multimodal inputs, long contexts, retrieval augmentation, and diffusion place different demands on compute, memory capacity, memory bandwidth, and communication [82]. Current Transformer serving shows this variation within a single inference request. Prefill often offers more parallel work, while decode can spend more time moving weights and key–value (KV) cache. Draft and verify stages in speculative decoding, batching, prefix caching, prefill-decoding disaggregation, quantization, and context length further change this balance. Google positions TPU 8t and TPU 8i for different workload mixes at the accelerator-pool level [52], while OpenAI describes Jalapeño as specialized for inference but balanced across a changing prefill/decode mix [101]. These examples show that a system can be specialized for one broad class of work while retaining flexibility within that class. Specialized resource pools introduce the challenge of matching available capacity to fluctuating demand. Maintaining separate pools for training and inference, or even for prefill and decode, can improve efficiency; however, one pool may remain underutilized while another experiences substantial queuing delays. 
+
+6.2 Data Placement and Movement 
+
+AI workloads transfer large volumes of data across multiple memory tiers. For example, small-batch decoding can spend a substantial fraction of its execution time reading model weights and key-value (KV) caches [82]. Placing data closer to compute units can reduce some of these transfers, but nearby memory capacity is limited, and data placement may require explicit software management. Architectures therefore shorten data-movement paths at different points in the memory hierarchy. Groq and Cerebras provide on-chip SRAM, with Cerebras extending it across a wafer [2, 80]. Retaining data in SRAM avoids repeated device-DRAM transfers. However, large parameter sizes, long contexts or greater request concurrency can exhaust the SRAM capacity. Offloading data to another memory tier introduces additional transfers, whereas distributing computation across more devices generates network communication. Under tensor parallelism, weight shards can remain on their assigned devices, but activations or partial results must still be exchanged. The memory organization ultimately determines which transfers remain necessary. Processing-in-memory (PIM) reduces data movement by performing supported operations where the operands reside. d-Matrix Corsair computes within SRAM arrays [119], whereas Samsung HBM-PIM and SK hynix AiM integrate arithmetic units into DRAM devices [71, 75]. PIM architectures provide high internal memory bandwidth, but SRAM-based designs have limited capacity and DRAM-based designs have limited compute throughput. Processing-near-memory (PNM) instead performs arithmetic in logic located close to memory, while 3D stacking can further shorten the links between the two. Raptor directly bonds logic to 3D Balancing Generality and Specialization in AI Datacenters 27 
+
+DRAM to reduce the length of the memory interface [88]. Although this 3D-stacked architecture shortens data paths without compromising computational throughput, it also introduces thermal and reliability challenges. 
+
+6.3 Communication Across Scale-Up and Scale-Out Networks 
+
+Communication constraints arise from the interaction between workload mapping and physical network design. Large gradient exchanges in training can benefit from greater link bandwidth because transferring the payload occupies much of the communication time. Tensor-parallel decoding with small batches can instead exchange short messages repeatedly at each layer and token step [82]. Faster links shorten payload transmission but do not remove the delay of starting an exchange, traversing the network, or waiting for other devices. The same fabric can therefore face different limits as the workload and batch size change. Topology changes address part of this difference. Trainium moves from torus-based connectivity toward switched fabrics, adding switch hardware to reduce path lengths and contention [27]. Google reports that TPU 8i’s Boardfly reduces the worst-case path across ∼1K chips from 16 hops in the compared 3D torus to 7 [52]. This describes network diameter; the effect on a collective also depends on its schedule and placement. Scale-up fabrics provide high bandwidth and low latency within a server, rack, or pod, while scale-out networks connect these domains. If a model is partitioned across domains, exchanges between its partitions also use scale-out links. Expanding a scale-up domain can keep more exchanges on that fabric, but may require longer links. Copper connects nearby devices, while optical links extend reach. Co-packaged optics shorten electrical paths between switches and optical interfaces [112]; they reduce part of the signaling cost without removing propagation delay or workload synchronization. 
+
+6.4 Power Delivery and Cooling from Rack to Facility 
+
+Power delivery and cooling can limit how much installed compute capacity a datacenter can use. Sufficient total power does not guarantee that each rack can receive that power or dissipate the resulting heat. At a fixed distribution voltage, increasing rack power raises the current carried by the conductors. For a 200 kW rack supplied at 54 V, 𝐼 = 𝑃 /𝑉 yields approximately 3,700 A. Increasing current through a conductor raises resistive losses and heat generation, whereas increasing the conductor cross-section requires additional material and space. NVIDIA identifies physical limitations of 54 VDC distribution as rack power exceeds 200 kW and proposes an 800 VDC Architecture [31]. A higher distribution voltage reduces the current required to deliver a given amount of power. Consequently, upgrading accelerators may require corresponding changes to rack- and facility-level power-delivery infrastructure even when sufficient floor space is available. Cooling similarly links package design to facility-level energy consumption. NVIDIA specifies a maximum inlet-water temperature of 45 ◦C for its Vera Rubin MGX rack design, potentially reducing chiller use in climates where outdoor air can dissipate much of the heat [86]. For a fixed thermal resistance between the chip and coolant, however, warmer water reduces the temperature margin below the chip’s operating limit. As the device approaches this limit, sustaining higher activity requires either improved heat transfer or lower coolant temperatures. Thus, the available electrical-power budget alone does not determine how much accelerator activity a cooling system can sustain. Power demand also fluctuates over the course of a job. Synchronized training workloads alternate between compute-intensive and communication-intensive phases, producing coordinated power swings across many GPUs [39]. Short-term energy storage can buffer these fluctuations but has finite capacity, whereas throttling or delaying computation can reduce peak demand at the cost of 28 Yufeng Gu, Jiazhen Wang, and Reetuparna Das 
+
+slower job progress. Consequently, two workloads with similar average power consumption may impose substantially different demands on electrical infrastructure depending on the magnitude, timing, and synchronization of their power peaks. 
+
+6.5 Architectural Specialization and Model Evolution 
+
+Architectural specialization differs in how much of a model’s computation is fixed in hardware and how much remains programmable. This affects which model updates can be handled in software and which require changes to the chip. In SambaNova’s SN40L, the compiler maps supported model graphs onto configurable compute and memory tiles and programs the corresponding data routes [106]. Reconfigurability thus provides flexibility for algorithmic evolution, but only within a finite set of physical resources and supported operations. Taalas HC1 adopts a different approach by hard-wiring the AI model while retaining configurable context lengths and low-rank adapters for fine-tuning [28]. Updating an adapter can modify model behavior, whereas replacing the hard-wired base model requires new silicon. Existing chips can continue serving the original model as long as demand persists, but their capacity becomes difficult to repurpose if demand shifts to an unsupported model. Encoding model-specific functionality in hardware can simplify execution, but it also makes hardware reuse dependent on which aspects remain programmable. Across these examples, software can reassign work, remap computation, or constrain activity, but the cost and effectiveness of such adaptations are determined by the physical resources already deployed. 
+
+7 Conclusion 
+
+This survey has examined industrial AI datacenter architectures through accelerator organization, scale-up interconnects, and architectural evolution. Across the surveyed systems, specialized arithmetic coexists with general-purpose execution resources and varied memory-management strategies. The interconnect analysis relates collective communication to node-, rack-, and pod-scale fabrics, while the generational studies connect gains in computational throughput with changes in operand delivery, memory hierarchy, communication, and cooling. These comparisons show that specialization cannot be assessed from the compute engine alone. Reducing memory traffic can increase sensitivity to data placement, while distributing models across devices introduces communication overheads that faster arithmetic cannot eliminate. Power and thermal constraints further limit usable system capacity. As workloads evolve, these architectural choices also affect how effectively deployed hardware can be reused, linking efficiency with system flexibility and longevity. 
+
+References          
+
+> [1] Dennis Abts, Garrin Kimmell, Andrew Ling, John Kim, Matt Boyd, Andrew Bitar, Sahil Parmar, Ibrahim Ahmed, Roberto DiCecco, David Han, et al. 2022. A software-defined tensor streaming multiprocessor for large-scale machine learning. In Proceedings of the 49th Annual International Symposium on Computer Architecture . 567–580. doi:10.1145/3470496.3527405 [2] Dennis Abts, Jonathan Ross, Jonathan Sparling, Mark Wong-VanHaren, Max Baker, Tom Hawkins, Andrew Bell, John Thompson, Temesghen Kahsai, Garrin Kimmell, et al. 2020. Think fast: A tensor streaming processor (TSP) for accelerating deep learning workloads. In 2020 ACM/IEEE 47th Annual International Symposium on Computer Architecture (ISCA) . IEEE, IEEE, 145–158. [3] Eduardo Alvarez, Omri Almog, Eric Chung, Simon Layton, Dusan Stosic, Ronny Krashinsky, and Kyle Aubrey. 2025.
+> Introducing NVFP4 for Efficient and Accurate Low-Precision Inference .https://developer.nvidia.com/blog/introducing-nvfp4-for-efficient-and-accurate-low-precision-inference/ [4] Amazon Web Services. 2018. Announcing Amazon Inferentia: A Machine Learning Inference Microchip .https://aws.amazon.com/about-aws/whats-new/2018/11/announcing-amazon-inferentia-machine-learning-inference-microchip/
+
+Balancing Generality and Specialization in AI Datacenters 29 
+
+[5] AMD. [n. d.]. Accelerator Specifications: Radeon Instinct MI50 (32 GB) . Undated product specifications; 184 GB/s total Infinity Fabric bandwidth. https://www.amd.com/en/products/specifications/accelerators.html [6] AMD. 2020. AMD Instinct MI100 Accelerator . https://www.amd.com/content/dam/amd/en/documents/instinct-business-docs/product-briefs/instinct-mi100-brochure.pdf [7] AMD. 2020. Introducing AMD CDNA Architecture: The All-New AMD GPU Architecture for the Modern Era of HPC & AI . https://www.amd.com/content/dam/amd/en/documents/instinct-business-docs/white-papers/amd-cdna-white-paper.pdf [8] AMD. 2021. Introducing AMD CDNA 2 Architecture: Propelling humanity’s foremost research with the world’s most powerful HPC and AI accelerator. https://www.amd.com/content/dam/amd/en/documents/instinct-business-docs/ white-papers/amd-cdna2-white-paper.pdf [9] AMD. 2025. AMD Instinct MI355X GPU: Leading-Edge GPU for Generative AI, Inference, Training, and High Performance Computing . GPU datasheet, available from the product documentation; dense FP16/BF16 2.5166 PFLOPS, FP8/INT8 5.0332 Peta-operations/s. https://www.amd.com/en/products/accelerators/instinct/mi350/mi355x.html [10] AMD. 2025. Introducing AMD CDNA 3 Architecture: The All-New AMD GPU Architecture for the Modern Era of HPC & AI . https://www.amd.com/content/dam/amd/en/documents/instinct-tech-docs/white-papers/amd-cdna-3-white-paper.pdf [11] AMD. 2025. Introducing AMD CDNA 4 Architecture: Breakthrough AI and HPC Acceleration with Enhanced AI Capabilities, Advanced Precisions, and High Efficiency . https://www.amd.com/content/dam/amd/en/documents/ instinct-tech-docs/white-papers/amd-cdna-4-architecture-whitepaper.pdf [12] AMD. 2026. AMD CDNA 5 Architecture . Advanced Micro Devices, Inc. https://www.amd.com/en/technologies/cdna. html [13] AMD. 2026. AMD Instinct MI455X GPUs . Advanced Micro Devices, Inc. https://www.amd.com/en/products/ accelerators/instinct/mi400/mi455x.html [14] Kyle Aubrey and Farshad Ghodsian. 2026. Inside NVIDIA Groq 3 LPX: The Low-Latency Inference Accelerator for the NVIDIA Vera Rubin Platform . https://developer.nvidia.com/blog/inside-nvidia-groq-3-lpx-the-low-latency-inference-accelerator-for-the-nvidia-vera-rubin-platform/ [15] Kyle Aubrey and Nick Stam. 2025. Inside NVIDIA Blackwell Ultra: The Chip Powering the AI Factory Era . https: //developer.nvidia.com/blog/inside-nvidia-blackwell-ultra-the-chip-powering-the-ai-factory-era/ [16] AWS. 2026. Amazon EC2 Inf1 Architecture . AWS Neuron SDK 2.31.1 documentation. https://awsdocs-neuron. readthedocs-hosted.com/en/v2.31.1/about-neuron/arch/neuron-hardware/inf1-arch.html [17] AWS. 2026. Amazon EC2 Inf2 Architecture . AWS Neuron SDK 2.31.1 documentation. https://awsdocs-neuron. readthedocs-hosted.com/en/v2.31.1/about-neuron/arch/neuron-hardware/inf2-arch.html [18] AWS. 2026. Amazon EC2 Trn1 Architecture . AWS Neuron SDK 2.31.1 documentation. https://awsdocs-neuron. readthedocs-hosted.com/en/v2.31.1/about-neuron/arch/neuron-hardware/trn1-arch.html [19] AWS. 2026. Amazon EC2 Trn2 Architecture . AWS Neuron SDK 2.31.1 documentation. https://awsdocs-neuron. readthedocs-hosted.com/en/v2.31.1/about-neuron/arch/neuron-hardware/trn2-arch.html [20] AWS. 2026. Amazon EC2 Trn3 Architecture . AWS Neuron SDK 2.31.1 documentation. https://awsdocs-neuron. readthedocs-hosted.com/en/v2.31.1/about-neuron/arch/neuron-hardware/trn3-arch.html [21] AWS. 2026. Inferentia Architecture . AWS Neuron SDK 2.31.1 documentation. https://awsdocs-neuron.readthedocs-hosted.com/en/v2.31.1/about-neuron/arch/neuron-hardware/inferentia.html [22] AWS. 2026. Inferentia2 Architecture . AWS Neuron SDK 2.31.1 documentation. https://awsdocs-neuron.readthedocs-hosted.com/en/v2.31.1/about-neuron/arch/neuron-hardware/inferentia2.html [23] AWS. 2026. NeuronCore-v2 Architecture . AWS Neuron SDK 2.31.1 documentation. https://awsdocs-neuron. readthedocs-hosted.com/en/v2.31.1/about-neuron/arch/neuron-hardware/neuron-core-v2.html [24] AWS. 2026. NeuronCore-v4 Architecture . AWS Neuron SDK 2.31.1 documentation. https://awsdocs-neuron. readthedocs-hosted.com/en/v2.31.1/about-neuron/arch/neuron-hardware/neuron-core-v4.html [25] AWS. 2026. Trainium Architecture . AWS Neuron SDK 2.31.1 documentation. https://awsdocs-neuron.readthedocs-hosted.com/en/v2.31.1/about-neuron/arch/neuron-hardware/trainium.html [26] AWS. 2026. Trainium2 Architecture . AWS Neuron SDK 2.31.1 documentation. https://awsdocs-neuron.readthedocs-hosted.com/en/v2.31.1/about-neuron/arch/neuron-hardware/trainium2.html [27] AWS. 2026. Trainium3 Architecture . AWS Neuron SDK 2.31.1 documentation. https://awsdocs-neuron.readthedocs-hosted.com/en/v2.31.1/about-neuron/arch/neuron-hardware/trainium3.html [28] Ljubisa Bajic. 2026. The Path to Ubiquitous AI . Taalas. https://taalas.com/the-path-to-ubiquitous-ai/ [29] Jeff Barr. 2020. re:Invent 2020 Liveblog: Andy Jassy Keynote . https://aws.amazon.com/blogs/aws/reinvent-2020-liveblog-andy-jassy-keynote/ [30] Noman Bashir, Rob Sherwood, Le Xie, and Minlan Yu. 2026. From Barrier to Bridge: The Case for AI Data Center/Power Grid Co-Design. arXiv:2605.03090 doi:10.48550/arXiv.2605.03090 30 Yufeng Gu, Jiazhen Wang, and Reetuparna Das 
+
+[31] Mathias Blake, Martin Hsu, Ivan Goldwasser, Harry Petty, and Jared Huntington. 2025. NVIDIA 800 VDC Architecture Will Power the Next Generation of AI Factories . NVIDIA Technical Blog. https://developer.nvidia.com/blog/?p=100571 [32] Cambricon. 2019. MLU270 Product Specifications . https://www.cambricon.com/index.php?m=content&c=index&a= lists&catid=37 [33] Cambricon. 2020. BANG C Language Developer Guide . Version 2.4.1, February 21, 2020. https://forum.cambricon. com/uploadfile/user/file/20201125/1606289569710855.pdf [34] Karam Chatha. 2021. Qualcomm® Cloud AI 100: 12TOPS/W Scalable, High Performance and Low Latency Deep Learning Inference Accelerator. In 2021 IEEE Hot Chips 33 Symposium (HCS) . IEEE, IEEE, 1–19. [35] Xin Chen, Xiaoyang Wang, Ana Colacelli, Matt Lee, and Le Xie. 2025. Electricity Demand and Grid Impacts of AI Data Centers: Challenges and Prospects. arXiv:2509.07218 [eess.SY] doi:10.48550/arXiv.2509.07218 [36] Jack Choquette. 2023. NVIDIA hopper H100 GPU: Scaling performance. IEEE Micro 43, 3 (2023), 9–17. [37] Jack Choquette, Wishwesh Gandhi, Olivier Giroux, Nick Stam, and Ronny Krashinsky. 2021. NVIDIA A100 tensor core GPU: Performance and innovation. IEEE Micro 41, 2 (2021), 29–35. [38] Jack Choquette, Olivier Giroux, and Denis Foley. 2018. Volta: Performance and programmability. IEEE Micro 38, 2 (2018), 42–52. [39] Esha Choukse, Brijesh Warrier, Scot Heath, et al. 2025. Power Stabilization for AI Training Datacenters. arXiv:2508.14318 [cs.AR] doi:10.48550/arXiv.2508.14318 [40] Heather Clancy. 2025. Amazon, Google, Meta and Microsoft go nuclear . https://trellis.net/article/amazon-google-meta-and-microsoft-go-nuclear/ [41] CNBC. 2025. Google to invest $25 billion in data centers, AI infrastructure in PJM . https://www.cnbc.com/2025/07/15/ google-to-invest-25-billion-in-data-centers-ai-infrastructure-in-pjm.html [42] Joel Coburn, Chunqiang Tang, Sameer Abu Asal, Neeraj Agrawal, Raviteja Chinta, Harish Dixit, Brian Dodds, Saritha Dwarakapuram, Amin Firoozshahian, Cao Gao, et al. 2025. Meta’s Second Generation AI Chip: Model-Chip Co-Design and Productionization Experiences. In Proceedings of the 52nd Annual International Symposium on Computer Architecture . 1689–1702. [43] Constellation Energy. 2025. Constellation, Meta Sign 20-Year Deal for Clean, Reliable Nuclear Energy in Illi-nois . https://www.constellationenergy.com/newsroom/2025/constellation-meta-sign-20-year-deal-for-clean-reliable-nuclear-energy-in-illinois.html [44] DeepSeek-AI. 2026. DeepSeek V4 Preview Release . DeepSeek. https://api-docs.deepseek.com/news/news260424/ [45] Saurabh Dighe and Artour Levin. 2026. Deep Dive into the Maia 200 Architecture. https://techcommunity.microsoft. com/blog/azureinfrastructureblog/deep-dive-into-the-maia-200-architecture/4489312. Azure Infrastructure Blog. Published Jan. 26, 2026; updated Jan. 30, 2026. [46] Jiangfei Duan, Shuo Zhang, Zerui Wang, Lijuan Jiang, Wenwen Qu, Qinghao Hu, Guoteng Wang, Qizhen Weng, Hang Yan, Xingcheng Zhang, Xipeng Qiu, Dahua Lin, Yonggang Wen, Xin Jin, Tianwei Zhang, and Peng Sun. 2024. Efficient Training of Large Language Models on Distributed Infrastructures: A Survey. https://arxiv.org/abs/2407.20018. arXiv:2407.20018 [cs.DC] [47] Epoch AI. 2025. Data on AI Trends: Compute, Models, Hardware. https://epoch.ai/trends. Accessed: 2026-09-13. [48] Amin Firoozshahian, Joel Coburn, Roman Levenstein, Rakesh Nattoji, Ashwin Kamath, Olivia Wu, Gurdeepak Grewal, Harish Aepala, Bhasker Jakka, Bob Dreyer, et al. 2023. MTIA: First Generation Silicon Targeting Meta’s Recommendation Systems. In Proceedings of the 50th Annual International Symposium on Computer Architecture .1–13. [49] Denis Foley and John Danskin. 2017. Ultra-performance Pascal GPU and NVLink interconnect. IEEE Micro 37, 2 (2017), 7–17. [50] Amir Gholami, Zhewei Yao, Sehoon Kim, Coleman Hooper, Michael W. Mahoney, and Kurt Keutzer. 2024. AI and Memory Wall. IEEE Micro 44, 3 (2024), 33–39. arXiv:2403.14123 doi:10.1109/MM.2024.3373763 [51] Google. 2016. Google Supercharges Machine Learning Tasks with Custom Chip . https://cloud.google.com/blog/ products/ai-machine-learning/google-supercharges-machine-learning-tasks-with-custom-chip [52] Google Cloud. 2026. Inside the eighth-generation TPU: An architecture deep dive . https://cloud.google.com/blog/ products/compute/tpu-8t-and-tpu-8i-technical-deep-dive [53] Google Cloud. 2026. TPU architecture . https://docs.cloud.google.com/tpu/docs/system-architecture-tpu-vm [54] Google Cloud. 2026. TPU Machines in Accelerator-Optimized Machine Family . https://docs.cloud.google.com/compute/ docs/tpus/tpu-machines [55] Google Cloud. 2026. TPU v5e . https://docs.cloud.google.com/tpu/docs/v5e [56] Google Cloud. 2026. TPU v5p . https://docs.cloud.google.com/tpu/docs/v5p [57] Google Cloud. 2026. TPU v6e . https://docs.cloud.google.com/tpu/docs/v6e [58] Google Cloud. 2026. TPU7x (Ironwood) . https://docs.cloud.google.com/tpu/docs/tpu7x Balancing Generality and Specialization in AI Datacenters 31 
+
+[59] Graphcore. 2020. IPU-POD64 Reference Design Datasheet . Version 1.0, December 2, 2020; IPU-Link topology. https: //docs.graphcore.ai/projects/ipu-pod64-datasheet/en/1.0.0/_static/GC-000477-DS-6-IPU-POD64-datasheet.pdf [60] Cong Guo, Feng Cheng, Zhixu Du, James Kiessling, Jonathan Ku, Shiyu Li, Ziru Li, Mingyuan Ma, Tergel Molom-Ochir, Benjamin Morris, Haoxuan Shan, Jingwei Sun, Yitu Wang, Chiyue Wei, Xueying Wu, Yuhao Wu, Hao Frank Yang, Jingyang Zhang, Junyao Zhang, Qilin Zheng, Guanglei Zhou, Hai Li, and Yiran Chen. 2025. A Survey: Collaborative Hardware and Software Design in the Era of Large Language Models. IEEE Circuits and Systems Magazine 25, 1 (2025), 35–57. doi:10.1109/MCAS.2024.3476008 [61] Scott Guthrie. 2026. Maia 200: The AI Accelerator Built for Inference . https://blogs.microsoft.com/blog/2026/01/26/maia-200-the-ai-accelerator-built-for-inference/ [62] Adnan Hoque, Less Wright, and Chih-Chieh Yang. 2024. Deep Dive on the Hopper TMA Unit for FP8 GEMMs .https://pytorch.org/blog/hopper-tma-unit/ [63] International Energy Agency. 2025. Energy and AI: Energy demand from AI . https://www.iea.org/reports/energy-and-ai/energy-demand-from-ai [64] International Energy Agency. 2025. Energy and AI: Executive Summary . https://www.iea.org/reports/energy-and-ai/executive-summary [65] Aaron Jarmusch and Sunita Chandrasekaran. 2025. Microbenchmarking NVIDIA’s Blackwell Architecture: An in-depth Architectural Analysis. Version 1, December 1, 2025. arXiv:2512.02189v1 https://arxiv.org/abs/2512.02189v1 [66] Sylvain Jeaugey. 2019. Massively Scale Your Deep Learning Training with NCCL 2.4. https://developer.nvidia.com/ blog/massively-scale-deep-learning-training-nccl-2-4/ [67] Sylvain Jeaugey. 2025. PAT: A New Algorithm for All-Gather and Reduce-Scatter Operations at Scale. arXiv:2506.20252 [cs.DC] https://arxiv.org/abs/2506.20252 [68] Zhe Jia, Blake Tillman, Marco Maggioni, and Daniele Paolo Scarpazza. 2019. Dissecting the graphcore ipu architecture via microbenchmarking. arXiv:1912.03413 https://arxiv.org/abs/1912.03413 [69] Norm Jouppi, George Kurian, Sheng Li, Peter Ma, Rahul Nagarajan, Lifeng Nai, Nishant Patil, Suvinay Subramanian, Andy Swing, Brian Towles, et al. 2023. TPU v4: An optically reconfigurable supercomputer for machine learning with hardware support for embeddings. In Proceedings of the 50th annual international symposium on computer architecture .1–14. [70] Roman Kaplan. 2024. Intel Gaudi 3 AI Accelerator: Architected for Gen AI Training and Inference. In 2024 IEEE Hot Chips 36 Symposium (HCS) . IEEE, IEEE, 1–16. [71] Jin Hyun Kim, Shin-Haeng Kang, Sukhan Lee, Hyeonsu Kim, Yuhwan Ro, Seungwon Lee, David Wang, Jihyun Choi, Jinin So, YeonGon Cho, et al. 2022. Aquabolt-XL HBM2-PIM, LPDDR5-PIM with in-memory processing, and AXDIMM with acceleration buffer. IEEE Micro 42, 3 (2022), 20–30. doi:10.1109/MM.2022.3164651 [72] Nikoletta Koilia and Christoforos Kachris. 2024. Hardware Acceleration of LLMs: A Comprehensive Survey and Comparison. https://arxiv.org/abs/2409.03384. arXiv:2409.03384 [cs.AR] [73] Vijay Anand Korthikanti, Jared Casper, Sangkug Lym, Lawrence McAfee, Michael Andersch, Mohammad Shoeybi, and Bryan Catanzaro. 2023. Reducing Activation Recomputation in Large Transformer Models. Proceedings of Machine Learning and Systems 5 (2023), 341–353. https://proceedings.mlsys.org/paper_files/paper/2023/hash/ 80083951326cf5b35e5100260d64ed81-Abstract-mlsys2023.html [74] Alex Krizhevsky, Ilya Sutskever, and Geoffrey E. Hinton. 2012. ImageNet Classification with Deep Convolutional Neural Networks. In Advances in Neural Information Processing Systems , Vol. 25. Curran Associates, Inc., 9 pages. https://proceedings.neurips.cc/paper_files/paper/2012/file/c399862d3b9d6b76c8436e924a68c45b-Paper.pdf [75] Daehan Kwon, Seongju Lee, Kyuyoung Kim, Sanghoon Oh, Joonhong Park, Gi-Moon Hong, Dongyoon Ka, Kyudong Hwang, Jeongje Park, Kyeongpil Kang, et al. 2023. A 1ynm 1.25 v 8Gb 16Gb/s/pin GDDR6-based accelerator-in-memory supporting 1TFLOPS MAC operation and various activation functions for deep learning application. IEEE Journal of Solid-State Circuits 58, 1 (2023), 291–302. doi:10.1109/JSSC.2022.3200718 [76] Seongju Lee, Kyuyoung Kim, Sanghoon Oh, Joonhong Park, Gimoon Hong, Dongyoon Ka, Kyudong Hwang, Jeongje Park, Kyeongpil Kang, Jungyeon Kim, et al. 2022. A 1ynm 1.25 V 8Gb, 16Gb/s/pin GDDR6-based accelerator-in-memory supporting 1TFLOPS MAC operation and various activation functions for deep-learning applications. In 2022 IEEE International Solid-State Circuits Conference (ISSCC) , Vol. 65. IEEE, IEEE, 1–3. doi:10.1109/ISSCC42614.2022.9731711 [77] Dmitry Lepikhin, HyoukJoong Lee, Yuanzhong Xu, Dehao Chen, Orhan Firat, Yanping Huang, Maxim Krikun, Noam Shazeer, and Zhifeng Chen. 2021. GShard: Scaling Giant Models with Conditional Computation and Automatic Sharding. In 9th International Conference on Learning Representations (ICLR) . https://openreview.net/forum?id= qrwe7XHTmYb [78] Jinhao Li, Jiaming Xu, Shan Huang, Yonghua Chen, Wen Li, Jun Liu, Yaoxiu Lian, Jiayi Pan, Li Ding, Hao Zhou, Yu Wang, and Guohao Dai. 2024. Large Language Model Inference Acceleration: A Comprehensive Hardware Perspective. https://arxiv.org/abs/2410.04466. arXiv:2410.04466 [cs.AR] 32 Yufeng Gu, Jiazhen Wang, and Reetuparna Das 
+
+[79] Heng Liao, Bingyang Liu, Xianping Chen, Zhigang Guo, Chuanning Cheng, Jianbing Wang, Xiangyu Chen, Peng Dong, Rui Meng, Wenjie Liu, et al. 2025. UB-Mesh: A Hierarchically Localized nD-FullMesh Data Center Network Architecture. IEEE Micro 45, 5 (2025), 20–29. doi:10.1109/mm.2025.3592688 [80] Sean Lie. 2023. Cerebras architecture deep dive: First look inside the hardware/software co-design for deep learning. 
+
+IEEE Micro 43, 3 (2023), 18–30. [81] Weile Luo, Ruibo Fan, Zeyu Li, Dayou Du, Qiang Wang, and Xiaowen Chu. 2024. Benchmarking and Dissecting the NVIDIA Hopper GPU Architecture. In 2024 IEEE International Parallel and Distributed Processing Symposium (IPDPS) .IEEE, IEEE, 656–667. [82] Xiaoyu Ma and David Patterson. 2026. Challenges and Research Directions for Large Language Model Inference Hardware. Computer 59, 5 (2026), 55–64. doi:10.1109/MC.2026.3652916 [83] Microsoft. 2023. Microsoft Ignite 2023: AI Transformation and the Technology Driving Change . https://blogs.microsoft. com/blog/2023/11/15/microsoft-ignite-2023-ai-transformation-and-the-technology-driving-change/ [84] Asit Mishra, Jorge Albericio Latorre, Jeff Pool, Darko Stosic, Dusan Stosic, Ganesh Venkatesh, Chong Yu, and Paulius Micikevicius. 2021. Accelerating sparse deep neural networks. arXiv:2104.08378 https://arxiv.org/abs/2104.08378 [85] Moonshot AI. 2026. Kimi K3: Open Frontier Intelligence . Moonshot AI. https://www.kimi.com/en/blog/kimi-k3 [86] Kibibi Moseley, Kristen Perez, and Pawini Mahajan. 2026. Scaling Token Factory Revenue and AI Efficiency by Maximizing Performance per Watt . NVIDIA Technical Blog. https://developer.nvidia.com/blog/scaling-token-factory-revenue-and-ai-efficiency-by-maximizing-performance-per-watt/ [87] MTIA Team. 2026. MTIA 300: Meta’s First Training Chip Featuring Built-in NICs and Collective Offloading Engines. In 
+
+Proceedings of the 53rd Annual International Symposium on Computer Architecture . IEEE, 1084–1099. Group authorship follows the author-distributed paper. doi:10.1109/isca66397.2026.00085 [88] Prashant J. Nair, Ramyad Hadidi, Subramani Ganesh, Sangamesh Kodge, Shubhankit Rathore, Neil Thanawala, Nikitha Reddy, Gyanesh Saharia, Vinayak Patankar, Arun Tiruvur, Nithesh Kurella, and Sudeep Bhoja. 2026. Early Silicon of Raptor: The First 3D-DRAM Accelerator for Generative Inference. In 2026 ACM/IEEE 53rd Annual International Symposium on Computer Architecture (ISCA) . IEEE, 2632–2647. doi:10.1109/ISCA66397.2026.00183 [89] Thomas Norrie, Nishant Patil, Doe Hyun Yoon, George Kurian, Sheng Li, James Laudon, Cliff Young, Norman Jouppi, and David Patterson. 2021. The design process for Google’s training chips: TPU v2 and TPU v3. IEEE Micro 41, 2 (2021), 56–63. [90] NVIDIA. 2018. NVIDIA NVSWITCH: The World’s Highest-Bandwidth On-Node Switch . https://images.nvidia.com/ content/pdf/nvswitch-technical-overview.pdf [91] NVIDIA. 2020. NVIDIA A100 Tensor Core GPU Architecture . https://images.nvidia.com/aem-dam/en-zz/Solutions/data-center/nvidia-ampere-architecture-whitepaper.pdf [92] NVIDIA. 2020. Programming Model Overview . NVSHMEM 1.0.1 documentation. https://docs.nvidia.com/nvshmem/ archives/nvshmem-101/api/docs/gen/overview.html [93] NVIDIA. 2024. NVIDIA Ethernet Networking Accelerates World’s Largest AI Supercomputer, xAI Colossus . https: //nvidianews.nvidia.com/news/spectrum-x-ethernet-networking-xai-colossus [94] NVIDIA. 2025. NVIDIA Blackwell Ultra . October 2025 datasheet, GB300 NVL72 configuration; dense throughput follows the datasheet footnotes. https://resources.nvidia.com/en-us-blackwell-architecture/blackwell-ultra-datasheet [95] NVIDIA. 2026. Collective Operations. https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/usage/collectives. html [96] NVIDIA. 2026. CuTe’s support for Matrix Multiply-Accumulate instructions . https://docs.nvidia.com/cutlass/latest/ media/docs/cpp/cute/0t_mma_atom.html [97] NVIDIA. 2026. NCCL Collective Algorithm Selection. https://docs.nvidia.com/deeplearning/nccl/user-guide/docs/ env.html#nccl-algo [98] NVIDIA. 2026. NVIDIA Vera Rubin NVL72 Specifications . NVIDIA. Specification snapshot: 19.2 TB/s HBM and 3 TB/s NVLink per GPU. https://www.nvidia.com/en-us/data-center/vera-rubin-nvl72/ [99] NVIDIA. 2026. System Hardware & Components: NVIDIA NVL72 AI Factory . https://docs.nvidia.com/enterprise-reference-architectures/nvl72-ai-factory/latest/components.html [100] Open Compute Project. 2023. OCP Microscaling Formats (MX) Specification . Version 1.0. https://www.opencompute. org/documents/ocp-microscaling-formats-mx-v1-0-spec-final-pdf [101] OpenAI. 2026. Jalapeño’s First Results Show Industry-Leading Speed and Efficiency in AI Inference . OpenAI. https: //openai.com/index/jalapeno-first-results/ [102] Oracle Cloud Infrastructure. 2024. Announcing World’s Largest AI Supercomputer in the Cloud . https://blogs.oracle. com/cloud-infrastructure/worlds-largest-ai-supercomputer-in-the-cloud [103] Sihyeong Park, Sungryeol Jeon, Chaelyn Lee, Seokhun Jeon, Byung-Soo Kim, and Jemin Lee. 2026. A Survey on Inference Engines for Large Language Models: Perspectives on Optimization and Efficiency. ACM Transactions on Intelligent Systems and Technology (2026). Advance online publication, March 30, 2026. doi:10.1145/3803798 Balancing Generality and Specialization in AI Datacenters 33 
+
+[104] Pitch Patarasuk and Xin Yuan. 2009. Bandwidth Optimal All-Reduce Algorithms for Clusters of Workstations. J. Parallel and Distrib. Comput. 69, 2 (2009), 117–124. doi:10.1016/j.jpdc.2008.09.002 [105] Jeff Pool, Abhishek Sawarkar, and Jay Rodge. 2021. Accelerating Inference with Sparsity Using the NVIDIA Ampere Architecture and NVIDIA TensorRT . https://developer.nvidia.com/blog/accelerating-inference-with-sparsity-using-ampere-and-tensorrt/ [106] Raghu Prabhakar, Ram Sivaramakrishnan, Darshan Gandhi, Yun Du, Mingran Wang, Xiangyu Song, Kejie Zhang, Tianren Gao, Angela Wang, Xiaoyan Li, et al. 2024. SambaNova SN40L: Scaling the AI Memory Wall with Dataflow and Composition of Experts. In 2024 57th IEEE/ACM International Symposium on Microarchitecture (MICRO) . IEEE, IEEE, 1353–1366. [107] Samyam Rajbhandari, Jeff Rasley, Olatunji Ruwase, and Yuxiong He. 2020. ZeRO: Memory Optimizations Toward Training Trillion Parameter Models. In Proceedings of the International Conference for High Performance Computing, Networking, Storage and Analysis (SC ’20) . IEEE Press, 1–16. doi:10.1109/SC41405.2020.00024 [108] Reuters. 2024. Meta ramps up AI efforts by building chip arsenal . https://www.reuters.com/technology/meta-bringing-together-ai-research-product-teams-2024-01-18/ [109] Reuters. 2025. Google inks $3 billion US hydropower deal in largest clean energy agreement of its kind . https://www.reuters.com/sustainability/boards-policy-regulation/google-inks-3-billion-us-hydropower-deal-largest-clean-energy-agreement-its-kind-2025-07-15/ [110] Reuters. 2025. Meta signs power agreement with Constellation nuclear plant . https://www.reuters.com/sustainability/ climate-energy/meta-signs-power-agreement-with-constellation-nuclear-plant-2025-06-03/ [111] Albert Reuther, Peter Michaleas, Michael Jones, Vijay Gadepally, Siddharth Samsi, and Jeremy Kepner. 2025. LAICS: Lincoln AI Computing Survey and Trends. https://arxiv.org/abs/2510.20931. IEEE HPEC 2025. arXiv:2510.20931 [cs.AR] [112] Ashkan Seyedi. 2025. Scaling AI Factories with Co-Packaged Optics for Better Power Efficiency . NVIDIA Technical Blog. https://developer.nvidia.com/blog/scaling-ai-factories-with-co-packaged-optics-for-better-power-efficiency/ [113] Aashaka Shah, Vijay Chidambaram, Meghan Cowan, Saeed Maleki, Madan Musuvathi, Todd Mytkowicz, Jacob Nelson, Olli Saarikivi, and Rachee Singh. 2023. TACCL: Guiding Collective Algorithm Synthesis Using Communication Sketches. In 20th USENIX Symposium on Networked Systems Design and Implementation (NSDI 23) . USENIX Association, Boston, MA, 593–612. https://www.usenix.org/conference/nsdi23/presentation/shah [114] Arman Shehabi, Sarah J. Smith, Alex Hubbard, Alex Newkirk, Nuoa Lei, Md Abu Bakar Siddik, Billie Holecek, Jonathan Koomey, Eric Masanet, and Dale Sartor. 2024. 2024 U.S. Data Center Energy Usage Report . Technical Report LBNL-2001637. Lawrence Berkeley National Laboratory. Released January 2025. [115] Mohammad Shoeybi, Mostofa Patwary, Raul Puri, Patrick LeGresley, Jared Casper, and Bryan Catanzaro. 2019. Megatron-LM: Training Multi-Billion Parameter Language Models Using Model Parallelism. arXiv:1909.08053 https://arxiv.org/abs/1909.08053 [116] Cristina Silvano, Daniele Ielmini, Fabrizio Ferrandi, Leandro Fiorin, Serena Curzel, Luca Benini, Francesco Conti, Angelo Garofalo, Cristian Zambelli, Enrico Calore, Sebastiano Schifano, Maurizio Palesi, Giuseppe Ascia, Davide Patti, Nicola Petra, Davide De Caro, Luciano Lavagno, Teodoro Urso, Valeria Cardellini, Gian Carlo Cardarilli, Robert Birke, and Stefania Perri. 2025. A Survey on Deep Learning Hardware Accelerators for Heterogeneous HPC Platforms. 
+
+Comput. Surveys 57, 11, Article 286 (jun 2025), 39 pages. doi:10.1145/3729215 [117] Alan Smith and Vamsi Krishna Alla. 2025. AMD Instinct™ MI300X: A Generative AI Accelerator and Platform Architecture. IEEE Micro 45, 3 (2025), 41–48. doi:10.1109/mm.2025.3552324 [118] Yee Jiun Song, Andrew Tulloch, Harikrishna Reddy, CQ Tang, and Vijay Thakkar. 2026. Four MTIA Chips in Two Years: Scaling AI Experiences for Billions . https://ai.meta.com/blog/meta-mtia-scale-ai-chips-for-billions/ [119] Satyam Srivastava, Akhil Arunkumar, Nithesh Kurella, Amrit Panda, Gaurav Jain, Purushotham Kamath, Mark Wutzke, Arun Tiruvur, Mike Gupta, Ilya Soloveychik, et al. 2025. Corsair: An In-memory Computing Chiplet Architecture for Inference-time Compute Acceleration. IEEE Micro 45, 5 (2025), 30–42. doi:10.1109/MM.2025.3593444 [120] Stanford Institute for Human-Centered Artificial Intelligence. 2025. The 2025 AI Index Report. https://hai.stanford. edu/ai-index/2025-ai-index-report. Accessed: 2026-05-31. [121] Wei Sun, Ang Li, Tong Geng, Sander Stuijk, and Henk Corporaal. 2023. Dissecting tensor cores via microbenchmarks: Latency, throughput and numeric behaviors. IEEE Transactions on Parallel and Distributed Systems 34, 1 (2023), 246–261. Appendix A: https://arxiv.org/abs/2206.02874v3. doi:10.1109/TPDS.2022.3217824 [122] Emil Talpes, Debjit Das Sarma, Doug Williams, Sahil Arora, Thomas Kunjan, Benjamin Floering, Ankit Jalote, Christopher Hsiong, Chandrasekhar Poorna, Vaidehi Samant, et al. 2023. The Microarchitecture of Dojo, Tesla’s Exa-Scale Computer. IEEE Micro 43, 3 (2023), 31–39. [123] Tenstorrent. [n. d.]. Programming Multiple Meshes . Undated documentation; no publication year supplied. https://github.com/tenstorrent/tt-metal/blob/main/tech_reports/Programming_Multiple_Meshes/ Programming_Multiple_Meshes.md 34 Yufeng Gu, Jiazhen Wang, and Reetuparna Das 
+
+[124] Rajeev Thakur, Rolf Rabenseifner, and William Gropp. 2005. Optimization of Collective Communication Operations in MPICH. The International Journal of High Performance Computing Applications 19, 1 (2005), 49–66. doi:10.1177/ 1094342005051521 [125] William Tsu. 2018. HGX-2 Fuses HPC and AI Computing Architectures . https://developer.nvidia.com/blog/hgx-2-fuses-ai-computing/ [126] Jasmina Vasiljevic and Davor Capalija. 2024. Blackhole & TT-Metalium: The Standalone AI Computer and Its Programming Model. In 2024 IEEE Hot Chips 36 Symposium (HCS) . IEEE Computer Society Los Alamitos, CA, USA, IEEE, 1–30. [127] Adam Weingram, Yuke Li, Hao Qi, Darren Ng, Liuyao Dai, and Xiaoyi Lu. 2023. xCCL: A Survey of Industry-Led Collective Communication Libraries for Deep Learning. Journal of Computer Science and Technology 38, 1 (2023), 166–195. doi:10.1007/s11390-023-2894-6 [128] Yang Xiao and Zeke Wang. 2024. AIBench: A Tool for Benchmarking Huawei Ascend AI Processors. CCF Transactions on High Performance Computing 6, 2 (2024), 115–129. [129] Bin Xu, Ayan Banerjee, and Sandeep K. S. Gupta. 2025. Hardware Acceleration for Neural Networks: A Comprehensive Survey. https://arxiv.org/abs/2512.23914. arXiv:2512.23914 [cs.AR] [130] Sherry Xu and Chandru Ramakrishnan. 2024. Inside Maia 100. In 2024 IEEE Hot Chips 36 Symposium (HCS) . IEEE Computer Society, IEEE, 1–17. [131] Da Yan, Wei Wang, and Xiaowen Chu. 2020. Demystifying tensor cores to optimize half-precision matrix multiply. In 
+
+2020 IEEE International Parallel and Distributed Processing Symposium (IPDPS) . IEEE, IEEE, 634–643. 
+
+A AI-Assisted Language Polishing 
+
+OpenAI Codex was used to assist with language polishing, including spelling, grammatical agree-ment, sentence structure, and terminology consistency.

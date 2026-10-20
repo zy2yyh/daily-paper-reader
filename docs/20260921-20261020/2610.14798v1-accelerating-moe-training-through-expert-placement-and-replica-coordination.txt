@@ -1,0 +1,826 @@
+Title: Accelerating MoE Training through Expert Placement and Replica Coordination
+
+URL Source: https://arxiv.org/pdf/2610.14798v1
+
+Published Time: Wed, 14 Oct 2026 00:52:43 GMT
+
+Number of Pages: 11
+
+Markdown Content:
+# PlaceMoE: Accelerating MoE Training through Expert Placement and Replica Coordination 
+
+Zhiqiang Tan 1, Maoxin Wang 1, Wenxiang Lin 1, Sijie Wang 1, Qiang Wang 1, Shaohuai Shi 1,* , and Bo Li 2
+
+> 1
+
+School of Computer Science and Technology, Harbin Institute of Technology, Shenzhen 
+
+> 2
+
+Hong Kong University of Science and Technology, Hong Kong Email: {tanzhiqiang,25s151169,wenxianglin,sijiewang }@stu.hit.edu.cn 
+
+{qiang.wang,shaohuais }@hit.edu.cn, bli@cse.ust.hk 
+
+Abstract —Distributed training of sparsely activated mixture-of-experts (MoE) models is often bottlenecked by workload im-balance and all-to-all (A2A) communication induced by dynamic token routing. Existing token deduplication, expert placement, and replication techniques alleviate these bottlenecks but do not jointly capture their distinct load semantics. Under hierarchical token deduplication, communication counts each token once per destination group at each hierarchy level, whereas expert computation processes every token–expert assignment. With replication, both costs depend jointly on physical layout and token-to-copy mapping, making separate optimization subopti-mal. We present PlaceMoE to address this coupling. First, we formulate the joint optimization of expert layout and source-aware token-to-copy mapping for E experts distributed across P
+
+devices, accounting for both hierarchical communication traffic and expert-compute load. Second, we develop a solver that combines co-selection-aware expert grouping, bounded dynamic programming for replica allocation, and alternating refinement of layout and mapping. Third, PlaceMoE overlaps replica-gradient synchronization with attention backward. We evaluate PlaceMoE on a 32-GPU cluster and a 64-NPU cluster using Qwen3-VL and DeepSeek-V3. Experimental results show that PlaceMoE achieves up to a 6.94 × speedup in A2A communication and 1.74 –2.33 ×
+
+speedups in end-to-end training over the state-of-the-art training framework VeOmni. 
+
+Index Terms —mixture-of-experts training, expert replication and placement, hierarchical all-to-all communication 
+
+I. I NTRODUCTION 
+
+Mixture-of-experts (MoE) models scale neural-network ca-pacity through sparse activation: a router selects only a small set of top-k experts for each token, allowing the parameter count to grow without proportionally increasing the compu-tation per token [1]–[3]. In large-scale training, these experts are commonly placed across GPUs using expert parallelism (EP) [2]. In the MoE layer of EP, the experts are activated according to the routing function (which is also a small learnable network) and the token dispatching is typically implemented through an all-to-all (A2A) operation [2,4]. After expert computation from the dispatched tokens, the MoE layer then combines the outputs to the token sources through another A2A [4,5]. This mechanism, however, easily causes load im-balance in both communication and computation [4,6,7]. That is, some experts (also called hot experts ) receive many tokens 
+
+> *
+
+Corresponding author: Shaohuai Shi. 
+
+to compute, while the other experts require only several tokens according to the routing function. The load imbalance limits the scalability of distributed training of MoE models [6]–[10]. Prior work addresses this imbalance through algorithmic or system approaches. Algorithmic approaches, including GShard [2], Switch [3], BASE [11], and others [12,13], add auxiliary load-balancing objectives to router training. Because these objectives modify the next-token training loss, they may affect model generalization [14,15]. System approaches instead reduce A2A traffic, schedule A2A communication, or overlap it with expert computation [6,8,9,16]–[25]. Among the approaches most closely related to this work, token deduplication [10,26], expert swapping or placement [9, 15,23,26]–[28], and expert replication [7] constitute three ma-jor techniques for mitigating load imbalance in MoE training. Nevertheless, each of these techniques has important limita-tions. First, expert swapping requires runtime state migration and online planning, whose overhead can offset the benefit of improved load balance [9,26]. Second, expert replication adds gradient communication because physical copies must aggre-gate their gradients before each optimizer update [28]. This synchronization can reduce the benefit of improved compute balance. Third, token deduplication gives communication and expert computation different load semantics. Optimizing either cost in isolation may therefore lead to suboptimal end-to-end performance. In this work, we propose PlaceMoE, a load-balanced train-ing approach for MoE models that combines the benefits of token deduplication, expert placement, and expert replication. Existing hierarchical token-deduplication methods, such as HierMoE [26], transfer only one copy of a token when that token is routed to multiple experts located within the same hardware hierarchy, such as a single GPU or multiple GPUs within the same node. The effectiveness of this deduplication depends on the physical expert layout, denoted by L. With ex-pert replication, it also depends on the token-to-copy mapping 
+
+M : each token must be dispatched to an appropriate physical copy while avoiding redundant communication and preserving balanced expert computation. The central problem is therefore: 
+
+Given P GPUs participating in expert parallelism, how can we jointly determine a physical expert layout L and a source-aware token-to-copy mapping M such that redundant token arXiv:2610.14798v1 [cs.DC] 10 Oct 2026 transfers during all-to-all communication are eliminated, each token–expert assignment is executed exactly once, and both communication and computation workloads are balanced? 
+
+Jointly optimizing L and M is challenging. L determines the number and locations of physical copies, whereas M
+
+selects one available copy for each source rank and requested expert. Exhaustive search is combinatorial, and evaluating each pair requires recovering every token’s destination groups at each hierarchy level and the non-deduplicated load on every rank. Pairwise relocation or hot-expert replication reduces the search space but cannot directly coordinate groups of fre-quently co-selected experts and may require a long sequence of decisions to reach a satisfactory solution. We therefore require a structured search strategy that preserves expert co-selection affinity while preventing excessive computational imbalance. PlaceMoE profiles token-level routes and calibrates a joint communication-and-computation cost model. It uses expert demand and co-selection affinity to generate replica allocations and hierarchy-aware layouts, and then refines the source-aware token-to-copy mapping to balance communication reuse against expert-compute load. The optimizer alternates between 
+
+L and M and evaluates the generated pairs on the profiled routes. It can be rerun periodically as routing patterns evolve. At runtime, M is implemented as a lookup table and can be refreshed without moving expert states. Updating L also relocates expert and optimizer states and is therefore per-formed less frequently. PlaceMoE overlaps replica-gradient synchronization with same-layer attention backward. We evaluate PlaceMoE on 32-GPU and 64-NPU clus-ters using Qwen3-VL [29] and DeepSeek-V3 [10] with ShareGPT4V [30] and Tulu-3 [31]. Compared with the orig-inal VeOmni system [32], PlaceMoE achieves up to a 6.94 ×
+
+speedup in A2A communication and 1.74 –2.33 × speedups in end-to-end training. When compared with the strongest baseline built on the same hierarchical token-deduplicated A2A runtime, PlaceMoE still improves end-to-end training performance by 1.05 –1.25 ×.The main technical contributions of this paper are:  
+
+> •
+
+We formulate the coupled effects of expert replication, physical expert layout, and token-to-copy mapping on hierarchical communication traffic and expert-compute load. We show that aggregate per-expert demand is insuf-ficient once hierarchical token deduplication is applied.  
+
+> •
+
+We develop an affinity-aware optimization framework for replica allocation, hierarchical expert placement, and token-to-copy mapping. The framework groups fre-quently co-selected experts under capacity constraints, uses a bounded dynamic program to identify promising replica allocations, and iteratively refines the physical lay-out L and token-to-copy mapping M through polynomial-time updates.  
+
+> •
+
+We implement PlaceMoE as an end-to-end MoE training system with profile-guided layout and mapping updates. 
+
+M is implemented as a lightweight lookup table for dispatch, while replica-gradient synchronization is over-lapped with attention backward. 0    
+
+> GPU0
+> 1
+> GPU2
+> Dispatch
+> E0 E1 E2 E3
+> Expert Combine
+> GPU3 GPU1
+> node0→node1:
+> node1→node0:
+> (a) Routing pattern A. 0
+> GPU0
+> 1
+> GPU2
+> Dispatch
+> E0 E1 E2 E3
+> Expert Combine
+> GPU3 GPU1
+> node0→node1:
+> node1→node0: (b) Routing pattern B. Fig. 1. Aggregate load statistics cannot characterize deduplicated communica-tion. The two routing patterns have identical per-expert and per-rank compute loads, but different token–expert co-occurrences produce different inter-node traffic after deduplication.
+> •
+
+Experiments on a 32-GPU cluster and a 64-NPU cluster using two representative MoE models and two training datasets show that PlaceMoE accelerates A2A communi-cation by up to 6.94 × and end-to-end training by up to 
+
+2.33 × over VeOmni, while outperforming the strongest same-runtime baseline by up to 1.25 ×.II. P RELIMINARIES AND MOTIVATION 
+
+A. MoE Layers and Expert Parallelism a) MoE layers.: A sparse MoE layer consists of a router and E logical experts [1]–[3]. For each input token t, the router selects a top-k expert set Et. The selected experts process the token independently, and their outputs are combined using the router weights. We call each token–expert assignment an 
+
+assigned token ; hence, a routing snapshot with |T | tokens contains |T | k assigned tokens. We preserve the logical top-k
+
+routes and optimize only where they are physically executed. 
+
+b) Expert parallelism.: Expert parallelism (EP) partitions experts across P ranks [4,5]. As illustrated in Fig. 1, an MoE layer uses a dispatch A2A to send tokens to the ranks hosting their selected experts. After local expert computation, a combine A2A returns the outputs to the source ranks for weighted aggregation. Backpropagation performs the corre-sponding communication and computation in reverse. Because these phases are synchronous, the busiest communication group or compute rank determines the layer’s critical path. Conventional EP places one physical copy of each logical expert. With expert replication, a logical expert may have multiple physical copies, and each assigned token must be mapped to one of them. This source-aware token-to-copy mapping determines both the communication groups visited by each token and the assigned-token load of each rank. Logical routing, physical placement, and token-to-copy mapping are therefore distinct but coupled decisions. 
+
+B. Performance Model a) Communication model.: We use the standard α–β
+
+model for collective communication [4,26]. Transferring an 
+
+m-byte message at communication level h takes 
+
+Th(m) = αh + βhm, (1) GPU0      
+
+> A2A
+> E2 E3
+> Expert
+> GPU1
+> 01
+> GPU2 GPU3 GPU0
+> A2A
+> E2 E3
+> Expert
+> GPU1
+> 01
+> GPU2 GPU3
+> flat A2A inter-node A2A intra-node A2A Fig. 2. Hierarchical token deduplication across 2 nodes and 16 GPUs. At each communication level, assignments of the same token to experts in one destination group share a single transfer.
+
+where αh captures collective startup and synchronization la-tency, and βh is the per-byte transfer time. Different network levels, such as the inter-node fabric and intra-node links, use separate (αh, β h) pairs [26]. Because a synchronous collective completes only after its slowest participant, we model its critical path using the maximum communication load rather than the average. 
+
+b) Compute model.: Let Ar denote the number of as-signed tokens processed by all physical experts on rank r.Unlike communication, expert computation is not dedupli-cated: every token–expert assignment must be executed. We therefore model its critical path using the busiest rank’s non-deduplicated load: 
+
+Ccomp = γ max  
+
+> r∈R
+
+Ar + δ, (2) where γ is the marginal compute time per assigned token and δ
+
+captures fixed overheads such as kernel launches. We calibrate 
+
+αh, βh, γ, and δ on the target cluster [6,23,26]. 
+
+C. Hierarchical Token Deduplication 
+
+Modern accelerator clusters expose multiple communica-tion levels. For example, ranks within a node are connected by high-bandwidth local links, whereas nodes communicate through a slower inter-node fabric. Let H be the number of communication levels, Gh the groups at level h, and ϕh(r) the group containing rank r. A flat A2A exchanges data directly among all P EP ranks. HierMoE instead decomposes the exchange into hierarchical stages: dispatch transfers tokens between higher-level groups and then within each destination group, while combine follows the reverse path [26]. Figure 2 also shows how this hierarchy removes duplicate transfers. If two experts selected by token t reside in the same destina-tion group, dispatch sends t once to that group rather than separately for each expert. The receiver expands this copy according to the logical routing results, and combine performs the corresponding aggregation in the reverse direction. Given a layout L, let π(s) denote the rank containing physical copy s. Let rt be the source rank of token t, and let M (r, e ) select the physical copy used when source rank r
+
+requests logical expert e. Token t visits group g at level h if 
+
+zt,h,g (L, M ) = _
+
+> e∈E t
+
+1 [ϕh(π(M (rt, e ))) = g] , (3) and the duplicate-free token load of that group is 
+
+Uh,g (L, M ) = X
+
+> t∈T
+
+zt,h,g (L, M ). (4) E0                                
+
+> group 0group 1
+> E0 E1 E2 E3 E1 E2 E3
+> group 0group 1
+> E0 E2 E1 E3
+> group 0 group 1
+> Duplication Deduplication
+> E0
+> group 0group 1
+> E0 E1 E2 E3 E1 E2 E3
+> group 0group 1
+> E0 E1 E1 E2 E3
+> group 0group 1
+> Duplication Deduplication
+> from group 0from group 1mapping better for computation
+> mapping better for communication from other groups better expert layout
+> Fig. 3. Why expert placement and token-to-copy mapping must be jointly optimized. Hollow, solid, and dashed tokens originate from group 0, group 1, and other groups, respectively. The upper example isolates the effect of placement on duplicate-free communication; the lower example shows the communication–compute tradeoff induced by mapping.
+
+The logical OR in Eq. (3) shows why summing per-expert token counts cannot recover the duplicate-free communication load. For each dispatch or combine phase p, we further account for its communication direction and source group and denote the resulting exact load by Up,h,g .We then apply Eq. (1) at every communication level. Let 
+
+ρp,h denote the bytes transferred per token in phase p at level h, as determined by the tensor width, data type, and participating ranks. The critical-path cost of phase p is 
+
+C(p)comm =
+
+> H
+
+X
+
+> h=1
+
+
+
+αh + βhρp,h max 
+
+> g∈G h
+
+Up,h,g 
+
+
+
+. (5) The communication cost of an MoE training iteration includes forward and backward dispatch and combine. Let P denote these 4 phases; then 
+
+Ccomm = X
+
+> p∈P
+
+C(p)comm . (6) This model captures both heterogeneous link performance across levels and the straggler effect of the busiest group. 
+
+D. Motivations 
+
+Figure 3 illustrates why expert placement and token-to-copy mapping must be jointly optimized. In the upper example, the two placements have identical per-group assigned-token loads. Co-locating experts frequently selected by the same token nevertheless reduces duplicate-free inter-group transfers without changing compute balance. In the lower example, 
+
+E1 has a copy in each group. Mapping the dashed tokens’ 
+
+E1 assignments to group 1 adds no new destination-group transfer because their other selected experts already visit that group, but it increases the compute load of group 1. Mapping them to group 0 improves compute balance but adds another destination group. Thus, layout L and mapping M jointly determine the duplicate-free communication load and non-deduplicated expert-compute load. Let S be the number of physical slots and ne(L) the number of copies of expert e under layout L. For a fixed L, each of the P source ranks selects one of the ne(L) copies for every logical expert. The joint search space is therefore bounded by 
+
+X 
+
+> Lfeasible
+
+Y
+
+> e∈E
+
+ne(L)
+
+!P
+
+.
+
+The number of layouts grows exponentially with S, while the mapping choices multiply across source ranks and experts. Moreover, evaluating each pair requires replaying the token-level group unions in Eq. (3). Exhaustive joint optimization is therefore impractical. III. P LACE MOE D ESIGN 
+
+A. System Overview 
+
+PlaceMoE operates in three stages: profiling and calibration, layout and mapping optimization, and training execution. It first profiles a short training window under the default or current layout and collects a set of token-level routing snapshots D. Topology-aware A2A microbenchmarks calibrate the communication model, while measured expert-compute times calibrate the computation model. The calibrated models are reused under the same hardware, model, and parallel configuration, while routing profiles can be refreshed during training. Given D, the replica budget, and the physical topology, the optimizer generates candidate replica allocations. For each allocation, it constructs both item-level and group-coherent candidates, hierarchically places physical copies across nodes and ranks, and optimizes M over the copies provided by L. It alternates between the two decisions for a bounded number of rounds and selects the generated pair with the lowest calibrated cost on the profiled routes. At a training-step boundary, PlaceMoE installs the selected 
+
+L and implements M as a lookup table for token dispatch. Updating M only replaces this table, whereas updating L
+
+also relocates expert parameters and optimizer states. Conse-quently, M can be refreshed more frequently than L. During backpropagation, PlaceMoE aggregates gradients across phys-ical copies and overlaps this communication with same-layer attention backward. 
+
+B. Problem Formulation 
+
+For each MoE layer, the optimizer takes the profiled routing snapshots D = {Q (b)}|D| 
+
+> b=1
+
+, additional-replica budget B, cali-brated performance model, communication hierarchy, and per-rank slot capacities as input. Each snapshot Q = {rt, Et}t∈T 
+
+records every token’s source rank and logical top-k experts. The optimization jointly determines a physical expert layout 
+
+L and a source-aware token-to-copy mapping M :
+
+L : [
+
+> r∈R
+
+Sr → E ∪ {∅} ,M : R × E → [
+
+> r∈R
+
+Sr . (7)                                                    
+
+> TABLE I MAIN NOTATION
+> Symbol Definition
+> TToken set of the current MoE layer
+> E, E Logical expert set and its size
+> R, P EP rank set and its size
+> rt,Et,QSource rank and top-kexpert set of token t; a routing snapshot
+> DSet of profiled routing snapshots
+> BNumber of additional copies beyond one base copy per expert
+> dr,e , a r,e,f Profiled assignment demand and expert co-selection count from source rank r
+> Sr, c r, π (s)Physical slots on rank r, their capacity, and the rank containing slot sL(s),Se(L)Expert occupying slot sand the physical copies of expert e;L(s) = ∅denotes an empty slot
+> M(r, e )Physical copy used for tokens from source rank r
+> assigned to expert eH, Gh, ϕ h(r)Number of levels, groups at level h, and the group containing rUp,h,g , A rDuplicate-free communication load of group gand non-deduplicated compute load of rank r
+
+Here, Se(L) = {s | L(s) = e} is the set of physical copies of expert e. L assigns a logical expert or ∅ to every physical slot, while M (r, e ) selects the copy used for tokens from source rank r assigned to expert e. Neither decision changes Et or the logical model semantics. Given Q and (L, M ), the preceding models yield the hier-archical communication cost Ccomm and busiest-rank compute cost Ccomp . We minimize their average sum over the profiled snapshots: 
+
+JD (L, M ) = 1
+
+|D| 
+
+X
+
+> Q∈D
+
+h
+
+Ccomm (L, M ; Q)+ Ccomp (L, M ; Q)
+
+i
+
+,
+
+(L∗, M ∗) = arg min  
+
+> L,M
+
+JD (L, M ).
+
+(8) Here, Ccomm follows from the duplicate-free group loads in Eq. (5), while Ccomp follows from max r Ar in Eq. (2). Both represent synchronous critical-path costs. Feasibility requires M to select valid copies, L to respect per-rank capacities and retain at least 1 copy of every expert, and the total number of additional copies to equal B:
+
+L(M (r, e )) = e, ∀r ∈ R , e ∈ E ,
+
+X
+
+> s∈S r
+
+1[L(s)̸ = ∅] ≤ cr , ∀r ∈ R ,
+
+|S e(L)| ≥ 1, ∀e ∈ E ,
+
+X
+
+> e∈E
+
+ |S e(L)| − 1 = B. 
+
+(9) 
+
+C. Layout and Mapping Optimization 
+
+PlaceMoE replaces joint enumeration with a bounded set of replica allocations. For each allocation, capacity-constrained affinity partitioning constructs L, and M is optimized only over the copies in L. We evaluate every retained (L, M ) pair on the complete profiled routes using JD .Placing frequently co-selected experts in the same com-munication group allows their assignments to share a trans-fer. However, co-locating hot experts can concentrate non-deduplicated assignments and create a compute bottleneck. We therefore maximize within-group affinity while balancing assignment load across groups, using the calibrated commu-nication and computation costs to quantify the tradeoff. 
+
+Profiled demand and affinity. We derive demand and affinity statistics from D. The assignment demand from source rank r to logical expert e is 
+
+dr,e = X
+
+> Q∈D
+
+X
+
+> t∈T
+
+1[rt = r, e ∈ E t], (10) where T is the token set of snapshot Q. The source-conditioned affinity between experts e and f is 
+
+ar,e,f = X
+
+> Q∈D
+
+X
+
+> t∈T
+
+1[rt = r, {e, f } ⊆ E t], e̸ = f. (11) 
+
+dr,e measures non-deduplicated assignment demand, while 
+
+ar,e,f measures how often experts e and f can share commu-nication when co-located. These statistics generate candidates but cannot recover the complete destination-group unions of general top-k routes. We therefore evaluate final candidates on the token-level routes in D. Reducing the duplicate-free load by one token at level h saves ωh = P 
+
+> p∈P
+
+βhρp,h time across the 4 communication phases. 
+
+Capacity-constrained affinity partitioning. We use the same partitioning primitive for replica allocation and physical placement. Each item i has demand di and pairwise affinity 
+
+ai,j . At hierarchy level h, the primitive assigns every item to a group g with capacity qg spanning pg ranks by minimizing 
+
+J(h)part (y) = − ωh
+
+X
+
+> i<j
+
+ai,j 1[yi = yj ] + γ max 
+
+> g
+
+P 
+
+> i:yi=g
+
+di
+
+pg
+
+,
+
+s.t. X
+
+> i
+
+1[yi = g] = qg , ∀g. 
+
+(12) The first term rewards communication reuse within a group, while the second penalizes the highest per-rank assignment load across groups. The calibrated ωh and γ express both terms in time units; αh and δ are omitted because they are constant for a fixed group structure. We use J(h)part only to generate candidates; JD selects the final result using the complete profiled routes. Algorithm 1 first applies K-means to the normalized spectral embedding of the affinity matrix [33]. To enforce capaci-ties, group g creates qg positions at its centroid, and linear assignment [34] maps items to these positions by squared embedding distance. We alternate assignment and centroid updates until convergence or the iteration limit, and then greedily exchange cross-group item pairs that reduce J(h)part 
+
+without changing group sizes. Multiple K-means initializations generate alternative candidates. 
+
+Selecting copy counts. Let B = uE + b, where 0 ≤
+
+b < E , be the additional-replica budget. Every expert has one mandatory base copy, while B counts only additional copies. 
+
+Algorithm 1 Capacity-constrained affinity partitioning 
+
+Require: {di}, {ai,j }, hierarchy level h, capacities {qg },normalizers {pg }, calibrated ωh and γ
+
+Ensure: capacity-feasible group labels y 
+
+> 1:
+
+z ← SPECTRAL EMBEDDING ({ai,j }) 
+
+> 2:
+
+c ← KM EANS (z) 
+
+> 3:
+
+repeat  
+
+> 4:
+
+create qg positions at centroid cg 
+
+> 5:
+
+y ← LINEAR ASSIGNMENT (z, c) 
+
+> 6:
+
+recompute c from y 
+
+> 7:
+
+until y is unchanged or the iteration limit is reached  
+
+> 8:
+
+repeat  
+
+> 9:
+
+find the cross-group pair with the largest cost reduction  
+
+> 10:
+
+exchange the pair if the reduction is positive  
+
+> 11:
+
+until the exchange limit is reached or no positive reduction remains  
+
+> 12:
+
+return y
+
+The term base is only an accounting convention: all copies participate identically in placement, mapping, and gradient synchronization. We require B ≤ P 
+
+> r∈R
+
+cr − E. Every expert first receives u additional copies. If b = 0 , all experts therefore have u + 1 physical copies. Otherwise, let q = gcd( E, b ). We invoke Algorithm 1 with the logical experts as input items, demands 
+
+de = X
+
+> r
+
+dr,e , ae,f = X
+
+> r
+
+ar,e,f ,
+
+and E/q groups, each with capacity qg = q and normalizer 
+
+pg = 1 . Because this stage identifies additional copies that can avoid the most expensive remote transfers, it uses ωh
+
+for the coarsest communication level. Each partitioning restart produces an expert grouping, and selecting b/q groups assigns the remaining b copies to exactly b experts. The affinity ae,f is used to form expert groups but not to rank them, because its actual communication benefit depends on the subsequent placement and mapping. Let the groups be 
+
+G1, . . . , G m, where m = E/q . A selected set C has shortlist score P
+
+> G∈C
+
+P 
+
+> e∈G
+
+de. Because demand alone cannot pre-dict deduplicated communication, retaining only the highest-scoring allocation may discard a better joint-cost candidate. We therefore use a bounded dynamic program to preserve several alternatives. Let Kalloc be the shortlist limit and let 
+
+DP[ j, v ] store the highest-scoring candidates that select v
+
+of the first j groups. Starting from DP[0 , 0] = {∅} , with 
+
+DP[0 , v ] = ∅ for v > 0, the update is 
+
+DP[ j, v ] = Top Kalloc 
+
+
+
+DP[ j − 1, v ] ∪{C ∪ { Gj } : C ∈ DP[ j − 1, v − 1] }
+
+
+
+.
+
+(13) Here, Top Kalloc retains at most Kalloc candidates with the highest shortlist scores. DP[ m, b/q ] contains candidates that assign one additional copy to exactly b experts. We merge and deduplicate the candidates from all partitioning restarts before constructing and evaluating their L and M .Initializing L and M . For a retained allocation, let ne be the number of physical copies of expert e, including its base copy. Thus, ne = u + 2 for experts in the selected groups and ne = u + 1 otherwise. The solver creates the allocated copies and represents unused slots as empty items. Because no mapping exists initially, it distributes each expert’s demand and affinity uniformly across its ne copies. For a copy s of expert e and copy s′ of expert f ,
+
+d(0)  
+
+> r,s
+
+= dr,e 
+
+ne
+
+, a(0)  
+
+> s,s ′
+
+=
+
+P 
+
+> r
+
+ar,e,f 
+
+nenf
+
+. (14) Empty items and copy pairs of the same logical expert have zero affinity. We apply Algorithm 1 first across nodes using inter-node ωh, with node slot and rank counts as qg and 
+
+pg , and then within each node using intra-node ωh, qg =
+
+cr , and pg = 1 . Maximum-weight matching maps abstract groups to capacity-compatible physical groups using source-local demand. A demand-ordered greedy repair enforces at most 1 copy of each expert per rank while preserving rank capacities; infeasible candidates are discarded. Deterministic slot assignment then produces L0.Given L0, we initialize M0 by processing (r, e ) entries in descending dr,e . We prefer node-local copies when available and otherwise consider all copies of e, choosing the smallest projected destination-rank load and breaking ties by rank and slot ID. We partition logical experts into one balanced affinity group per node. For allocations preserving uniform groupwise copy counts, bounded copy-round permutations and maximum-weight matching propose node footprints; other allocations use the item-level path. Block updates choose one destination per source-node–group pair using exact route unions and cali-brated projected compute load. Rank placement and entrywise 
+
+M refinement follow; exact JD selects the final pair, and group node footprints persist across later rounds. 
+
+Given M , update L. Given M , we aggregate the pro-filed statistics onto the physical copies selected by M . For nonempty copies s and s′ of different logical experts, we compute the source-conditioned demand, aggregate demand, and pairwise affinity as 
+
+dMr,s = dr,L (s)1[M (r, L (s)) = s],ds = X
+
+> r∈R
+
+dMr,s ,as,s ′ = X
+
+> r∈R
+
+ar,L (s),L (s′)
+
+· 1[M (r, L (s)) = s]1[M (r, L (s′)) = s′].
+
+(15) Here, ds is the assignment demand served by copy s, and 
+
+as,s ′ counts profiled tokens mapped to both copies. Using 
+
+ds and as,s ′ , we apply the same 2-level partitioning with the corresponding ωh at each level to obtain the updated L; empty slots have zero demand and affinity. If ys = g′ assigns copy 
+
+s to abstract group g′, its matching weight to physical group 
+
+g is 
+
+wMg′,g = X
+
+> s:ys=g′
+
+X
+
+> r:ϕh(r)= g
+
+dMr,s . (16) Maximum-weight bipartite matching uses these weights, fol-lowed by the same rank-level repair used during initialization. During a layout update, each physical copy is treated as a movable item. After assigning the items to new physical slots, we rewrite every entry of M to follow the relocated copy before applying Eq. (20). 
+
+Given L, update M . With L fixed, each entry M (r, e )
+
+chooses from Se(L). Let the profiled load induced by the current mapping be 
+
+Ar′ (M ) = X
+
+> r∈R
+
+X
+
+> e∈E
+
+dr,e 1[π(M (r, e )) = r′]. (17) Changing only M (r, e ) to copy s produces peak load 
+
+A r,e →s 
+
+> max
+
+(M ) = max 
+
+> r′∈R
+
+Ar′ (M ) + dr,e 1[π(s) = r′]
+
+− dr,e 1[π(M (r, e )) = r′]. (18) For brevity, let gh(s) = ϕh(π(s)) . The communication reward of choosing s is 
+
+F comm  
+
+> r,e
+
+(s) = 
+
+> H
+
+X
+
+> h=1
+
+ωh
+
+X  
+
+> f∈E
+> f̸=e
+
+ar,e,f 1[gh(s) = gh(M (r, f ))] + dr,e 1[gh(s) = ϕh(r)] 
+
+!
+
+.
+
+(19) The first term rewards sharing destination groups with co-selected experts, while the second rewards source locality. We subtract the projected peak compute time using the calibrated coefficient γ and update 
+
+M (r, e ) ← arg max 
+
+> s∈S e(L)
+
+F comm  
+
+> r,e
+
+(s) − γA r,e →s 
+
+> max
+
+(M ) . (20) We visit entries in descending demand order and commit each update immediately, so subsequent entries observe the latest mapping and rank loads. A mapping update stops when a full sweep changes no entry or the preset sweep limit is reached. 
+
+Alternation and complexity. For each retained replica allocation, PlaceMoE alternates L and M for a bounded number of rounds. The first round uses uniform copy statistics, while each later round uses the statistics induced by the preceding mapping. The solver evaluates every generated pair on D using Eq. (8) and retains the one with the lowest JD .Algorithm 2 summarizes this procedure. For N input items, Algorithm 1 takes O(N 3) time because both dense spectral decomposition and linear assignment are cubic. The bounded assignment and exchange rounds do not change this order. Logical-expert partitioning therefore takes 
+
+O(E3) per restart, while a layout update takes O(S3).With L fixed, let Re = |S e(L)|. For each source rank, a mapping sweep evaluates P 
+
+> e
+
+Re ≤ S candidate copies. Without caching, evaluating one candidate scans E experts across H levels, giving a conservative O(P EHS ) bound per sweep. We cache source-conditioned affinity sums by destina-tion group and maintain rank loads incrementally, reducing the practical cost without changing this bound. These polynomial Algorithm 2 Joint optimization of L and M
+
+Require: Profiled routes D, replica budget, topology, and calibrated cost model 
+
+Ensure: Layout L and mapping M 
+
+> 1:
+
+Derive d, a, and the replica-allocation shortlist  
+
+> 2:
+
+for each retained replica allocation do  
+
+> 3:
+
+Initialize copy statistics by uniform allocation  
+
+> 4:
+
+for each layout–mapping round do  
+
+> 5:
+
+Generate or refine item-level and group-coherent can-didates  
+
+> 6:
+
+Refine each candidate mapping using Eq. (20)  
+
+> 7:
+
+Evaluate and record each pair using JD 
+
+> 8:
+
+Rebuild copy statistics from the lowest-cost pair  
+
+> 9:
+
+end for  
+
+> 10:
+
+Record the lowest-cost pair from all rounds  
+
+> 11:
+
+end for  
+
+> 12:
+
+return the recorded pair minimizing JDS1 S2 S3 MoE backward Attention backward Backward Dispatch A2A Replica-gradient synchronization Backward Combine A2A      
+
+> Fig. 4. Replica-gradient synchronization overlap. Streams S1, S2, and S3 execute backward computation, MoE A2A, and replica-gradient communica-tion, respectively. After BD -A2Aℓ,GradSync ℓfirst overlaps with BA ℓ.
+
+steps replace the exponential joint search above. Updating M
+
+requires neither spectral decomposition nor linear assignment and is therefore cheaper than rebuilding L.
+
+D. Training Execution and Replica-Gradient Synchronization Overlap 
+
+After installing L and M , forward dispatch directly looks up M (r, e ) to select the physical copy for tokens from source rank r assigned to expert e.
+
+Hot layout and mapping updates. At a configurable interval, PlaceMoE profiles a token-level routing snapshot and asynchronously launches the L, M optimizer in a separate CPU process. Training continues with the current pair while the optimizer derives the next one. A mapping-only update takes effect by replacing the lookup table at a training-step boundary. For a layout update, the runtime compares the old and new layouts across all MoE layers and groups the relocated expert parameters and optimizer states by source– destination rank pair. Each group is packed into contiguous buffers and transferred through batched P2P communication. Once all destination states are ready, the runtime atomically switches L and M . Thus, training continues without restart, and dispatch never observes a mapping before its expert states are available. 
+
+Replica-gradient synchronization overlap. 
+
+Physical copies of the same logical expert share identical parameters but process different assigned tokens and therefore                       
+
+> TABLE II TESTBED CONFIGURATIONS .Configuration Specification
+> GPU testbed
+> CPU per node Dual Intel Xeon Platinum 8358 @ 2.60 GHz Accelerators 8×NVIDIA RTX A6000 (48 GB) per node Host memory 512 GB DDR4 Intra-node NVLink 112.5 GB/s (4 ×), PCIe 4.0 ×16 Inter-node Mellanox MT28908, 200 Gb/s Scale 4 nodes, 32 GPUs Software PyTorch 2.9.1+cu128, CUDA 12.8, NCCL 2.27.5
+> NPU testbed
+> CPU per node 4×Kunpeng 920 5250, 192 cores Accelerators 8×Ascend 910B (64 GB) per node Host memory 1.5 TB Intra-node HCCS 392 GB/s bidirectional Inter-node 8×200 Gb/s RoCE per node Scale 4/8 nodes, 32/64 NPUs Software PyTorch 2.9.0, torch-npu 2.9.0.post2, CANN 9.0.0, HCCL 9.0.0
+
+produce different local gradients. Prior MoE systems over-lap token communication with model computation [16,18,19, 21,22]; PlaceMoE extends this approach to replica-gradient communication. It aggregates the gradients of all copies and writes the result back to each copy. Figure 4 illustrates this overlap. We use BM ℓ and BA ℓ to denote the MoE and attention backward computations of layer ℓ, and BC -A2Aℓ
+
+and BD -A2Aℓ to denote its backward combine and dispatch A2A, respectively. Once the expert gradients are ready and 
+
+BD -A2Aℓ completes, PlaceMoE launches GradSync ℓ on a separate stream, where it first overlaps with BA ℓ. In Fig. 4, synchronization completes within the attention-backward win-dow. Otherwise, it continues alongside subsequent backward work but must finish before BD -A2Aℓ−1, after which the pipeline repeats for layer ℓ − 1. After backpropagation, Place-MoE waits for any remaining synchronization tail before global gradient-norm computation, gradient clipping, and the optimizer step. IV. E VALUATION 
+
+A. Experimental Setup 
+
+Testbeds. Table II summarizes our GPU and NPU testbeds, which use NCCL and HCCL as their respective collective communication backends. 
+
+Models and workloads. We evaluate Qwen3-VL-30B-A3B, which has 48 MoE layers, 128 experts per layer, and top-8 routing, on ShareGPT4V for multimodal training and Tulu-3 for text-only training. Following HierMoE’s scaled-model setup [26], we retain 6 DeepSeek-V3 MoE layers, each with 256 experts and top-8 routing, and train them on Tulu-3. 
+
+Baselines. We compare PlaceMoE with 4 baselines. VeOmni v0.1.11 is the state-of-the-art open-source training framework [32] and uses conventional A2A for token dispatch and combination. Replication maintains 2 fixed copies of each logical expert, arranged as 2 EP16 groups on 32 devices and 2 EP32 groups on 64 devices. Copies follow a default expert order. HierMoE applies hierarchical token deduplication and pairwise expert swaps [26]. EPLB places experts according to non-deduplicated per-expert assignment load and represents the expert-parallel load balancer used by DeepSeek-V3 [10]. 
+
+PlaceMoE jointly optimizes replica allocation, hierarchical expert placement, and token-to-copy mapping. Replication, EPLB, HierMoE, and PlaceMoE share the same hierarchical token-deduplicated A2A runtime, providing a common com-munication substrate; VeOmni retains its original A2A path. Unless otherwise stated, Replication, EPLB, and PlaceMoE use the same 1-fold redundancy budget B = E, adding one copy per logical expert on average. VeOmni and HierMoE use no additional copies ( B = 0 ). 
+
+Methodology. We set Kalloc = 64 , use 3 partition restarts and 3 layout–mapping rounds, and limit capacity assignment to 12 iterations. Pair refinement allows at most 24 exchanges, reduced to 12 for rank-level partitions, while each mapping update performs at most 6 sweeps. All procedures terminate early upon convergence. We discard the first 10 warm-up steps and report the mean over the next 10 steady-state steps. Unless otherwise stated, EP32 and EP64 runs use global batch sizes of 128 and 256, respectively, and each rank processes approximately 16K input tokens. All methods use the same model, data, numerical precision, and optimizer configuration. End-to-end time is the mean wall-clock time per steady-state training step; initial profiling, calibration, and layout–mapping optimization are excluded. A2A time sums the forward and backward critical-rank A2A spans; expert-compute time is measured analogously. All speedups are relative to VeOmni on the same platform and workload. 
+
+B. Validation of the Cost Model 
+
+Our cost model sums the duplicate-free hierarchical A2A cost in Eq. (5) and the non-deduplicated expert-compute cost in Eq. (2). We fit (αh, β h) by linear regression over topology-aware collective microbenchmarks with different message sizes, and fit (γ, δ ) using the first 3 profiled training steps. Figure 5 compares the predictions with held-out NPU measurements. The inter- and intra-node models achieve R2
+
+values of 0.9922 and 0.9694 and MAPEs of 4.80% and 8.34% ,respectively. For Qwen3-VL-30B-A3B, the compute model achieves R2 = 0 .9851 and 0.9671 on ShareGPT4V and Tulu-3, with MAPEs of 1.38% and 1.41% , respectively. The Tulu-3 prediction reuses coefficients calibrated on ShareGPT4V, demonstrating cross-dataset reuse. For DeepSeek-V3, the model achieves R2 = 0 .9869 and a MAPE of 1.75% . These results validate the assumed linear relationships. Model fitting takes less than 2 seconds and requires only a few profiled training steps. Communication coefficients are calibrated per cluster topology and EP configuration, while compute coeffi-cients are calibrated per model and execution configuration. 
+
+C. End-to-End Training Performance 
+
+We evaluate PlaceMoE across GPU and NPU clusters, 32- and 64-device scales, text and multimodal workloads, 2 MoE models, and different token volumes. Figure 6 re-ports 4 representative configurations. Across the 4 configu-10 20 Measured (ms) 10 20 Predicted (ms)                   
+
+> (a) Inter-node A2A EP32 EP64 246Measured (ms) 246Predicted (ms)
+> (b) Intra-node A2A EP32 EP64 6810 Measured (ms) 6810 Predicted (ms)
+> (c) Qwen3-VL-30B-A3B ShareGPT4V Tulu-3 15 20 25 Measured (ms) 15 20 25 Predicted (ms)
+> (d) DeepSeek-V3 Tulu-3
+> Fig. 5. Predicted versus measured A2A and expert-compute times on NPUs. The first row validates the inter- and intra-node communication models; the second validates the expert-compute models. Dashed lines show ideal prediction. VeOmni Replication HierMoE EPLB PlaceMoE 1.0 1.5 2.0 2.5
+> Speedup
+> 1.00 2.12 1.43 1.42 2.22
+> (a) 32 GPUs, Qwen3-VL
+> ShareGPT4V, 16K tokens/rank 1.0 1.5 2.0 2.5
+> Speedup
+> 1.00 1.86 1.71 1.62 2.33 (b) 32 NPUs, Qwen3-VL
+> ShareGPT4V, 16K tokens/rank 1.0 1.5 2.0 2.5
+> Speedup
+> 1.00 1.81 1.59 1.82 2.12
+> (c) 64 NPUs, Qwen3-VL
+> Tulu-3, 16K tokens/rank 1.0 1.5 2.0 2.5
+> Speedup
+> 1.00 1.52 1.45 1.54 1.74 (d) 64 NPUs, DeepSeek-V3
+> Tulu-3, 32K tokens/rank
+> Fig. 6. End-to-end training speedup normalized to VeOmni; higher is better.
+
+rations, PlaceMoE achieves 1.74 –2.33 × end-to-end speedup over VeOmni. It also outperforms the strongest competing baseline in every configuration, reducing training time by a further 4.5% –20 .1% . Although the strongest baseline varies across workloads, PlaceMoE consistently performs best by jointly optimizing physical expert layout and token-to-copy mapping under the two distinct load semantics. 
+
+D. Communication and Expert-Compute Performance 
+
+Table III decomposes the 4 configurations in Fig. 6. Relative to VeOmni, PlaceMoE accelerates hierarchical A2A by 3.10 –
+
+6.94 × and expert computation by 1.05 –1.45 ×. It further out-TABLE III BREAKDOWN OF THE 4 CONFIGURATIONS IN FIG . 6. V ALUES ARE SPEEDUPS OVER VEOMNI ; BOLD DENOTES THE BEST RESULT .                                                         
+
+> Case Metric Replication HierMoE EPLB PlaceMoE Hierarchical All-to-All 2.85 1.57 1.74 3.10
+> Fig. 6(a) Expert computation 1.05 0.85 1.11 1.05 End-to-End 2.12 1.43 1.42 2.22
+> Hierarchical All-to-All 4.19 3.24 4.06 6.94
+> Fig. 6(b) Expert computation 1.13 0.84 1.22 1.15 End-to-End 1.86 1.71 1.62 2.33
+> Hierarchical All-to-All 2.81 2.34 3.52 3.85
+> Fig. 6(c) Expert computation 1.16 0.95 1.31 1.26 End-to-End 1.81 1.59 1.82 2.12
+> Hierarchical All-to-All 2.37 2.09 3.13 3.43
+> Fig. 6(d) Expert computation 1.17 0.93 1.40 1.45
+> End-to-End 1.52 1.45 1.54 1.74
+
+performs the strongest A2A baseline in each configuration by 
+
+1.09 –1.66 ×. EPLB achieves 1.11 –1.40 × expert-compute and 
+
+1.74 –4.06 × A2A speedups over VeOmni. Relative to EPLB, PlaceMoE improves A2A performance by 1.09 –1.78 × while achieving 94% –104% of its expert-compute performance. These component metrics exclude replica-gradient syn-chronization and therefore do not fully determine end-to-end performance. HierMoE has no additional copies, while Replication synchronizes regular copy pairs. EPLB’s load-driven layout creates an irregular synchronization graph and leaves this communication on the critical path. PlaceMoE instead overlaps replica-gradient synchronization with same-layer attention backward. Consequently, EPLB can improve both reported components without achieving a comparable end-to-end gain. Figures 7(a) and (b) show that the overlap reduces step time by 6.7% on average. These results expose the conflicting placement preferences of the two costs. Minimizing hierarchical token-deduplicated communication favors colocating frequently co-selected ex-perts to share transfers, whereas balancing non-deduplicated computation favors spreading high-demand experts across ranks. Optimizing either objective alone is therefore insuffi-cient: HierMoE reduces communication but can slow expert computation, while EPLB balances computation without ex-ploiting token-level deduplication in placement. PlaceMoE im-proves both components over VeOmni in every configuration and consistently achieves the best end-to-end performance, validating their joint optimization. 
+
+E. Ablation, Sensitivity, and Overhead 
+
+Figures 7(a) and (b) report cumulative ablations normalized to VeOmni, with each bar adding one component of PlaceMoE. Averaged across the two workloads, hierarchical token dedu-plication, replication, replica-gradient synchronization overlap, communication-aware placement, and the expert-compute term reduce step time relative to the preceding configuration by 
+
+40 .3% , 12 .9% , 6.7% , 8.5% , and 3.6% , respectively. The monotonic improvements show that both the runtime mecha-nisms and the joint placement objective contribute to the final result across workloads. VeOmni +Grad. Overlap +Hier. Dedup. +Comm.-Aware +Replication +Compute-Aware 1.0 1.5 2.0 2.5  
+
+> Speedup
+> 1.00 1.72 1.86 2.12 2.25 2.33
+
+(a) Qwen3-VL    
+
+> ShareGPT4V, 16K tokens/rank 1.0 1.5 2.0 2.5
+> Speedup
+> 1.00 1.63 1.99 2.01 2.27 2.35
+
+(b) Qwen3-VL       
+
+> Tulu-3, 16K tokens/rank 00.25 0.50 0.75 1.00
+> Replica budget, B/E
+> 1.0 1.2 1.4
+> Normalized throughput
+> 1.00 1.30 1.30 1.30 1.43
+> Throughput Peak memory
+> 30 35 40 45
+> Peak memory (GiB)
+
+(c) Qwen3-VL      
+
+> ShareGPT4V, 16K tokens/rank 0200 400 600
+> Training step
+> 20 40
+> Step time (s)  VeOmni PlaceMoE
+
+(d) Qwen3-VL 
+
+> ShareGPT4V, 600-step run
+
+Fig. 7. Component ablations normalized to VeOmni (a–b), replica-budget sensitivity (c), and long-run step-time stability (d) on 32 NPUs. 
+
+Figure 7(c) sweeps B/E from 0 to 1. At B/E = 0 .25 ,throughput is already 1.30 × that without additional copies. Budgets from 0.25 to 0.75 provide similar throughput, while peak allocated memory rises from 32 .72 to 40 .12 GiB. The full 1-fold budget achieves the best throughput, 1.43 ×, at a peak allocation of 44 .21 GiB. Thus, B/E exposes a direct performance–memory tradeoff and can be selected according to the available device memory. Figure 7(d) shows that PlaceMoE is 2.16 × faster than VeOmni with a tighter step-time band, indicating stable load balance as routes evolve. The optimizer runs asynchronously to refresh L and M every 100 steps, so the 5 updates expose only 58 .6 s in total, accounting for 0.64% of the 600-step run. V. C ONCLUSION 
+
+In this paper, we present PlaceMoE, an end-to-end MoE training system that jointly optimizes replica allocation, hi-erarchical expert placement, and source-aware token-to-copy mapping. Its calibrated objective captures both duplicate-free hierarchical communication and non-deduplicated expert-compute load, while affinity-aware hierarchical partitioning and alternating layout–mapping refinement make the coupled optimization tractable. At runtime, PlaceMoE asynchronously refreshes the layout and mapping without restarting training and overlaps replica-gradient synchronization with attention backward. Evaluations on a 32-GPU cluster and a 64-NPU cluster using Qwen3-VL and DeepSeek-V3 show that Place-MoE accelerates A2A communication by up to 6.94 × and end-to-end training by 1.74 –2.33 × over VeOmni, demonstrating consistent benefits across hardware platforms and workloads. The component breakdown confirms that optimizing commu-nication or computation alone leaves complementary bottle-necks, whereas their joint optimization consistently improves end-to-end performance. The sensitivity study further exposes a tunable performance–memory tradeoff, and the 600-step experiment shows that asynchronous reoptimization preserves the training benefit with limited exposed update overhead. USE OF AI D ISCLOSURE 
+
+We used Codex (GPT-5.5) for code validation and experi-mental setups debugging, and we also used Overleaf’s default AI tool to help rephrase the writing of sentences. We have fully reviewed and validated all AI-generated suggestions before finalization. REFERENCES [1] N. Shazeer, A. Mirhoseini, K. Maziarz, A. Davis, Q. V. Le, G. E. Hinton, and J. Dean, “Outrageously large neural networks: The sparsely-gated mixture-of-experts layer,” in International Conference on Learning Representations , 2017. [2] D. Lepikhin, H. Lee, Y. Xu, D. Chen, O. Firat, Y. Huang, M. Krikun, N. Shazeer, and Z. Chen, “GShard: Scaling giant models with condi-tional computation and automatic sharding,” in International Conference on Learning Representations , 2021. [3] W. Fedus, B. Zoph, and N. Shazeer, “Switch transformers: Scaling to trillion parameter models with simple and efficient sparsity,” Journal of Machine Learning Research , vol. 23, no. 120, pp. 1–39, 2022. [4] C. Hwang, W. Cui, Y. Xiong, Z. Yang, Z. Liu, H. Hu, Z. Wang, R. Salas, J. Jose, P. Ram, H. Chau, P. Cheng, F. Yang, M. Yang, and Y. Xiong, “Tutel: Adaptive mixture-of-experts at scale,” in Proceedings of Machine Learning and Systems , vol. 5, 2023. [5] S. Rajbhandari, C. Li, Z. Yao, M. Zhang, R. Y. Aminabadi, A. A. Awan, J. Rasley, S. Smith, and Y. He, “DeepSpeed-MoE: Advancing mixture-of-experts inference and training to power next-generation AI scale,” in 
+
+Proceedings of the 39th International Conference on Machine Learning ,ser. Proceedings of Machine Learning Research, vol. 162, 2022, pp. 18 332–18 346. [6] J. He, J. Zhai, T. Antunes, H. Wang, F. Luo, S. Shi, and Q. Li, “Faster-MoE: Modeling and optimizing training of large-scale dynamic pre-trained models,” in Proceedings of the 27th ACM SIGPLAN Symposium on Principles and Practice of Parallel Programming , 2022, pp. 120–134. [7] X. Liu, Y. Wang, F. Fu, X. Xiao, H. Li, J. Li, and B. Cui, “LAER-MoE: Load-adaptive expert re-layout for efficient mixture-of-experts training,” in Proc. ACM ASPLOS , 2026, pp. 1055–1072. [8] J. Li, Y. Jiang, Y. Zhu, C. Wang, and H. Xu, “Accelerating distributed MoE training and inference with Lina,” in 2023 USENIX Annual Technical Conference (USENIX ATC 23) . USENIX Association, 2023, pp. 945–959. [Online]. Available: https://www.usenix.org/conference/ atc23/presentation/li-jiamin [9] J. Liu, J. H. Wang, and Y. Jiang, “Janus: A unified distributed training framework for sparse Mixture-of-Experts models,” in Proceedings of the ACM SIGCOMM 2023 Conference , 2023. [10] DeepSeek-AI, A. Liu, B. Feng et al. , “DeepSeek-V3 technical report,” 2025. [11] M. Lewis, S. Bhosale, T. Dettmers, N. Goyal, and L. Zettlemoyer, “BASE layers: Simplifying training of large, sparse models,” in 
+
+Proceedings of the 38th International Conference on Machine Learning , ser. Proceedings of Machine Learning Research, vol. 139. PMLR, 2021, pp. 6265–6274. [Online]. Available: https: //proceedings.mlr.press/v139/lewis21a.html [12] Y. Zhou, T. Lei, H. Liu, N. Du, Y. Huang, V. Y. Zhao, A. M. Dai, Z. Chen, Q. V. Le, and J. Laudon, “Mixture-of-experts with expert choice routing,” in Advances in Neural Information Processing Systems ,vol. 35. Curran Associates, Inc., 2022, pp. 7103–7114. [Online]. Available: https://doi.org/10.52202/068431-0515 [13] C. Chen, M. Li, Z. Wu, D. Yu, and C. Yang, “TA-MoE: Topology-aware large scale mixture-of-expert training,” in Advances in Neural Information Processing Systems , vol. 35. Curran Associates, Inc., 2022, pp. 22 173–22 186. [Online]. Available: https://doi.org/10.52202/ 068431-1611 [14] Y. Jiang, Y. Fu, Y. Huang, P. Nie, Z. Lu, L. Xue, C. He, M.-K. Sit, J. Xue, L. Dong et al. , “Moe-cap: Benchmarking cost, accuracy and performance of sparse mixture-of-experts systems,” in The Thirty-ninth Annual Conference on Neural Information Processing Systems Datasets and Benchmarks Track , 2025. [15] X.-P. Nguyen, S. Pandit, A. Xu, C. Xiong, and S. Joty, “Least-loaded expert parallelism: Load balancing an imbalanced mixture-of-experts,” in Forty-third International Conference on Machine Learning , 2026. [Online]. Available: https://openreview.net/forum?id=DFi6hHce5t [16] S. Shi, X. Pan, X. Chu, and B. Li, “PipeMoE: Accelerating mixture-of-experts through adaptive pipelining,” in IEEE INFOCOM 2023 - IEEE Conference on Computer Communications , 2023, pp. 1–10. [17] S. Shi, X. Pan, Q. Wang, C. Liu, X. Ren, Z. Hu, Y. Yang, B. Li, and X. Chu, “ScheMoE: An extensible mixture-of-experts distributed training system with tasks scheduling,” in Proceedings of the Nineteenth European Conference on Computer Systems , 2024, pp. 236–249. [18] X. Pan, W. Lin, S. Shi, X. Chu, W. Sun, and B. Li, “Parm: Efficient training of large sparsely-activated models with dedicated schedules,” in 
+
+IEEE INFOCOM 2024 - IEEE Conference on Computer Communica-tions , 2024, pp. 1880–1889. [19] X. Pan, W. Lin, L. Zhang, S. Shi, Z. Tang, R. Wang, B. Li, and X. Chu, “FSMoE: A flexible and scalable training system for sparse mixture-of-experts models,” in Proceedings of the 30th ACM International Conference on Architectural Support for Programming Languages and Operating Systems , 2025, pp. 524–539. [20] N. Wang, W. Lin, L. Zhang, S. Shi, R. Zhou, and B. Li, “SP-MoE: Expediting mixture-of-experts training with optimized pipelining planning,” in IEEE INFOCOM 2025 - IEEE Conference on Computer Communications , 2025, pp. 1–10. [21] W. Lin, X. Pan, S. Shi, X. Wang, B. Li, and X. Chu, “Mast: Efficient training of mixture-of-experts transformers with task pipelining and ordering,” in 2025 IEEE 45th International Conference on Distributed Computing Systems , 2025, pp. 560–570. [22] X. Pan, R. Wang, W. Lin, S. Shi, and X. Chu, “Mitigating contention in stream multiprocessors for pipelined mixture of experts: An SM-aware scheduling approach,” in 2025 IEEE 45th International Conference on Distributed Computing Systems , 2025, pp. 582–592. [23] M. Zhai, J. He, Z. Ma, Z. Zong, R. Zhang, and J. Zhai, “SmartMoE: Efficiently training sparsely-activated models through combining offline and online parallelization,” in 2023 USENIX Annual Technical Confer-ence . USENIX Association, 2023, pp. 961–975. [24] C. Jiang, Y. Tian, Z. Jia, S. Zheng, C. Wu, and Y. Wang, “Lancet: Accelerating mixture-of-experts training via whole graph computation-communication overlapping,” in Proceedings of Machine Learning and Systems , vol. 6, 2024. [25] S. Zhang, N. Zheng, H. Lin, Z. Jiang, W. Bao, C. Jiang, Q. Hou, W. Cui, S. Zheng, L.-W. Chang, Q. Chen, and X. Liu, “COMET: Fine-grained computation-communication overlapping for mixture-of-experts,” 
+
+Proceedings of Machine Learning and Systems , vol. 7, 2025. [On-line]. Available: https://proceedings.mlsys.org/paper files/paper/2025/ hash/e27ea0cd50b798ff8942caf9203f0992-Abstract-Conference.html [26] W. Lin, X. Pan, L. Zhang, S. Shi, X. Wang, and X. Chu, “HierMoE: Accelerating MoE training with hierarchical token deduplication and expert swap,” in IEEE INFOCOM 2026 - IEEE Conference on Computer Communications , 2026, pp. 1–10. [27] X. Nie, X. Miao, Z. Wang, Z. Yang, J. Xue, L. Ma, G. Cao, and B. Cui, “FlexMoE: Scaling large-scale sparse pre-trained model training via dynamic device placement,” Proceedings of the ACM on Management of Data , vol. 1, no. 1, pp. 110:1–110:19, 2023. [28] A. Skiadopoulos, M. Zhao, S. Gandhi, T. Norrie, S. Mukherjee, and C. Kozyrakis, “SYMI: Efficient mixture-of-experts training via model and optimizer state decoupling,” in Proc. USENIX NSDI . USENIX Association, 2026, pp. 75–92. [29] S. Bai, Y. Cai, R. Chen, K. Chen, X. Chen, Z. Cheng, L. Deng, W. Ding, C. Gao, C. Ge, W. Ge, Z. Guo, Q. Huang, J. Huang, F. Huang, B. Hui, S. Jiang, Z. Li, M. Li, M. Li, K. Li, Z. Lin, J. Lin, X. Liu, J. Liu, C. Liu, Y. Liu, D. Liu, S. Liu, D. Lu, R. Luo, C. Lv, R. Men, L. Meng, X. Ren, X. Ren, S. Song, Y. Sun, J. Tang, J. Tu, J. Wan, P. Wang, P. Wang, Q. Wang, Y. Wang, T. Xie, Y. Xu, H. Xu, J. Xu, Z. Yang, M. Yang, J. Yang, A. Yang, B. Yu, F. Zhang, H. Zhang, X. Zhang, B. Zheng, H. Zhong, J. Zhou, F. Zhou, J. Zhou, Y. Zhu, and K. Zhu, “Qwen3-VL technical report,” arXiv preprint arXiv:2511.21631 , 2025. [30] L. Chen, J. Li, X. Dong, P. Zhang, C. He, J. Wang, F. Zhao, and D. Lin, “ShareGPT4V: Improving large multi-modal models with better captions,” in Proceedings of the European Conference on Computer Vision (ECCV) , 2024, pp. 370–387. [31] N. Lambert, J. Morrison, V. Pyatkin, S. Huang, H. Ivison, F. Brahman, L. J. V. Miranda, A. Liu, N. Dziri, X. Lyu, Y. Gu, S. Malik, V. Graf, J. D. Hwang, J. Yang, R. Le Bras, O. Tafjord, C. Wilhelm, L. Soldaini, N. A. Smith, Y. Wang, P. Dasigi, and H. Hajishirzi, “Tulu 3: Pushing frontiers in open language model post-training,” in Proceedings of the Second Conference on Language Modeling (COLM) , 2025. [32] Q. Ma, Y. Zheng, Z. Shi, Z. Zhao, B. Jia, Z. Huang, Z. Lin, Y. Li, J. Yang, Y. Peng, Z. Zhang, and X. Liu, “VeOmni: Scaling any modality model training with model-centric distributed recipe zoo,” 2025. [33] A. Y. Ng, M. I. Jordan, and Y. Weiss, “On spectral clustering: Analysis and an algorithm,” in Advances in Neural Information Processing Systems , vol. 14. MIT Press, 2001. [Online]. Available: https://proceedings.neurips.cc/paper/2001/hash/ 801272ee79cfde7fa5960571fee36b9b-Abstract.html [34] H. W. Kuhn, “The hungarian method for the assignment problem,” Naval Research Logistics Quarterly , vol. 2, no. 1–2, pp. 83–97, 1955.

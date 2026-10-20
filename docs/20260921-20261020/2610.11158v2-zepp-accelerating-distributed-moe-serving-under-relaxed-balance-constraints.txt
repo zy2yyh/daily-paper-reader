@@ -1,0 +1,638 @@
+Title: Zepp: Accelerating Distributed MoE Serving under Relaxed Balance Constraints
+
+URL Source: https://arxiv.org/pdf/2610.11158v2
+
+Published Time: Mon, 12 Oct 2026 00:40:33 GMT
+
+Number of Pages: 16
+
+Markdown Content:
+# Zepp: Accelerating Distributed MoE Serving under Relaxed Balance Constraints 
+
+## Chang Chen *
+
+## UCSD chc278@ucsd.edu Andrew Yang *
+
+## Stanford University azyang@stanford.edu Tiancheng Chen ETH Zürich tiancheng.chen@inf.ethz.ch Jiangfei Duan Independent Researcher imjfduan@gmail.com Xinwei Qiang UCSD x2qiang@ucsd.edu Zhongkai Yu UCSD zhy055@ucsd.edu Xiang Fang UCSD x8fang@ucsd.edu Yufei Ding UCSD yufeiding@ucsd.edu 
+
+## Abstract 
+
+As Mixture-of-Experts (MoE) models continue to scale, serv-ing them increasingly relies on expert parallelism (EP) across a growing number of devices. Yet skewed expert workloads create imbalance across computation, communication, and memory, making load balancing a central optimization objec-tive in distributed MoE serving. We observe that balance is not free : operations introduced to balance one dimension can themselves be expensive or imbalanced. This motivates us to rethink balance as a con-straint rather than an optimization objective. We present Zepp ,which directly optimizes the bottleneck communication in dis-tributed MoE serving subject to simplified balance constraints on physical resources, i.e., GPUs and NICs. Zepp progres-sively optimizes inter-node communication across placement, routing, and execution. It first places expert replicas to reduce token communication under GPU constraints, then reshapes communication flows through split and merge primitives un-der NIC constraints, and finally partitions and schedules ex-pert computation to overlap the resulting communication. To adapt to dynamic workloads, Zepp jointly coordinates compu-tation, token communication, and expert-weight movement at each iteration. Together, these designs allow Zepp to pursue the most efficient execution rather than a single-dimension balanced one. We implement Zepp and evaluate it against 7
+
+state-of-the-art MoE serving systems, achieving up to 6.68 ×
+
+MoE layer speedup and a geometric mean speedup of 1.86 ×
+
+over the fastest competing baseline. 
+
+## 1 Introduction 
+
+Mixture-of-Experts (MoE) has emerged as a key architecture for scaling large language models (LLMs), enabling substan-tial growth in model capacity while activating only a small subset of parameters for each token [23, 39]. This sparse ac-tivation makes it possible to scale models to hundreds of billions or even trillions of parameters without proportionally              
+
+> *These authors contributed equally. Expert ID
+> 0510
+> Normalized token count
+> uniform
+> LiveCodeBench
+> 04812 012
+> Normalized compute  LiveCodeBench
+> 04812
+> MMLU prof. law
+> 04812 04812 04812
+> Sender NIC
+> 00.5 1× 1.5 2
+> Normalized tra ffi cGPU Receiver NIC
+> (a) Expert activation frequency (b) Per-GPU compute load (c) NIC-to-NIC dispatch tra ffi c
+
+Figure 1: Imbalance captured from realistic MoE traces under two datasets [42]. (a) shows expert activation skew. (b) and (c) show resulting compute and communication imbalance when experts are mapped in round-robin order onto a 4 node, 16 GPU topology with a NIC paired per GPU. increasing computation [15]. Consequently, MoE has been in-creasingly adopted by state-of-the-art LLMs [6, 13, 20, 21, 41], making efficient MoE inference critical to delivering low-latency and high-throughput serving at scale. Serving large MoE models typically relies on expert parallelism (EP), which distributes experts across multi-ple GPUs and routes each token to the GPUs hosting its selected experts [23, 46]. Each MoE layer therefore alter-nates between token dispatch, expert computation, and token combine, introducing substantial all-to-all communication across GPUs [19, 22]. More importantly, dynamic token-to-expert routing creates highly skewed and time-varying work-loads [24, 28, 42]: as shown in Figure 1, different experts receive different numbers of tokens, leading to uneven ex-1arXiv:2610.11158v2 [cs.DC] 9 Oct 2026 pert computation and communication traffic across GPUs and network links. Such imbalance can leave some resources overloaded while others remain idle, making efficient EP execution a central challenge for high-performance MoE serv-ing [19, 24, 43]. Existing systems follow a common principle: better bal-ance leads to better performance. Early approaches balance communication by padding redundant tokens to enforce uni-form communication shapes, at the cost of unnecessary data transfer [19, 23, 44]. More recent systems eliminate such re-dundancy and instead balance traffic across bottleneck re-sources, e.g., by routing tokens across multiple NICs, but introduce explicit routing overheads [22, 38]. To further bal-ance computation and communication, systems replicate hot experts [12,43,45] and may periodically remap experts across devices in response to changing loads [2, 8, 28]. However, expert remapping, in turn, introduces expensive and inher-ently imbalanced communication. Reducing the remapping frequency mitigates this overhead, but evenly dispatching to-kens across expert replicas to maintain runtime balance can still introduce additional inter-node communication. These approaches reveal a fundamental balancing dilemma: eliminating one form of imbalance often introduces another source of imbalance or overhead, making balance itself in-creasingly costly to pursue. Orthogonal techniques, such as communication-computation overlap [2, 4, 5, 7, 44] and attention-FFN disaggregation [40,49], can mitigate the perfor-mance impact of imbalance, but do not fundamentally resolve this dilemma. More importantly, we observe that better bal-ance does not necessarily translate into better performance, particularly when achieving balance requires additional inter-node communication. This motivates us to rethink the role of balance in distributed MoE serving: rather than treating balance as the optimization objective, we enforce it only as a constraint on physical resources, i.e., GPUs and NICs, and directly minimize the bottleneck inter-node communication. We present Zepp , a distributed MoE serving system that di-rectly optimizes bottleneck inter-node communication while treating GPU and NIC balance as resource constraints. Rather than pursuing balance in each dimension independently, Zepp 
+
+progressively avoids, reshapes, and hides inter-node commu-nication. First, Zepp avoids unnecessary inter-node communication by jointly coordinating expert replication, placement, and to-ken routing under GPU constraints. Replication and place-ment use historical demand to spread expert replicas across nodes, creating opportunities for locality. Given this place-ment, locality-preferred routing favors local replicas and con-solidates remaining expert requests onto fewer remote nodes. Together, they reduce inter-node traffic without introducing additional communication operations. Second, Zepp restructures and overlaps the remaining com-munication through split and merge under NIC constraints. Unlike conventional overlap designs that primarily split com-GPU0  
+
+> A
+> Node0 Node1
+> Expert 0 Expert 0 Expert 1
+> Activation
+> A' A' AC
+
+GPU2 
+
+> C
+> Expert 4 Expert 5 Expert 4 Expert 5
+> C' BB C DA
+
+GPU3 
+
+> D
+> Expert 6 Expert 7 Expert 6 Expert 7
+> D' D
+> Expert 1
+> C' A' A' B' B'D' D' C'
+
+Dispatch Compute Combine+Reduce  
+
+> Intra-node traffic Inter-node traffic routed through NICs
+
+GPU1  
+
+> B
+> Expert 2 Expert 3 Expert 2 Expert 3
+> B' DABCB' A' D' C' A' B' B' C' C' D' D' DCBA
+> Activation Activation Activation
+> Tokens
+
+Figure 2: Example of MoE Layer on two nodes, each with two GPUs. munication, Zepp adjusts communication granularity in both directions: merge eliminates redundant inter-node payloads through shared token transfers during dispatch and node-local pre-reduction during combine, while split exposes indepen-dently schedulable flows and redistributes traffic over NVLink to alleviate bottleneck NICs. Zepp then schedules expert com-putation around the dependencies of these restructured flows, allowing ready computation and communication to overlap during both dispatch and combine. Finally, dynamic workload imbalances can cause the his-torical placement to violate GPU load constraints. Instead of globally remapping experts, Zepp performs intra-node ex-pert swaps that preserve node-level expert coverage and avoid inter-node weight transfers. These weight movements are further coordinated with token communication and expert computation to hide their cost whenever possible. To conclude, this paper makes three contributions: • Motivation and analysis. We analyze how balancing ex-pert computation and communication can introduce addi-tional inter-node transfers and movement overhead. This motivates treating expert-replica load balance as a con-straint while reducing bottleneck inter-node communica-tion. • System design. We design and implement Zepp , which coordinates expert replication, placement, and routing to re-duce remote token transfers. Building on these assignments, 
+
+split Xand merge restructure the remaining communication, and computation scheduling overlaps the resulting flows. Intra-node expert swaps extend this design to dynamic de-mand, rebalancing GPU compute load while overlapping expert-weight movement. • Evaluation. We evaluate Zepp across multiple MoE model architectures, topologies, and input token datasets. Results showcase that Zepp achieves up to 6 .68 × speedup over existing baselines and up to 2 .78 × (1 .86 × geometric mean) over the fastest competing baseline in end-to-end MoE layer execution. Code is available at github.com/andronius-yang/zepp .2Inter-node communication bottleneck + Computation Imbalance                         
+
+> 010 20 30 40 ms
+> Communication Overlap + Computation Imbalance
+> 0510 15 ms
+> Expert communication bottleneck + Computation Balance
+> 010 20 30 40 ms
+> (a) (b) (c)
+> GPU + NIC pair
+> 4 nodes, 16 GPUs 32 MB/GPU
+> Vanilla EP COMET MoonEP
+> Token Comm. Expert Comm. Expert Comp. Barrier NIC RDMA NVLink GPU
+
+Figure 3: Resource usage timelines for MoE dispatch. Optimizing one resource can expose or introduce a bottleneck in another. (a) Vanilla EP: communication bottleneck and computation imbalance [22, 25, 38, 46]. (b) Communication overlap: computation imbalance remains [1, 19, 26, 44]. (c) Computation balancing: expert communication becomes the new bottleneck [2, 8, 12, 45]. 
+
+## 2 Background 
+
+Mixture-of-Experts (MoE) has become an increasingly promi-nent architecture in modern large language models. Unlike dense models that activate the same parameters for every token, MoE models sparsely activate only a subset of parame-ters organized into experts . Consequently, increasing model capacity does not necessarily require a proportional increase in per-token computation, enabling substantially larger param-eter counts [11, 15, 39]. Recent models illustrate this: Kimi K3 scales to 2.8 trillion total parameters while activating only 104 billion parameters per token [21]. To determine the set of activated experts, a learned router dynamically selects the top-k experts to process each token ,making token-to-expert routing an intrinsic part of MoE ex-ecution [23, 39]. To scale large MoE layers across multiple GPUs, expert parallelism (EP) distributes experts across dif-ferent GPUs [37]. Figure 2 illustrates the resulting selection and movement of tokens: during dispatch , tokens travel to GPUs hosting their selected experts, where computation is performed. The outputs are then returned during combine and aggregated at each token’s source. When EP strategies are deployed to multiple nodes, their to-ken traffic is mapped onto a heterogeneous hierarchy of GPU interconnects. Intra-node GPUs communicate through high-bandwidth, low-latency scale-up fabrics such as NVLink and NVSwitch [31]. Inter-node GPUs rely on NICs and scale-out networks with much lower bandwidth and higher communi-cation overhead. These communication paths utilize distinct data-movement resources: CUDA peer-to-peer copies can uti-lize dedicated copy engines for intra-node data transfers [35], while NVSHMEM provides fine-grained data transfer op-erations that utilize NICs to perform inter-node data trans-fers [32]. By utilizing resources separate from the GPU’s compute units, these mechanisms create opportunities to over-lap communication with computation. Dynamic routing decisions therefore naturally produce im-balance, whose effects are shaped by the underlying hetero-geneous interconnects. Uneven token assignments across ex-perts create both varying communication volumes between GPUs and uneven computation loads on GPUs hosting those experts [10,15,24]. Figure 2 shows both effects in play: Expert 4 receives four tokens and depends on tokens delivered across nodes from remote GPUs, whilst Expert 3 is not activated in this layer at all. As routing layer decisions are generated inde-pendently at each MoE layer, these imbalances shift across tokens and layers throughout model execution. 
+
+## 3 Motivation 
+
+Compared with dense distributed serving, MoE serving intro-duces two unique challenges: load imbalance from dynamic expert activation and communication planning under irregular traffic. 
+
+## 3.1 Imbalance is Shifted, Not Eliminated 
+
+Existing MoE serving systems increasingly optimize imbal-ance across different resources. However, we observe that balancing one dimension often shifts the bottleneck to an-other rather than eliminating it. • Communication overlap. As shown in Figure 3(a), vanilla EP suffers from both expensive inter-node token communi-cation and imbalanced expert computation. Existing over-lap techniques partition communication and computation to pipeline their execution, effectively hiding part of the com-munication latency. However, the skewed expert workload remains, leaving the critical path dominated by straggling expert computation (Figure 3(b)). Thus, reducing the im-pact of communication imbalance can expose computation imbalance as the next bottleneck. • Computation balancing. Expert replication and remap-ping further balance expert computation by redistributing hot experts across GPUs. However, moving expert weights introduces additional inter-node communication, which can become the new bottleneck even after computation is well balanced (Figure 3(c)). In other words, eliminating compu-tation imbalance can shift the bottleneck back to communi-cation. 3GPU2 GPU0 
+
+GPU0 GPU2 E1 E3 GPU3 
+
+Merge 
+
+Cross once 
+
+> NIC
+
+(b) 
+
+GPU2 E1 E3 GPU3 
+
+Split, then Merge 
+
+GPU0 GPU1 
+
+GPU0 GPU1 GPU3 GPU2  
+
+> NIC NIC
+
+(d) 
+
+GPU2 E1 E3 GPU3 
+
+Imbalanced NIC 
+
+GPU0 GPU1 
+
+GPU3 GPU2 GPU0 GPU1  
+
+> NIC NIC
+
+(c) 
+
+GPU0 GPU2 E1  
+
+> Send node Recv node
+> E3
+
+GPU3 
+
+Split 
+
+GPU0 
+
+> NIC
+
+(a)    
+
+> Tokens Experts Inter-node traffic Intra-node traffic NIC RDMA Token comm. Removed/shifted traffic NVLink
+
+Figure 4: Split and merge during dispatch. (a) Separate expert deliveries repeat a shared input. (b) Merge sends it across nodes once. (c) Unequal source payloads leave NICs imbalanced. (d) Local redistribution and merging spread traffic across NICs. These results reveal a recurring pattern: optimizing bal-ance in one dimension can expose or introduce imbalance in another. Rather than pursuing balance itself, we argue that MoE serving should directly optimize the end-to-end critical path, dominated by inter-node communication as shown in Figure 3(a), while treating resource balance as a constraint. 
+
+## 3.2 Split, or Merge? 
+
+Dense-model overlap typically splits large communication operations to enable pipelining. However, MoE’s sparse and irregular communication makes finer granularity not always beneficial. • Redundant Tokens. In dense communication, different chunks typically carry distinct data, so splitting primarily changes granularity without duplicating payloads. In MoE, however, multiple experts selected by the same token may reside on the same remote node. Sending their requests separately repeatedly transfers the same token. As shown in Figure 4(a–b), merging such transfers allows the shared token to cross the network only once. • Imbalanced NIC Traffic. Dense collectives typically dis-tribute regular traffic across participating ranks, allowing fine-grained splitting to expose overlap without substan-tially changing traffic balance. MoE routing instead pro-duces highly skewed traffic across GPUs and NICs. As shown in Figure 4(c–d), splitting and locally redistribut-ing traffic can alleviate bottleneck NICs, while subsequent merging removes redundant transfers. • Message Granularity. As EP scales to more devices, each GPU serves fewer tokens and individual MoE transfers be-come smaller, making per-message latency increasingly sig-nificant. Unlike dense communication, where large transfers can amortize startup latency, aggressively splitting these already-small MoE messages further increases the number of latency-dominated transfers. Merging small transfers therefore becomes necessary to amortize communication latency at scale. §4.1 Expert placement + token routing        
+
+> Replica Swap
+> Node0 Node1 GPU0
+> Act.
+> GPU1
+> Act.
+> GPU2
+> Act.
+> GPU3
+> Act.
+> Imbalanced dispatch Imbalanced combine
+> E0 E1 E4 E2 E3 E6 E4 E5 E0 E6 E7 E2 E0 E1 E4 E2 E3 E6 E4 E5 E0 E6 E7 E2
+> §4.2 Dispatch overlap §4.2 Combine overlap §4.3 Three stream scheduling
+> NIC RDMA NVLink GPU Token comm. Expert swap Compute Plan Tokens (Source GPU)
+
+Figure 5: Design overview of Zepp .While dense-model overlap primarily asks how to split com-munication, MoE serving must decide whether to split or 
+
+merge : split to alleviate NIC bottlenecks, and merge to reduce redundant transfers and communication latency. 
+
+## 4 System Design 
+
+Zepp directly optimizes the bottleneck inter-node communi-cation of MoE layers while treating GPU compute and NIC traffic balance as resource constraints. Figure 5 summarizes the design. First, under GPU compute load constraints, Zepp 
+
+jointly coordinates expert replication, placement, and token routing to avoid inter-node transfers whenever local replica capacity permits (§4.1). For the remaining transfers, Zepp 
+
+uses split and merge to restructure and reduce communication under NIC traffic constraints, and reschedules expert compu-tation around the resulting communication flows to overlap communication with computation (§4.2). Finally, as dynamic expert demand shifts GPU compute loads, Zepp uses intra-node expert swaps to restore the load constraints without introducing inter-node weight transfers (§4.3). Table 1 sum-marizes the notation for expert assignment, GPU compute 4Table 1: Design notation. Indices i, j denote GPUs and e an expert.                      
+
+> Symbol Meaning
+> Mei j Number of tokens for expert efrom GPU ias-signed to GPU j.
+> deiNumber of tokens for expert efrom GPU i.
+> qejBalanced number of tokens for expert eon GPU
+> jafter replication; zero if no replica is present.
+> ai j Inverse bandwidth from GPU ito j.
+> CRelaxation ratio of token budget
+> RNumber of extra expert slots on each GPU
+
+load, and token communication. 
+
+## 4.1 Expert Placement and Token Routing 
+
+We first optimize expert placement and token routing, as they reduce inter-node communication without introducing ad-ditional communication operations. By changing the num-ber of replicated experts, where expert replicas reside at the beginning, and which replica serves each token at each forward round, Zepp reduces remote token transfers using only the communication already required by MoE execution. We therefore prioritize this optimization before introducing more active communication transformations. These decisions jointly determine GPU compute load and token traffic. Zepp 
+
+preserves the model’s logical expert selections and routing weights while choosing their physical execution locations, without changing the original algorithm. Considering expert placement and token routing indepen-dently can lead to expensive token assignments even when replica loads are balanced. A placement may balance expected compute load across GPUs while clustering popular experts within a few nodes, providing limited node-level expert cover-age for local token dispatch. Conversely, evenly distributing each source rank’s tokens across expert replicas can introduce unnecessary remote transfers even when local assignments can satisfy the replica load targets. We therefore treat expert-replica load balance as a constraint rather than the routing objective: among assignments satisfying the load constraints, we prefer those with lower communication cost. 
+
+Expert replication and placement. Zepp replicates experts based on historical demand while prioritizing expert cover-age across nodes. In addition to the original slots for evenly distributed expert weights, we reserve R extra slots on each GPU for expert replicas. We greedily assign these slots to the expert with the highest historical token demand per replica, updating its demand per replica after each replication, until all available slots are filled. After determining the number of replicas, Zepp places them hierarchically. Following workload priority, we first distribute replicas across nodes in a round-robin manner, and then dis-E0 E4 E5                
+
+> GPU 0
+> E1 E2 E6
+> GPU 1 E0
+> Node 0
+> E0 E5 E6
+> GPU 2
+> E3 E4 E7
+> GPU 3 E1
+> Node 1
+> E1 E2 E6
+> GPU 5
+> E0 E3 E5
+> GPU 4 E1
+> Node 2
+> E0 E3 E4
+> GPU 6
+> E1 E2 E7
+> GPU 7 E0
+> Node 3
+> remote route local route extra replica token requests
+
+Figure 6: Replica placement and routing showing E0 repli-cated across all nodes with local token routes. E1 replicated in all but one with inter-node routes for absent node tokens. tribute replicas within each node across GPUs to balance the expected compute load. This hierarchical placement spreads replicas of the same expert across nodes, so that each ad-ditional replica expands its node-level coverage rather than creating redundant copies within the same node. The result-ing placement is reused across batches, avoiding recurring expert-weight movement while creating locality opportunities for runtime token routing. Figure 6 illustrates the resulting heterogeneous expert coverage across nodes. The increased node-level coverage also provides greater flexibility for the intra-node expert adjustments described in §4.3. 
+
+Locality-preferred token routing. Given the placement, each rank adaptively adjusts its token dispatch without intro-ducing additional communication operations. For each expert 
+
+e, a GPU-to-GPU matrix Me records the number of tokens assigned from each source GPU to each serving GPU. The row totals are fixed by the batch’s expert selections, while 
+
+qej denotes the balanced reference load of expert e on GPU 
+
+j, computed by evenly dividing the total number of tokens assigned to e across its replicas, with qej = 0 if GPU j does not host e and ∑ j qej = ∑i dei . We formulate communication-minimizing routing under relaxed GPU load constraints as min  
+
+> M
+
+# ∑ 
+
+> e,i,j
+
+ai j Mei j 
+
+s.t. ∑
+
+> j
+
+Mei j = dei ∀i, e,
+
+| ∑
+
+> i
+
+Mei j − qej| ≤ C ∗ qej ∀ j, e,
+
+Mei j ∈ Z≥0 ∀i, j, e.
+
+(1) The first constraint preserves the model’s original expert se-lections. The second bounds each replica’s load around its balanced reference and, because qej = 0 for non-resident ex-perts, prevents routing tokens to GPUs that do not host the selected expert. The second bound also constrains the aggre-gate token load on each GPU. The relaxation ratio C therefore controls how far routing may deviate from perfect balance in exchange for lower communication cost. For homogeneous GPUs and equal-size experts, token counts approximate com-pute load. With high bandwidth of intra-node paths, the objec-tive favors local replicas whenever their available load budget 5Round 1 Round 2 Dispatch Combine Node 0                                                                 
+
+> Recv Send GPU 0 E0 E1 Recv Send GPU 1 E2 E3
+> Node 1
+> Recv Send GPU 2 E4 E5 Recv Send GPU 3 E6 E7
+> Node 2
+> Recv Send GPU 4 E8 E9 Recv Send GPU 5 E10 E11
+> Node 0
+> Recv Send GPU 0 E0 E1 Recv Send GPU 1 E2 E3
+> Node 1
+> Recv Send GPU 2 E4 E5 Recv Send GPU 3 E6 E7
+> Node 2
+> Recv Send GPU 4 E8 E9 Recv Send GPU 5 E10 E11
+> ΣΣΣΣΣΣ
+> Node 0
+> Recv Send GPU 0 E0 E1 Recv Send GPU 1 E2 E3
+> Node 1
+> Recv Send GPU 2 E4 E5 Recv Send GPU 3 E6 E7
+> Node 2
+> Recv Send GPU 4 E8 E9 Recv Send GPU 5 E10 E11
+> Node 0
+> Recv Send GPU 0 E0 E1 Recv Send GPU 1 E2 E3
+> Node 1
+> Recv Send GPU 2 E4 E5 Recv Send GPU 3 E6 E7
+> Node 2
+> Recv Send GPU 4 E8 E9 Recv Send GPU 5 E10 E11
+> ΣΣΣΣΣΣ
+> Tokens (Source GPU) NIC RDMA NVLink Expert compute ΣPre-reduce
+
+Figure 7: Two rounds of comm.–comp. overlap in dispatch and combine. Tokens inside expert boxes denote current computation; tokens along communication paths belong to other groups being transferred concurrently. Across rounds, received inputs enter expert computation during dispatch, while completed outputs enter pre-reduction ( Σ) and then return transfer during combine. permits. As illustrated by E0 in Figure 6, sufficient replica coverage can avoid inter-node transfers; otherwise, tokens are routed to remote replicas, as illustrated by E1 from Node1. The overhead of solving this optimization problem is modest compared with its performance benefits, as detailed in §5. 
+
+## 4.2 Overlapping Scheduling 
+
+Although expert placement and locality-preferred token rout-ing reduce inter-node communication volume, the remaining communication can still bottleneck MoE execution. Its per-formance depends not only on the total traffic volume, but also on how traffic is distributed across the multiple NICs of each node. An overloaded NIC can dominate communica-tion latency even when the aggregate traffic volume is small. We therefore introduce split and merge operations to restruc-ture communication flows under NIC balance constraints, and schedule expert computation around the resulting commu-nication dependencies to overlap inter-node transfers with computation. 
+
+Split . Conventional EP expresses token dispatch as an all-to-all collective, coupling many token transfers into a single communication operation. Zepp first splits the all-to-all into independently schedulable send-receive flows according to their source and destination nodes. This decomposition ex-poses the underlying traffic and allows Zepp to explicitly control which NIC carries each inter-node transfer. However, the resulting flows can remain highly imbalanced across NICs because dynamic expert routing generates different amounts of outgoing traffic on different GPUs. Zepp therefore fur-ther splits and redistributes these flows across local GPUs to satisfy NIC load constraints. We first analyze the traffic between a pair of nodes to de-termine how its outgoing load should be distributed across the available NICs. Let Vi denote the original outgoing traffic from GPU i toward a destination node, and xi j the amount of this traffic eventually transmitted through the NIC attached to GPU j. When i = j, the traffic directly uses its original NIC; when i̸ = j, the corresponding payload is first transferred from GPU i to GPU j over NVLink and then sent through GPU j’s NIC. We determine the redistribution by minimizing the addi-tional intra-node data movement subject to NIC load con-straints: min   
+
+> {xi j }
+
+# ∑
+
+> i
+
+# ∑ 
+
+> j̸=i
+
+ci j xi j 
+
+s.t. ∑
+
+> j
+
+xi j = Vi, ∀i,
+
+# ∑
+
+> i
+
+xi j ≤ (1 +CNIC )VG , ∀ j,
+
+xi j ≥ 0, ∀i, j,
+
+(2) where V = ∑i Vi, G is the number of NIC-equipped GPUs in the node, ci j captures the intra-node movement cost from GPU i to GPU j, and CNIC controls the allowed deviation from perfectly balanced NIC traffic. Thus, NIC balance is enforced as a constraint rather than the optimization objective: 
+
+Zepp keeps traffic on its original NIC whenever possible and redistributes only the traffic necessary to satisfy the constraint. For homogeneous NICs and CNIC = 0, each NIC carries 
+
+V /G traffic, and the minimum amount of traffic that must be moved within the node is 
+
+V min move = ∑
+
+> i
+
+
+
+Vi − VG
+
++
+
+= 12 ∑
+
+> i
+
+Vi − VG . (3) As illustrated in Figure 4, when GPU1 carries more outgoing traffic than GPU0, Zepp splits only its excess traffic and moves it to GPU0 over NVLink. The selected experts and destination nodes remain unchanged; only the physical NIC carrying the payload changes. In this way, Zepp trades the minimum 6Algorithm 1: Overlapping dispatch and combine.         
+
+> Input: GPU (n,g);Nnodes; GGPUs per node; split/merge plan
+
+P ; routed inputs and computation groups                                                                                                                                                   
+
+> Output: Combined token outputs y
+> 1y←0Dispatch
+> 2for r=1, . . . , N−1do
+> 3d←(n−r)mod N;s←(n+r)mod N
+> 4for each relay h do
+> 5Put NVLink (pieces [d,h],(n,h))
+> 6after ready (relay [d]) :
+> 7Put RDMA (relay [d],(d,g))
+> 8after ready (arrival [s]) :
+> 9for ℓ=0, . . . , G−1do
+> 10 h←(g+1+r+ℓ)mod G
+> 11 Put NVLink (arrival [s],(n,h))
+> 12 for input group q in planned delivery order do
+> 13 after ready (inputs (q)) :COMPUTE (q)
+> Combine
+> 14 for d=n+1, . . . , n+N−1,n (mod N) do
+> 15 outputs [d,∗]←COMPUTE (returnGroup [d])
+> 16 for r=1, . . . , N−1do
+> 17 d←(n+r)mod N;s←(n−r)mod N
+> 18 after ready (outputs [d,∗]) :
+> 19 for ℓ=0, . . . , G−1do
+> 20 h←(g+ℓ)mod G
+> 21 Put NVLink (outputs [d,h],(n,h))
+> 22 after ready (contributions [d]) :
+> 23 partial [d]←PRE REDUCE (contributions [d])
+> 24 after ready (partial [d]) :
+> 25 Put RDMA (partial [d],(d,g))
+> 26 after ready (arrival [s]) :REDUCE (arrival [s],y)
+> 27 WAIT ALL ()
+> 28 return y
+
+necessary high-bandwidth intra-node movement for reduced traffic on bottleneck inter-node NICs. 
+
+Merge . NIC-aware splitting exposes flexible physical paths, but can also produce fine-grained transfers and preserve re-dundant payloads across independent flows. Zepp therefore 
+
+merges compatible flows after redistribution, without chang-ing the NIC assignment determined above. During dispatch, multiple experts selected by the same to-ken may reside on the same destination node. Sending their requests independently would transfer the same token acti-vation multiple times across the network. Zepp merges such requests into a shared inter-node transfer: the token crosses the network once and reaches an initial receiver side GPU. It is then responsible for forwarding tokens over NVLink to the GPUs hosting experts that require them (Algorithm 1, lines 8–11). As illustrated in Figure 4(b), this replaces re-peated inter-node transfers with a single remote transfer and inexpensive node-local forwarding. In addition, compatible small flows sharing the same communication path can be coalesced into a larger transfer, reducing the number of com-munication operations and amortizing per-transfer latency. 
+
+Merge is applied differently during combine. Expert out-puts are distinct and therefore cannot be deduplicated. Instead, 
+
+Zepp locally accumulates the weighted expert outputs belong-ing to the same token into a node-local partial sum. Once all local contributions are available, only the partial sum is transferred back to the source node. This replaces multiple expert-level return transfers with one node-level transfer while preserving every expert’s contribution. 
+
+Split and merge restructure inter-node communication into independently schedulable flows, but also introduce explicit dependencies between communication and expert computa-tion. Zepp jointly schedules these flows and their dependent computation to minimize communication exposed on the criti-cal path. The key is that dispatch and combine exhibit opposite dependencies: during dispatch, communication makes expert inputs ready for computation; during combine, computation makes node-local partial sums ready for communication. Zepp 
+
+therefore makes computation follow communication during dispatch, but drive communication during combine. Figure 7 illustrates the resulting schedule, and Algorithm 1 summa-rizes the procedure; its after ready clauses express data dependencies, allowing communication and computation in separate loops to overlap. 
+
+Dispatch follows communication. During dispatch, source tokens are immediately available, so Zepp first initiates the communication flows determined by the split /merge plan P .These flows progress in rounds across node pairs, while intra-node redistribution and forwarding realize their assigned phys-ical paths, with local fan-out ordered cyclically across GPUs (Algorithm 1, lines 8–11). As soon as all inputs of a computa-tion group q arrive, the group becomes eligible for execution (lines 12–13); it does not wait for unrelated inputs of the same expert. The computation order follows the planned delivery or-der rather than expert identity. Split allows different input groups to become ready independently, while merge makes a shared group ready after its inter-node transfer and subse-quent local forwarding complete. Zepp prioritizes computa-tion groups according to this communication order, allowing already-delivered groups to execute while later groups remain in transit. In Figure 7, Node 0 receives inputs from Node 1 in Round 1 and processes them on experts E0–E3 in Round 2. These experts thus execute a delivered input group while Node 0 receives the next group from Node 2. 
+
+Combine drives communication. Combine reverses this dependency. Inter-node communication cannot begin until expert computation produces a complete node-local contribu-tion for the destination node. In particular, sending an expert output immediately would forfeit the benefit of merge and 7Node 0                         
+
+> GPU 0
+> E0 E4 E6
+> GPU 1
+> E1 E2 E5
+> Node 1
+> GPU 2
+> E0 E5 E7
+> GPU 3
+> E3 E4 E6
+> Node 2
+> GPU 4
+> E0 E3 E6
+> GPU 5
+> E1 E2 E5
+> Node 3
+> GPU 6
+> E0 E3 E7
+> GPU 7
+> E1 E2 E4
+> Dispatch Combine
+> NIC RDMA NVLink GPU Token comm. Expert swap Compute Workload Swapped expert Rescheduled compute
+
+Figure 8: Intra-node expert swaps for dynamic GPU rebalanc-ing. Zepp preserves node-level expert coverage while swap-ping replicas across local GPUs, and overlaps expert-weight movement with independent token communication and com-putation. increase inter-node traffic; Zepp instead waits until all local expert contributions required by a token group are available, pre-reduces them into a node-local partial sum, and transfers the partial sum once (Algorithm 1, lines 22–25). 
+
+Zepp therefore schedules computation to make complete re-turn groups ready as early as possible. Rather than processing tokens in an expert-major order, which can leave multiple des-tination groups blocked by their last unfinished experts, Zepp 
+
+groups computation by the tokens’ source nodes—their des-tinations d during combine—and schedules the required ex-pert computation across each group, denoted returnGroup [d]
+
+(Algorithm 1, lines 14–15). Once a group’s contributions are complete, Zepp immediately performs local pre-reduction and initiates its return transfer, overlapping it with computation for subsequent groups. In Round 1 of Figure 7, completed contributions for Node 1 converge over NVLink on Node 0 and undergo pre-reduction ( Σ) for return, while experts E0–E3
+
+compute the Node 2 return group. In Round 2, that group’s completed contributions enter the same aggregation and re-turn path while these experts compute the local group. At each source node, the arriving partial sums are reduced into the combined token outputs y (Algorithm 1, line 26). Together, the two schedules form complementary pipelines. During dispatch, Zepp consumes communication results as soon as they arrive, making communication drive compu-tation; during combine, it reorders computation to release complete communication groups early, making computation drive communication. Across rounds, Zepp pipelines these de-pendencies so that inter-node transfers, intra-node movement, and expert computation progress concurrently whenever their dependencies permit. Expert movement introduces an addi-tional readiness dependency, which we incorporate into the same schedule in §4.3. 
+
+## 4.3 Three Stream Scheduling 
+
+The preceding optimizations exploit a relatively stable expert placement to reduce inter-node communication. However, as token demand changes across batches, the historical place-ment may no longer satisfy the GPU compute-load constraint. Globally remapping experts could restore balance, but would introduce expensive inter-node weight transfers and disrupt the locality established by placement and routing. Zepp in-stead performs lightweight intra-node expert swaps , which adjust GPU-level compute load while preserving each expert’s node-level coverage. Figure 8 illustrates this process. 
+
+Rebalancing under fixed node-level coverage. The initial placement spreads replicas of each expert across nodes (§4.1), providing multiple node-local opportunities for subsequent adjustment. When the estimated GPU load exceeds the al-lowed imbalance, Zepp searches for swaps between experts on overloaded and underloaded GPUs within the same node. Let bL j denote the estimated compute load of GPU j, obtained from the current expert demand distributed across its replicas. We select intra-node swaps to minimize the maximum GPU load: min  
+
+> S
+
+max 
+
+> j
+
+bL j(S), (4) where S contains only swaps between GPUs in the same node. A swap exchanges the physical GPU locations of two ex-pert replicas while preserving both GPU slot occupancy and the set of nodes hosting each expert. It therefore changes nei-ther expert replication nor node-level coverage, and requires only intra-node weight movement. This restriction is deliber-ate: rather than pursuing globally optimal compute balance at the cost of new inter-node communication, Zepp performs best-effort GPU rebalancing within the locality established by the initial placement. A swap is triggered only when the current GPU-load imbalance exceeds the configured load con-straint, and is accepted only when it reduces the estimated maximum GPU load. The selection policy and overhead are detailed in §5. 
+
+Overlapping expert movement. Even intra-node swaps in-troduce weight movement that can interfere with token com-munication and computation. Rather than treating swapping as a blocking reconfiguration phase, Zepp incorporates expert-weight availability into the dependency-aware schedule of §4.2. A computation group becomes ready only when both its input tokens and the required expert weights are available. 
+
+Zepp therefore initiates weight transfers early and executes independent expert groups while the moved weights are in transit. As illustrated in Figure 8, computation of unaffected ex-perts provides overlap windows for moving swapped experts. During dispatch, ready experts consume arriving tokens while computation requiring a swapped expert waits for its weights. During combine, Zepp preserves the destination-oriented com-putation order from §4.2, but prioritizes independent computa-8020 40            
+
+> Qwen3-235B
+> 0.51× 1× 0.54× 0.80× 0.74× 1.15× 1.37×
+> 2.99×
+> 0.76× 1× 0.77× 0.96× 1.27× 2.03× 2.43×
+> 3.98×
+> 1.04× 1× 1.06× 1.13× 1.99× 2.67× 3.23×
+> 4.31×
+> 020 40
+> 4 nodes
+> Kimi K2
+> 0.50× 1× 0.37× 0.67× 0.67× 1.33× 1.46×
+> 2.10×
+> 0.73× 1× 0.48× 0.84× 1.12× 1.87× 2.11×
+> 2.76×
+> 1.12× 1× 0.92× 1.07× 1.91× 2.46× 2.79×
+> 3.43×
+> 025 50
+> 0.28× 1× 0.73× 1.24× 0.97× 1.17× 1.52×
+> 3.62×
+> 0.50× 1× 1.08× 1.22× 1.39× 1.66× 2.07×
+> 4.25×
+> 0.85× 1× 1.33× 1.18× 1.79× 1.86× 2.13×
+> 4.20×
+> 025 50
+> 8 nodes
+> 0.30× 1× 0.52× 1.16× 0.93× 1.36× 1.86×
+> 2.96×
+> 0.46× 1× 0.63× 1.05× 1.31× 1.54× 1.86×
+> 2.94×
+> 0.72× 1× 0.88× 0.96× 1.56× 1.49× 1.67×
+> 2.74×
+> 1 MB (= 128 tok/GPU) 4 MB (= 512 tok/GPU) 16 MB (= 2048 tok/GPU)
+> 030 60
+> 183 ms 1× 1.73× 3.06× 1.51× 1.52× 2.38×
+> 6.68×
+> 186 ms 1× 1.76× 2.07× 1.72× 1.42× 1.95×
+> 5.75×
+> 222 ms 1× 1.45× 1.32× 1.78× 1.16× 1.32×
+> 4.66×
+> 1 MB (= 72 tok/GPU) 4 MB (= 296 tok/GPU) 16 MB (= 1168 tok/GPU)
+> 030 60
+> 16 nodes
+> 193 ms 1× 1.20× 2.49× 1.48× 1.59× 2.92×
+> 5.77×
+> 200 ms 1× 1.11× 1.55× 1.54× 1.31× 1.75×
+> 4.24×
+> 226 ms 1× 1.08× 1.08× 1.61× 1.01× 1.12×
+> 3.28×
+> Latency (ms) FAST+GEMM A2AV+GEMM MoonEP EPLB EPIC COMET COMET+EPLB Ours
+
+Figure 9: MoE layer latency on LiveCodeBench layer-5 traces [42] across node counts and token counts per GPU. Expert placements are initialized from frequencies in earlier decode steps, while evaluation workloads are sampled from later steps. tion while the required weights are moving. Once a swapped expert becomes available, its dependent computation proceeds without requiring a global synchronization barrier. In this way, 
+
+Zepp hides intra-node expert movement whenever indepen-dent computation is available, while avoiding the inter-node weight transfers of global expert remapping. 
+
+## 5 Implementation 
+
+Zepp is implemented in C++ and CUDA [35] with Python bindings and uses CUTLASS [29] grouped GEMM kernels for expert computation. NVSHMEM [32] provides inter-node RDMA, while CUDA streams and NVSHMEM synchroniza-tion primitives coordinate transfers with expert computation. 
+
+Routing. CUDA kernels translate expert demand and place-ment into locality-preferred token assignments that satisfy integer-rounded per-replica load bounds. A greedy water-filling procedure constructs these assignments by considering replicas on the source GPU first, followed by other GPUs within the same node and then remote nodes. Each allocation is limited by the receiving replica’s remaining capacity while reserving sufficient unassigned demand to satisfy the other replicas’ lower bounds. Starting from these feasible assign-ments, a greedy refinement consolidates each token’s remote expert requests onto fewer nodes while preserving the same load bounds. 
+
+Expert Swapping. Expert swapping uses a greedy intra-node search that pairs heavily and lightly loaded GPUs, accept-ing exchanges only when they reduce the pair’s maximum estimated load. Together, routing, swap planning, and associ-ated metadata exchange and construction account for approx-imately 5% of iteration latency (§6.6). 
+
+Transport. Dispatch implements union forwarding by having each receiving node GPU forward complete received tokens to all GPUs within the destination node. Expert GEMMs select their required rows from these tokens through gather indices, eliminating recipient-specific forwarding-index con-struction and repacking. These transfers use NVSHMEM symmetric staging buffers to hold intermediate payloads for dispatch redistribution and combine aggregation. The buffers are allocated during initialization and reused across iterations. 
+
+## 6 Evaluation 6.1 Experimental Setup 
+
+Testbed. Each node contains four 40 GB memory NVIDIA A100 GPUs; §6.4 uses 80 GB variants to accomodate for KV caches and other serving state. Intra-node GPU pairs are connected by third-generation NVLink, providing 100 GB/s bandwidth per direction [33]. In §6.3, we additionally use four 96 GB NVIDIA H100 GPUs per node with the same GPU/NIC topology, fourth-generation NVLink providing 150 GB/s per direction between GPU pairs [34]. Both config-urations bind one HPE Slingshot 11 NIC per GPU providing 25 GB/s of inter-node bandwidth [17]. Our software uses CUDA 12.4, PyTorch 2.6.0, and NVSHMEM 3.2.5 with the libfabric/CXI transport [32, 35, 36]. 
+
+Baselines. We compare our system with various communica-tion and expert replication & placement baselines, representa-tive of different approaches to MoE layer latency optimiza-tions: A2AV+GEMM (implemented using NVSHMEM [32]), FAST+GEMM [22], COMET [44], EPLB [12], EPIC [2] and MoonEP [8]. We additionally evaluate COMET+EPLB, which combines EPLB’s expert replication and placement with COMET’s communication–computation overlap while retaining COMET’s dense allgather dispatch. Expert replica-tion baselines and Zepp use two extra expert slots per GPU rank (R = 2).
+
+Workloads. We use publicly released MoE layer expert 9traces datasets from prior work [42] for Kimi-K2-Thinking (K2) [20] and Qwen3-235B-A22B (Qwen) [41]. Table 2 lists their MoE dimensions; K2’s greater amount of routed experts challenges expert replication baselines, and its larger expert FFN dimension increases the computation cost per-token and communication cost of moving experts. Our experiments also fix parameters to use BF16. Within the selected dataset, we sample complete per-token top-k selections with replacement to reach the target workload size, measured as BF16 input token activation volume per GPU before top-k replication. 
+
+Model Routed experts Token dim. Expert FFN dim. Top-k
+
+Kimi-K2-Thinking 384 7,168 2,048 8Qwen3-235B-A22B 128 4,096 1,536 8
+
+Table 2: Model configurations. 
+
+Measurement. We measure the maximum per-GPU elapsed time of all GPUs engaged in a single MoE layer as the iter-ation latency. The timed window includes all metadata ex-change, placement update planning, token routing planning, and token communication and computation in both dispatch and combine. We run and exclude one-time initialization and warmup iterations. 
+
+## 6.2 MoE Performance 
+
+Figure 9 shows that Zepp achieves 2 .10–6 .68 × speedup over A2AV+GEMM and up to 2 .78 × over the fastest competing baseline. We examine these gains through the roles of place-ment and locality-preferred routing across node counts, and of traffic reduction and overlap across workload sizes. At sixteen nodes, we contrast the workload-size extremes to examine the value of avoiding remote requests and overlapping the remaining transfers. At 16 MB, Zepp ’s advantage over COMET+EPLB grows with node count. Between four and sixteen nodes, our speedup rises from 1 .34 × to 3 .53 × for Qwen and from 1 .23 × to 2.94 × for K2. This growing advantage is consistent with reducing the remote traffic that COMET+EPLB’s dense all-gather leaves to overlap, even after expert replication. At four nodes and 1 MB, Zepp already outperforms COMET+EPLB by 2 .18 × for Qwen and 1 .44 × for K2. Here, placement and locality-preferred routing exploit available local replicas to serve requests within their source nodes (§4.1), whereas dense allgather still sends tokens to remote nodes. Larger workload sizes increase the potential savings from traffic reduction and the work available for overlap. At four nodes, increasing the workload size from 1 to 16 MB raises our speedup over A2AV+GEMM from 2 .99 × to 4 .31 × for Qwen and from 2 .10 × to 3 .43 × for K2. Our intra-node ex-pert swaps also avoid MoonEP’s inter-node weight transfers, whose cost is especially difficult to amortize at small work-load sizes. EPLB’s static placement similarly avoids recurring 0612 0240816 24 036040 80 1 MB (= 72 tok/GPU)         
+
+> 0150 300 450 64 MB (= 4680 tok/GPU)
+> 050 100
+> 1 MB (= 72 tok/GPU)
+> 24816 32
+> Nodes
+> 0150 300 64 MB (= 4680 tok/GPU)
+> Latency (ms) Speedup vs A2AV+GEMM
+> (a) A100 (b) H100
+> A2AV+GEMM Ours Speedup vs A2AV+GEMM
+
+Figure 10: Weak scaling of K2 MoE layer latency on Live-CodeBench traces across 2–32 nodes (8–128 GPUs) on (a) A100 and (b) H100 clusters. Speedups are relative to A2AV+GEMM. weight movement, but our advantage over it supports opti-mizing the token communication that remains after compute balancing. For this remaining traffic, EPIC’s improving per-formance relative to EPLB at larger workload sizes reinforces the value of merge, which Zepp combines with overlapping the remaining transfers. At sixteen nodes, avoiding remote communication remains valuable at small workload sizes even without complete expert coverage across nodes. At 1 MB, Zepp achieves 6 .68 × and 5.77 × speedups over A2AV+GEMM for Qwen and K2, re-spectively. Locality-preferred routing exploits available local replicas under GPU load constraints (§4.1), reducing remote requests when small payloads offer little opportunity to amor-tize inter-node latency. FAST’s high sixteen-node latency further illustrates the importance of controlling communica-tion coordination overhead, which can accumulate as node count grows. At 16 MB, Zepp achieves 4 .66 × and 3 .28 ×
+
+speedups: larger transfers increase the savings from traffic reduction, while longer computation intervals provide more opportunity to hide the remaining communication. Across all configurations, these optimizations achieve a geometric mean speedup of 1 .86 × over the fastest competing baseline in each configuration. 
+
+## 6.3 Weak Scalability 
+
+We evaluate weak scalability on A100 and H100 (Figure 10) by increasing the cluster from 2 to 32 nodes while holding input token volume per GPU fixed, so that the aggregate work-load grows with node count. The 1 and 64 MB workload sizes represent small and large batches relevant to latency-oriented and throughput-oriented serving, respectively. At two nodes on A100, Zepp benefits substantially more 10 050 100  
+
+> TPS (k)
+> Pre fi ll
+> 1 MB
+> 256
+> 4 MB
+> 1024
+> 16 MB
+> 4096 tok/GPU
+> 1.32× 1.60× 1.92×
+> 0500 1000
+> TPOT (ms)
+> Decode
+> 1 MB
+> 256
+> 4 MB
+> 1024
+> 16 MB
+> 4096 tok/GPU
+> 1.04× 1.43× 1.57×
+> SGLang Ours
+
+Figure 11: End-to-end performance of Zepp integrated into SGLang [48]: Tokens Per Second (TPS, higher is better) throughput during prefill and Time Per Output Token (TPOT, lower is better) latency during decode. Evaluated using Qwen3-30B which shares same expert count and top-k as Qwen3-235B with half the hidden dimension, doubling token counts per GPU compared to figure 9. from the larger workload, achieving 2 .93 × speedup at 64 MB compared with 1 .53 × at 1 MB. H100 exhibits the same con-trast, with 4 .13 × speedup at 64 MB compared with 1 .23 ×
+
+at 1 MB. At 1 MB, the small communication volume limits the absolute savings from reducing traffic, while short com-putation intervals restrict overlap. Locality-preferred routing also has limited flexibility, with only 16 extra expert slots for 384 experts. Increasing the workload size to 64 MB length-ens the computation and transfer intervals, providing more opportunity to overlap them and helping explain the larger speedup. As the cluster grows, the small-workload advantage strengthens while the large-workload advantage persists. At 1 MB, speedup reaches 9 .49 × on A100 and 15 .10 × on H100 at thirty-two nodes. Over this scaling range, the extra expert slots expand from 16 to 256, giving placement and locality-preferred routing more flexibility to avoid remote requests. Avoiding these requests is particularly valuable for small pay-loads, whose transfers are sensitive to initiation and synchro-nization costs. At 64 MB, speedup stays within 2 .35–2 .93 ×
+
+on A100 and 2 .46–4 .13 × on H100 across all evaluated node counts, showing that the combined benefits of communica-tion reduction and overlap persist as the aggregate workload increases. The growing small-workload advantage and sus-tained large-workload gains on H100 also demonstrate that 
+
+Zepp ’s optimizations remain effective on newer GPU hard-ware. 
+
+## 6.4 End-to-End Performance 
+
+Next, we evaluate whether Zepp ’s MoE-layer gains translate to end-to-end performance by integrating it into SGLang [48] while retaining SGLang’s gating and expert selection. At each workload size, both configurations use data-parallel attention Prof. law only Prof. law rotating 020 40 60 80 
+
+> Total latency (ms)
+> 1.00× 1.12× 1.25× 1.28× 1.00× 1.05× 1.07× 1.11× COMET w/ overlapping scheduling + expert placement & routing + expert swap overlap
+
+Figure 12: Component ablation of Zepp on K2, 4 nodes, with 64 MB of input tokens per GPU. and matched KV-cache sizes, with the SGLang baseline exe-cuting fused all-gather, expert computation, and reduce-scatter sequentially without overlap. We use Qwen3-30B instead of Qwen3-235B to leave sufficient memory for KV caches at larger batch sizes. Placement is now calculated from a subset of LiveCodeBench prompts, while evaluation uses unseen inputs from the same input dataset. Figure 11 shows that Zepp improves both prefill through-put and decode latency, with gains increasing as input token volume grows. From 1 to 16 MB per GPU, prefill throughput gains increase from 1 .32 × to 1 .92 ×, while decode speedups increase from 1 .04 × to 1 .57 ×. This widening advantage shows that MoE layer optimizations remains consequential even when attention and other model operations contribute to execution time. At smaller batch sizes, more variable expert demand triggers more frequent intra-node swaps to correct deviations from historical placement estimates, while less available computation limits the opportunity to hide their cost, consistent with the modest gains and near-parity decode performance at 1 MB. The reported end-to-end gains are achieved while making these runtime decisions at each MoE layer without per-layer host synchronization. Planning and routing execute on the GPU, with fused operations reducing host-issued work. GPU dependencies preserve execution order, allowing the host to continue enqueueing subsequent layers while these decisions are resolved on the GPU device. 
+
+## 6.5 Ablation 
+
+We ablate Zepp ’s components under two separate demand datasets on four nodes (Figure 12), where COMET provides a competitive overlap baseline. Prof. law’s greater imbalance shown in Figure 1 exposes opportunities for expert swaps that remain limited under the LiveCodeBench setting. In Prof. law dataset only , we initialize placement from an equal mixture of eight datasets but serve only Prof. law, modeling concentrated demand for a previously observed dataset. In Prof. law dataset 
+
+11 0 10 20 30 40 50 60 ms          
+
+> Token Comm. Expert Swap Expert Comp. Top-k Reduce Plan / Metadata Wait iteration end NIC RDMA NVLink GPU
+> Prof. law dataset rotating LiveCodeBench dataset
+
+Figure 13: Resource usage timelines under K2 model architecture on 4 nodes, 64 MB of input tokens per GPU. Under each dataset, the GPUs with the longest and shortest total GEMM durations are plotted. 
+
+rotating , we exclude Prof. law from the placement history and cycle through all eight datasets for four iterations each, modeling occasional unexpected demand. With Prof. law represented in the placement history, over-lapping scheduling and placement/routing provide most of the performance gain. Overlapping scheduling alone achieves a 1 .12 × speedup over COMET without expert replication, demonstrating the benefit of reducing and redistributing traf-fic on top of compute communication overlap (§4.2). Adding replication, placement, and locality-preferred routing raises speedup to 1 .25 ×, as replicas provide opportunities to balance computation and serve requests locally (§4.1). Overlapped ex-pert swaps further increase speedup to 1 .28 ×, a 1 .9% latency reduction. This modest increment is consistent with the histor-ical mixture already accounting for Prof. law, leaving swaps to correct residual imbalance when demand concentrates on that dataset. Under rotating demand, overlapped swaps contribute more despite smaller overall gains. Overlapping schedul-ing achieves a 1 .05 × speedup, and adding placement/routing raises it to 1 .07 ×; averaging across seven less imbalanced datasets dilutes the benefits of these stages. Overlapped swaps nevertheless increase speedup to 1 .11 ×, a further 3 .0% la-tency reduction compared with 1 .9% under Prof. law-only demand. Because Prof. law is absent from the placement his-tory, its arrival exposes compute imbalance that intra-node swaps can correct without inter-node weight transfers (§4.3). 
+
+## 6.6 Case Study 
+
+Figure 13 shows how Zepp overlaps token communication and intra-node expert swaps with computation under different demand conditions. We contrast a Prof. law iteration from the rotating workload, whose placement history excludes Prof. law, with LiveCodeBench served using history from the same workload. Each profiled iteration starts from the static placement to expose expert swaps. Under Prof. law, Zepp shows intra-node expert swaps on NVLink and overlaps these transfers with expert computation. The selected ranks accumulate 24.2 and 46.7 ms of expert GEMM execution, illustrating the uneven execution asso-ciated with this demand shift. To help alleviate the skew, intra-node swaps can be seen on the timeline occupying the NVLink resource, keeping expert-weight traffic off inter-node links. The resulting weight-copy bursts overlap both GEMMs, while inter-node dispatch overlaps the first GEMM: schedul-ing ready expert work ahead of swapped-expert work allows token delivery, weight movement, and computation to pro-ceed concurrently. Expert outputs then enter combine as they become ready, although residual imbalance remains visible in late completion, consistent with the intra-node scope of rebalancing. Under LiveCodeBench, Zepp combines more balanced ex-pert execution with overlap across dispatch, expert move-ment, and combine. The selected ranks accumulate 23.8 and 32.8 ms of expert GEMM execution, consistent with place-ment and routing matching current demand. These compu-tation windows accommodate dispatch alongside the first GEMM, allowing ready token groups to enter computation while remaining transfers proceed. Alongside token delivery, the much smaller intra-node expert swaps overlap their corre-sponding GEMMs and inter-node transfers. As expert outputs become ready, Zepp overlaps their pre-reduction for merge and inter-node return transfers with the second GEMM; late-arriving contributions and their final top-k reduction form the remaining tail. 
+
+## 7 Related Work 
+
+Communication optimizations. Communication optimiza-tions improve data movement and network utilization. FAST [22] rebalances skewed all-to-all traffic over fast intra-node links and schedules inter-node transfers to avoid incast. FuseLink [38] redirects traffic through intra-node connections to exploit otherwise idle NICs. SwiftEP [25] reduces MoE communication overhead through buffer fusion and TMA offloading. We introduce split and merge as graph transfor-mations that jointly restructure MoE token transfers and their synchronization dependencies across intra- and inter-node links. 
+
+Computation load balancing. Expert replication and place-ment distribute computation under skewed routing. EPLB [12] 12 replicates popular experts and packs them onto GPUs ac-cording to estimated loads; its hierarchical policy also co-locates expert groups to reduce inter-node traffic. EPIC [2] uses communication-aware expert placement and replica-tion, pipelines communication and computation across expert groups, and eliminates duplicate transfers. CRAFT [45] allo-cates replicas across layers according to their expected benefit under a memory budget. MoonEP [8] uses current routing decisions to plan redundant experts and prefetch their weights for balanced execution. Our placement spreads hot-expert replicas across nodes and couples them with locality-preferred token routing under per-GPU load constraints. 
+
+Computation–communication overlap. Overlap exposes computation before all communication. NVSHMEM [32] pro-vides fine-grained, GPU-initiated one-sided communication and synchronization within CUDA kernels, enabling persis-tent kernels to interleave communication with computation. COMET [44] resolves fine-grained producer–consumer de-pendencies to overlap communication with tiled GEMMs. FlashMoE [1] fuses dispatch, expert computation, and com-bine into a persistent GPU kernel with tile-level scheduling and device-initiated transfers. StreamEP [26] removes collec-tive barriers during MoE decoding through per-layer queues and asynchronous rebatching. Our scheduler coordinates ex-pert computation with the dependencies produced by split and 
+
+merge .
+
+Collective communication libraries. Collective libraries provide reusable communication interfaces and execution mechanisms. NCCL [30] provides topology-aware collective and point-to-point communication across GPUs and nodes. MSCCL++ [18] exposes low-level communication primitives, a DSL, and a collective API for portable GPU communi-cation. DeepEP [46] specializes dispatch and combine ker-nels for expert parallelism. Related scheduling work includes SyCCL [3], which exploits collective and topology symmetry, and HeteCCL [16], which synthesizes schedules for heteroge-neous clusters. ForestColl [47] constructs throughput-optimal broadcast and aggregation schedules, while ResCCL [27] optimizes primitive execution and GPU resource allocation. PReCCL [9] reallocates collective work using network teleme-try, and Theseus [14] supports runtime replacement of collec-tive schedules. 
+
+## 8 Conclusion 
+
+We presented Zepp , a distributed MoE serving system that directly optimizes bottleneck inter-node communication. By treating GPU and NIC balance as resource constraints, Zepp 
+
+addresses the communication overhead introduced by pursu-ing balance independently. Under these constraints, it com-bines expert replication, placement, and routing with commu-nication reduction and communication–computation overlap, while adapting to changing demand. Evaluation against 7 baselines on 4–16 nodes shows up a geometric mean speedup of 1 .86 × over the fastest competing baseline, while weak-scaling experiments demonstrate sustained gains on up to 32 nodes. 
+
+## References 
+
+[1] Osayamen Aimuyo, Byungsoo Oh, and Rachee Singh. FlashMoE: Fast Distributed MoE in a Single Kernel. In D. Belgrave, C. Zhang, H. Lin, R. Pascanu, P. Koniusz, M. Ghassemi, and N. Chen, editors, Advances in Neu-ral Information Processing Systems , volume 38, Main Conference, pages 100676–100699. Curran Associates, Inc., 2025. [2] Jiamin Cao, Qingxu Li, Yaozhong Liu, Jiaqi Gao, Yan Zhang, Shangfeng Shi, Zian Chen, Yizhi Wang, Jun Zhang, Kunling He, Ennan Zhai, Jianbo Dong, Binzhang Fu, and Dennis Cai. Balancing and Beyond: Communication-Centric Optimizations in Expert Paral-lelism. In Proceedings of the ACM SIGCOMM 2026 Conference , SIGCOMM ’26, pages 550–563. ACM, Au-gust 2026. [3] Jiamin Cao, Shangfeng Shi, Jiaqi Gao, Weisen Liu, Yi-fan Yang, Yichi Xu, Zhilong Zheng, Yu Guan, Kun Qian, Ying Liu, Mingwei Xu, Tianshu Wang, Ning Wang, Jianbo Dong, Binzhang Fu, Dennis Cai, and Ennan Zhai. SyCCL: Exploiting Symmetry for Efficient Collective Communication Scheduling. In Proceedings of the ACM SIGCOMM 2025 Conference , SIGCOMM ’25, pages 645–662. ACM, August 2025. [4] Li-Wen Chang, Wenlei Bao, Qi Hou, Chengquan Jiang, Ningxin Zheng, Yinmin Zhong, Xuanrun Zhang, Zuquan Song, Chengji Yao, Ziheng Jiang, Haibin Lin, Xin Jin, and Xin Liu. Flux: Fast software-based commu-nication overlap on gpus through kernel fusion, 2024. [5] Chang Chen, Tiancheng Chen, Jiangfei Duan, Qianchao Zhu, Zerui Wang, Qinghao Hu, Peng Sun, Xiuhong Li, Chao Yang, and Torsten Hoefler. Zeppelin: Balancing variable-length workloads in data parallel large model training. In Proceedings of the 21st European Con-ference on Computer Systems , EUROSYS ’26, page 1879–1893, New York, NY, USA, 2026. Association for Computing Machinery. [6] Chang Chen, Min Li, Zhihua Wu, Dianhai Yu, and Chao Yang. Ta-moe: Topology-aware large scale mixture-of-expert training. In S. Koyejo, S. Mohamed, A. Agar-wal, D. Belgrave, K. Cho, and A. Oh, editors, Advances in Neural Information Processing Systems , volume 35, pages 22173–22186. Curran Associates, Inc., 2022. [7] Chang Chen, Xiuhong Li, Qianchao Zhu, Jiangfei Duan, Peng Sun, Xingcheng Zhang, and Chao Yang. Cen-13 tauri: Enabling efficient scheduling for communication-computation overlap in large model training via commu-nication partitioning. In Proceedings of the 29th ACM International Conference on Architectural Support for Programming Languages and Operating Systems, Vol-ume 3 , ASPLOS ’24, page 178–191, New York, NY, USA, 2024. Association for Computing Machinery. [8] Yutian Chen, Cong Li, Yucheng Wang, and Ming Wei. MoonEP: A Perfectly Balanced Expert Parallelism Li-brary via Dynamic Redundant Experts. https:// github.com/MoonshotAI/MoonEP , 2026. [9] Zhiyong Chen, Kaihui Gao, Li Chen, Rui Yan, Zi-han Yan, Fei Gui, Dan Li, Jiamin Cao, and Jiaqi Gao. PReCCL: Performant and Resilient Collective Com-munication via Integrated Inband Telemetry and Work-load Reallocation. In Proceedings of the ACM SIG-COMM 2026 Conference , SIGCOMM ’26, pages 396– 414. ACM, August 2026. [10] Weihao Cui, Zhenhua Han, Lingji Ouyang, Yichuan Wang, Ningxin Zheng, Lingxiao Ma, Yuqing Yang, Fan Yang, Jilong Xue, Lili Qiu, Lidong Zhou, Quan Chen, Haisheng Tan, and Minyi Guo. Optimizing Dynamic Neural Networks with Brainstorm. In 17th USENIX Symposium on Operating Systems Design and Imple-mentation (OSDI 23) , pages 797–815, Boston, MA, July 2023. USENIX Association. [11] Damai Dai, Chengqi Deng, Chenggang Zhao, R.X. Xu, Huazuo Gao, Deli Chen, Jiashi Li, Wangding Zeng, Xingkai Yu, Y. Wu, Zhenda Xie, Y.K. Li, Panpan Huang, Fuli Luo, Chong Ruan, Zhifang Sui, and Wenfeng Liang. DeepSeekMoE: Towards ultimate expert specialization in mixture-of-experts language models. In Lun-Wei Ku, Andre Martins, and Vivek Srikumar, editors, Pro-ceedings of the 62nd Annual Meeting of the Association for Computational Linguistics (Volume 1: Long Papers) ,pages 1280–1297, Bangkok, Thailand, August 2024. As-sociation for Computational Linguistics. [12] DeepSeek-AI. Expert Parallelism Load Balancer (EPLB). Software repository. [13] DeepSeek-AI. DeepSeek-V4: Towards Highly Efficient Million-Token Context Intelligence, 2026. [14] Rui Ding, Xiandong Lu, Jiajun Wang, Xunpeng Liu, Feiyang Wang, Xuran Hao, Houyuan Zhu, Anyi Xu, Sinuo Cao, Haifeng Sun, Qun Huang, Jiamin Cao, and Jiaqi Gao. Theseus: Runtime-Adaptive GPU Collective Communication with Hot-Swappable Schedules. In 
+
+Proceedings of the ACM SIGCOMM 2026 Conference ,SIGCOMM ’26, pages 222–241. ACM, August 2026. [15] William Fedus, Barret Zoph, and Noam Shazeer. Switch Transformers: Scaling to Trillion Parameter Models with Simple and Efficient Sparsity. Journal of Machine Learning Research , 23(120):1–39, 2022. [16] Chenyang Hei, Fuliang Li, Jiayi Li, Jiamin Cao, Chengxi Gao, Xiuzhu Sha, Tongrui Liu, Dengke Zhang, Ennan Zhai, and Xingwei Wang. HeteCCL: Synthesizing Near-Optimal collective communication schedules for het-erogeneous GPU clusters. In 23rd USENIX Sympo-sium on Networked Systems Design and Implementation (NSDI 26) , pages 2533–2551, Renton, WA, May 2026. USENIX Association. [17] Hewlett Packard Enterprise. HPE Slingshot QuickSpecs .Hewlett Packard Enterprise. [18] Changho Hwang, Peng Cheng, Roshan Dathathri, Ab-hinav Jangda, Saeed Maleki, Madan Musuvathi, Olli Saarikivi, Aashaka Shah, Ziyue Yang, Binyang Li, Caio Rocha, Qinghua Zhou, Mahdieh Ghazimirsaeed, Sree-vatsa Anantharamu, and Jithin Jose. MSCCL++: Re-thinking GPU Communication Abstractions for AI In-ference. In Proceedings of the 31st ACM International Conference on Architectural Support for Programming Languages and Operating Systems, Volume 2 , pages 1201–1215. ACM, March 2026. [19] Changho Hwang, Wei Cui, Yifan Xiong, Ziyue Yang, Ze Liu, Han Hu, Zilong Wang, Rafael Salas, Jithin Jose, Prabhat Ram, Joe Chau, Peng Cheng, Fan Yang, Mao Yang, and Yongqiang Xiong. Tutel: Adaptive mixture-of-experts at scale, 2023. [20] Kimi Team. Kimi K2: Open Agentic Intelligence, 2026. [21] Kimi Team. Kimi K3: Open Frontier Intelligence, 2026. [22] Yiran Lei, Dongjoo Lee, Liangyu Zhao, Daniar Kur-niawan, Chanmyeong Kim, Heetaek Jeong, Changsu Kim, Hyeonseong Choi, Liangcheng Yu, Arvind Krish-namurthy, Justine Sherry, and Eriko Nurvitadhi. FAST: An efficient scheduler for All-to-All GPU communi-cation. In 23rd USENIX Symposium on Networked Systems Design and Implementation (NSDI 26) , pages 2515–2531, Renton, WA, May 2026. USENIX Associa-tion. [23] Dmitry Lepikhin, HyoukJoong Lee, Yuanzhong Xu, De-hao Chen, Orhan Firat, Yanping Huang, Maxim Krikun, Noam Shazeer, and Zhifeng Chen. GShard: Scaling Giant Models with Conditional Computation and Auto-matic Sharding. In International Conference on Learn-ing Representations , 2021. [24] Jiamin Li, Yimin Jiang, Yibo Zhu, Cong Wang, and Hong Xu. Accelerating distributed MoE training and 14 inference with lina. In 2023 USENIX Annual Technical Conference (USENIX ATC 23) , pages 945–959, Boston, MA, July 2023. USENIX Association. [25] Xingyi Li, Yadong Liu, Xiaojie Huang, Yiran Zhang, Shuai Wang, Shangguang Wang, Zhehao Lin, Yinben Xia, Chang Yu, Qihang Liu, Xuan Zhang, Hao Lu, Xi-ang Li, Zekun He, Yachen Wang, and Xianneng Zou. SwiftEP: Accelerating MoE inference with buffer fu-sion and TMA offloading. In 23rd USENIX Sympo-sium on Networked Systems Design and Implementation (NSDI 26) , pages 1073–1089, Renton, WA, May 2026. USENIX Association. [26] Yizhuo Liang, Shaoyu Wang, Jaeyong Song, Yanqi Zhou, Geon-Woo Kim, Guangrong He, and Seo Jin Park. StreamEP: Straggler-tolerant MoE decoding without communication barriers. In Symposium on Operating Systems Principles (SOSP ’26) , 2026. Accepted; forth-coming as of 2026-09-14. [27] Tongrui Liu, Chenyang Hei, Fuliang Li, Chengxi Gao, Jiamin Cao, Tianshu Wang, Ennan Zhai, and Xingwei Wang. ResCCL: Resource-Efficient Scheduling for Col-lective Communication. In Proceedings of the ACM SIGCOMM 2025 Conference , SIGCOMM ’25, pages 55–70. ACM, August 2025. [28] Xiaonan Nie, Xupeng Miao, Zilong Wang, Zichao Yang, Jilong Xue, Lingxiao Ma, Gang Cao, and Bin Cui. Flex-moe: Scaling large-scale sparse pre-trained model train-ing via dynamic device placement. Proceedings of the ACM on Management of Data , 1(1):1–19, May 2023. [29] NVIDIA Corporation. CUTLASS Documentation: Grouped Kernel Schedulers . NVIDIA Corporation. [30] NVIDIA Corporation. NVIDIA Collective Communica-tions Library (NCCL) User Guide . NVIDIA Corpora-tion. [31] NVIDIA Corporation. NVIDIA NVLink and NVSwitch. 
+
+https://www.nvidia.com/en-us/data-center/ nvlink/ .[32] NVIDIA Corporation. NVSHMEM API Documentation .NVIDIA Corporation. [33] NVIDIA Corporation. NVIDIA A100 Tensor Core GPU Architecture . NVIDIA Corporation, 2020. [34] NVIDIA Corporation. NVIDIA H100 Tensor Core GPU Architecture . NVIDIA Corporation, 2022. [35] NVIDIA Corporation. CUDA Programming Guide .NVIDIA Corporation, 2026. [36] Adam Paszke, Sam Gross, Francisco Massa, Adam Lerer, James Bradbury, Gregory Chanan, Trevor Killeen, Zeming Lin, Natalia Gimelshein, Luca Antiga, Alban Desmaison, Andreas Köpf, Edward Yang, Zach DeVito, Martin Raison, Alykhan Tejani, Sasank Chilamkurthy, Benoit Steiner, Lu Fang, Junjie Bai, and Soumith Chin-tala. PyTorch: An imperative style, high-performance deep learning library, 2019. [37] Samyam Rajbhandari, Conglong Li, Zhewei Yao, Min-jia Zhang, Reza Yazdani Aminabadi, Ammar Ahmad Awan, Jeff Rasley, and Yuxiong He. DeepSpeed-MoE: Advancing mixture-of-experts inference and training to power next-generation AI scale. In Kamalika Chaudhuri, Stefanie Jegelka, Le Song, Csaba Szepesvari, Gang Niu, and Sivan Sabato, editors, Proceedings of the 39th Inter-national Conference on Machine Learning , volume 162 of Proceedings of Machine Learning Research , pages 18332–18346. PMLR, 17–23 Jul 2022. [38] Zhenghang Ren, Yuxuan Li, Zilong Wang, Xinyang Huang, Wenxue Li, Kaiqiang Xu, Xudong Liao, Yi-jun Sun, Bowen Liu, Han Tian, Junxue Zhang, Mingfei Wang, Zhizhen Zhong, Guyue Liu, Ying Zhang, and Kai Chen. Enabling Efficient GPU Communication over Multiple NICs with FuseLink. In 19th USENIX Symposium on Operating Systems Design and Imple-mentation (OSDI 25) , pages 91–108, Boston, MA, July 2025. USENIX Association. [39] Noam Shazeer, Azalia Mirhoseini, Krzysztof Maziarz, Andy Davis, Quoc Le, Geoffrey Hinton, and Jeff Dean. Outrageously Large Neural Networks: The Sparsely-Gated Mixture-of-Experts Layer. In International Con-ference on Learning Representations , 2017. [40] Shaoyu Wang, Guangrong He, Geon-Woo Kim, Yanqi Zhou, and Seo Jin Park. Toward cost-efficient serving of mixture-of-experts with asynchrony, 2025. [41] An Yang, Anfeng Li, Baosong Yang, Beichen Zhang, Binyuan Hui, Bo Zheng, Bowen Yu, Chang Gao, Chen-gen Huang, Chenxu Lv, Chujie Zheng, Dayiheng Liu, Fan Zhou, Fei Huang, Feng Hu, Hao Ge, Haoran Wei, Huan Lin, Jialong Tang, Jian Yang, Jianhong Tu, Jian-wei Zhang, Jianxin Yang, Jiaxi Yang, Jing Zhou, Jingren Zhou, Junyang Lin, Kai Dang, Keqin Bao, Kexin Yang, Le Yu, Lianghao Deng, Mei Li, Mingfeng Xue, Mingze Li, Pei Zhang, Peng Wang, Qin Zhu, Rui Men, Ruize Gao, Shixuan Liu, Shuang Luo, Tianhao Li, Tianyi Tang, Wenbiao Yin, Xingzhang Ren, Xinyu Wang, Xinyu Zhang, Xuancheng Ren, Yang Fan, Yang Su, Yichang Zhang, Yinger Zhang, Yu Wan, Yuqiong Liu, Zekun Wang, Zeyu Cui, Zhenru Zhang, Zhipeng Zhou, and Zihan Qiu. Qwen3 technical report, 2025. 15 [42] Zhongkai Yu, Yue Guan, Zihao Yu, Chenyang Zhou, Zhengding Hu, Shuyi Pei, Yangwook Kang, Yufei Ding, and Po-An Tsai. Patterns Behind Chaos: Forecasting Data Movement for Efficient Large-Scale MoE LLM In-ference. In 2026 ACM/IEEE 53rd Annual International Symposium on Computer Architecture (ISCA) , pages 68–84. IEEE, June 2026. [43] Yan Zeng, Chengchuang Huang, Yipeng Mei, Lifu Zhang, Teng Su, Wei Ye, Wenqi Shi, and Shengnan Wang. Efficientmoe: Optimizing mixture-of-experts model training with adaptive load balance. IEEE Trans. Parallel Distrib. Syst. , 36(4):677–688, April 2025. [44] Shulai Zhang, Ningxin Zheng, Haibin Lin, Ziheng Jiang, Wenlei Bao, Chengquan Jiang, Qi Hou, Weihao Cui, Size Zheng, Li-Wen Chang, Quan Chen, and Xin Liu. COMET: Fine-grained Computation-communication Overlapping for Mixture-of-Experts. In M. Zaharia, G. Joshi, and Y. Lin, editors, Proceedings of Machine Learning and Systems , volume 7. MLSys, 2025. [45] Adrian Zhao, Zhenkun Cai, Zhenyu Song, Lingfan Yu, Haozheng Fan, Jun Wu, Yida Wang, and Nandita Vi-jaykumar. CRAFT: Fine-Grained Cost-Aware Expert Replication For Efficient Mixture-of-Experts Serving. In A. Chowdhery and Z. Jia, editors, Proceedings of Ma-chine Learning and Systems , volume 8, pages 689–700. MLSys, 2026. [46] Chenggang Zhao, Shangyan Zhou, Liyue Zhang, Chengqi Deng, Zhean Xu, Yuxuan Liu, Kuai Yu, Ji-ashi Li, and Liang Zhao. DeepEP: an efficient expert-parallel communication library. https://github. com/deepseek-ai/DeepEP , 2025. [47] Liangyu Zhao, Saeed Maleki, Yuanhong Wang, Zezhou Wang, Ziyue Yang, Hossein Pourreza, and Arvind Krish-namurthy. ForestColl: Throughput-Optimal collective communications on heterogeneous network fabrics. In 
+
+23rd USENIX Symposium on Networked Systems De-sign and Implementation (NSDI 26) , pages 2067–2093, Renton, WA, May 2026. USENIX Association. [48] Lianmin Zheng, Liangsheng Yin, Zhiqiang Xie, Chuyue Sun, Jeff Huang, Cody Hao Yu, Shiyi Cao, Christos Kozyrakis, Ion Stoica, Joseph E. Gonzalez, Clark Bar-rett, and Ying Sheng. SGLang: efficient execution of structured language model programs. In Proceedings of the 38th International Conference on Neural Infor-mation Processing Systems , NIPS ’24, Red Hook, NY, USA, 2024. Curran Associates Inc. [49] Ruidong Zhu, Ziheng Jiang, Chao Jin, Peng Wu, Cesar A. Stuardo, Dongyang Wang, Xinlei Zhang, Huaping Zhou, Haoran Wei, Yang Cheng, Jianzhe Xiao, Xinyi Zhang, Lingjun Liu, Haibin Lin, Li-Wen Chang, Jianxi Ye, Xiao Yu, Xuanzhe Liu, Xin Jin, and Xin Liu. Megascale-infer: Efficient mixture-of-experts model serving with disaggregated expert parallelism. In Proceedings of the ACM SIGCOMM 2025 Conference , SIGCOMM ’25, page 592–608, New York, NY, USA, 2025. Association for Computing Machinery. 16

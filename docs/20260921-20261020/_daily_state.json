@@ -1,0 +1,313 @@
+{
+  "date": "20260921-20261020",
+  "date_label": "2026-09-21 ~ 2026-10-20",
+  "generated_at": "2026-10-20 11:29:39 UTC",
+  "recommend_exists": true,
+  "run_count": 1,
+  "papers": [
+    {
+      "paper_id": "2610.07516v1",
+      "route": "20260921-20261020/2610.07516v1-nccl-m2n-a-layout--and-topology-aware-collective-for-distributed-tensor-resharding",
+      "title": "NCCL M2N: A Layout- and Topology-Aware Collective for Distributed Tensor Resharding",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 10.0,
+      "evidence": "布局与拓扑感知的张量重分片集合通信原语",
+      "first_seen_at": "2026-10-20 11:29:39 UTC",
+      "updated_at": "2026-10-20 11:29:39 UTC"
+    },
+    {
+      "paper_id": "2610.15704v1",
+      "route": "20260921-20261020/2610.15704v1-dualcoll-throughput-optimal-bandwidth-bound-collective-communications-via-fractional-tree-packing",
+      "title": "DualColl: Throughput-Optimal Bandwidth-Bound Collective Communications via Fractional Tree Packing",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 10.0,
+      "evidence": "面向GPU集群、基于分数树打包的吞吐最优AllReduce集合通信算法",
+      "first_seen_at": "2026-10-20 11:29:39 UTC",
+      "updated_at": "2026-10-20 11:29:39 UTC"
+    },
+    {
+      "paper_id": "2610.16387v1",
+      "route": "20260921-20261020/2610.16387v1-sp-allreduce-symmetric-tree-schedules-for-tori-and-beyond",
+      "title": "SP-Allreduce: Symmetric Tree Schedules for Tori and Beyond",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 10.0,
+      "evidence": "面向环面拓扑的对称最短路径树allreduce新算法",
+      "first_seen_at": "2026-10-20 11:29:39 UTC",
+      "updated_at": "2026-10-20 11:29:39 UTC"
+    },
+    {
+      "paper_id": "2609.34334v1",
+      "route": "20260921-20261020/2609.34334v1-hoccl-offloading-collective-communication-from-gpu-cores-to-accelerate-distributed-training",
+      "title": "HOCCL: Offloading Collective Communication from GPU Cores to Accelerate Distributed Training",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 9.0,
+      "evidence": "将集合通信从GPU流多处理器卸载到DMA引擎以加速分布式训练",
+      "first_seen_at": "2026-10-20 11:29:39 UTC",
+      "updated_at": "2026-10-20 11:29:39 UTC"
+    },
+    {
+      "paper_id": "2609.34340v1",
+      "route": "20260921-20261020/2609.34340v1-variopath-workload-aware-all-to-all-communication-for-pcie-gpu-clusters",
+      "title": "VarioPath: Workload-Aware All-to-All Communication for PCIe GPU Clusters",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 9.0,
+      "evidence": "面向PCIe GPU集群的负载感知AlltoAllv调度",
+      "first_seen_at": "2026-10-20 11:29:39 UTC",
+      "updated_at": "2026-10-20 11:29:39 UTC"
+    },
+    {
+      "paper_id": "2609.36954v1",
+      "route": "20260921-20261020/2609.36954v1-purlin-separating-orchestration-from-the-datapath-of-collectives",
+      "title": "Purlin: Separating Orchestration from the Datapath of Collectives",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 9.0,
+      "evidence": "将集合通信编排协议与数据通路分离的GPU集合通信框架",
+      "first_seen_at": "2026-10-20 11:29:39 UTC",
+      "updated_at": "2026-10-20 11:29:39 UTC"
+    },
+    {
+      "paper_id": "2609.37828v1",
+      "route": "20260921-20261020/2609.37828v1-joint-effects-of-gpu-server-topology-parallelism-and-congestion-control-on-moe-inference-a-controlled-simulation-study",
+      "title": "Joint Effects of GPU Server Topology, Parallelism, and Congestion Control on MoE Inference: A Controlled Simulation Study",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 9.0,
+      "evidence": "服务器拓扑、TP/EP划分与拥塞控制对基于集合通信的MoE推理时间的影响",
+      "first_seen_at": "2026-10-20 11:29:39 UTC",
+      "updated_at": "2026-10-20 11:29:39 UTC"
+    },
+    {
+      "paper_id": "2610.07098v1",
+      "route": "20260921-20261020/2610.07098v1-t-ccl-resource-efficient-and-performant-collective-communication-using-tensor-memory-accelerator",
+      "title": "T-CCL: Resource Efficient and Performant Collective Communication using Tensor Memory Accelerator",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 9.0,
+      "evidence": "基于张量内存加速器的多GPU集合通信库",
+      "first_seen_at": "2026-10-20 11:29:39 UTC",
+      "updated_at": "2026-10-20 11:29:39 UTC"
+    },
+    {
+      "paper_id": "2610.07230v1",
+      "route": "20260921-20261020/2610.07230v1-ofan-optimal-load-balancing-for-ai-training",
+      "title": "Ofan: Optimal Load Balancing for AI Training",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 9.0,
+      "evidence": "面向AI训练集合完成时间的交换机端目的感知负载均衡与排队优化",
+      "first_seen_at": "2026-10-20 11:29:39 UTC",
+      "updated_at": "2026-10-20 11:29:39 UTC"
+    },
+    {
+      "paper_id": "2610.12815v2",
+      "route": "20260921-20261020/2610.12815v2-deploying-rdma-for-distributed-inference-and-training-at-scale",
+      "title": "Deploying RDMA for Distributed Inference and Training At Scale",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 9.0,
+      "evidence": "为分布式训练与推理部署低延迟RDMA传输层",
+      "first_seen_at": "2026-10-20 11:29:39 UTC",
+      "updated_at": "2026-10-20 11:29:39 UTC"
+    },
+    {
+      "paper_id": "2610.13130v1",
+      "route": "20260921-20261020/2610.13130v1-pcm-programmable-congestion-management-for-terabit-rdma-nics",
+      "title": "PCM: Programmable Congestion Management for Terabit RDMA NICs",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 9.0,
+      "evidence": "面向数据中心RDMA网卡的可编程拥塞控制与负载均衡",
+      "first_seen_at": "2026-10-20 11:29:39 UTC",
+      "updated_at": "2026-10-20 11:29:39 UTC"
+    },
+    {
+      "paper_id": "2610.17091v1",
+      "route": "20260921-20261020/2610.17091v1-mccl-measurement-based-collective-communication-library",
+      "title": "MCCL: Measurement-based Collective Communication Library",
+      "section": "deep",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 9.0,
+      "evidence": "基于测量并动态合成调度的集合通信库",
+      "first_seen_at": "2026-10-20 11:29:39 UTC",
+      "updated_at": "2026-10-20 11:29:39 UTC"
+    },
+    {
+      "paper_id": "2609.26829v1",
+      "route": "20260921-20261020/2609.26829v1-balancing-generality-and-specialization-a-survey-on-ai-datacenter-hardware-architecture",
+      "title": "Balancing Generality and Specialization: A Survey on AI Datacenter Hardware Architecture",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "支撑集合通信的AI数据中心互连架构",
+      "first_seen_at": "2026-10-20 11:29:39 UTC",
+      "updated_at": "2026-10-20 11:29:39 UTC"
+    },
+    {
+      "paper_id": "2609.36662v1",
+      "route": "20260921-20261020/2609.36662v1-autoloco-communication-efficient-distributed-llm-training-via-adaptive-synchronization",
+      "title": "AutoLoCo: Communication Efficient Distributed LLM Training via Adaptive Synchronization",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "面向跨数据中心大模型训练的通信高效自适应同步",
+      "first_seen_at": "2026-10-20 11:29:39 UTC",
+      "updated_at": "2026-10-20 11:29:39 UTC"
+    },
+    {
+      "paper_id": "2610.07333v1",
+      "route": "20260921-20261020/2610.07333v1-memory-efficient-expert-routing-for-distributed-moe-training",
+      "title": "Memory-Efficient Expert Routing for Distributed MoE Training",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "环形执行替代分布式MoE训练中的单步all-to-all派发",
+      "first_seen_at": "2026-10-20 11:29:39 UTC",
+      "updated_at": "2026-10-20 11:29:39 UTC"
+    },
+    {
+      "paper_id": "2610.14798v1",
+      "route": "20260921-20261020/2610.14798v1-accelerating-moe-training-through-expert-placement-and-replica-coordination",
+      "title": "Accelerating MoE Training through Expert Placement and Replica Coordination",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "MoE训练中全对全通信与专家放置的联合优化",
+      "first_seen_at": "2026-10-20 11:29:39 UTC",
+      "updated_at": "2026-10-20 11:29:39 UTC"
+    },
+    {
+      "paper_id": "2610.16190v1",
+      "route": "20260921-20261020/2610.16190v1-a-new-lens-on-multi-gpu-communication-api-level-memory-models-for-portable-optimization",
+      "title": "A New Lens on Multi-GPU Communication: API-Level Memory Models for Portable Optimization",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 8.0,
+      "evidence": "多GPU集合通信库中设备端put/get原语的内存模型",
+      "first_seen_at": "2026-10-20 11:29:39 UTC",
+      "updated_at": "2026-10-20 11:29:39 UTC"
+    },
+    {
+      "paper_id": "2609.35481v1",
+      "route": "20260921-20261020/2609.35481v1-topoep-topology-aware-load-balancing-for-expert-parallel-moe-training",
+      "title": "TopoEP: Topology-Aware Load Balancing for Expert-Parallel MoE Training",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "考虑分层集群通信代价的拓扑感知负载均衡",
+      "first_seen_at": "2026-10-20 11:29:39 UTC",
+      "updated_at": "2026-10-20 11:29:39 UTC"
+    },
+    {
+      "paper_id": "2610.11158v2",
+      "route": "20260921-20261020/2610.11158v2-zepp-accelerating-distributed-moe-serving-under-relaxed-balance-constraints",
+      "title": "Zepp: Accelerating Distributed MoE Serving under Relaxed Balance Constraints",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "面向GPU与网卡的分布式MoE服务瓶颈通信优化",
+      "first_seen_at": "2026-10-20 11:29:39 UTC",
+      "updated_at": "2026-10-20 11:29:39 UTC"
+    }
+  ]
+}

@@ -1,0 +1,433 @@
+Title: Deploying RDMA for Distributed Inference and Training At Scale
+
+URL Source: https://arxiv.org/pdf/2610.12815v2
+
+Published Time: Wed, 14 Oct 2026 03:28:22 GMT
+
+Number of Pages: 14
+
+Markdown Content:
+# Deploying RDMA for Distributed Inference and Training at Scale 
+
+Yibo Huang †,2,§∗ Yi Cui 2 Yukai Huang †,2 Huaping Zhou 2 Jiancong Tong 2
+
+Zhaoyu Wu 2 Gen Miao 2 Haoran Wei 2 Boyan Ding 2 Zhuo Jiang 2
+
+Jianxi Ye 2 Yibo Zhu 2 Chuanxiong Guo 2 Yang Xu † Jie Wu †  
+
+> †Fudan University 2ByteDance Inc. §University of Michigan
+
+## Abstract 
+
+RDMA can reduce communication overhead in distributed machine learning systems, but realizing these benefits in pro-duction requires more than replacing TCP. Variable-size mes-sages, many concurrent connections, bursty incasts, and ser-vice failures place demands on software that hardware offload alone does not address. This paper reports our experience deploying ByteExpress , a software communication layer over hardware RDMA, in ByteDance’s parameter-server-based in-ference and training systems. We describe three lessons from the deployment: efficient RDMA requires buffer management that spans the application and transport; scalable communi-cation requires coordinated management of connections, re-ceive capacity, and outstanding data; and service availability requires recovery above the transport layer. Our design com-bines an RDMA-aware allocator, zero-copy message transfers, QP multiplexing, receive-credit flow control, a software send window, and RPC-assisted recovery. In a production infer-ence workload, the system reduces mean and 99th-percentile model parameter fetch latency by 35.7% and 43.7%, respec-tively, and total CPU usage by 10.69% relative to the widely deployed TCP stack. In the training workload, ByteExpress 
+
+reduces P99 model parameter push latency by up to 74.0% relative to TCP, with no PFC pauses observed during the reported interval. 
+
+## 1 Introduction 
+
+Distributed inference and training underpin recommenda-tion, search, and advertising services at ByteDance, including Toutiao and TikTok. In the parameter-server architecture used by these services, workers fetch model parameters from mul-tiple servers; trainers also push updates back to those servers. These exchanges place communication on the critical path of both user-facing inference requests and iterative training. By January 2022, ByteDance’s inference and training sys-tems spanned hundreds of clusters and tens of thousands of computing nodes. Faster computation increases the pressure on this commu-nication path. GPU-based workers can generate substantial network demand [4, 21, 38], while processing data through the kernel network stack consumes CPU cycles and intro-duces copying and scheduling overhead. RDMA offers hard-ware transport offload and direct access to registered memory. ByteDance had already deployed RDMA over Converged 
+
+> ∗This work was mostly done while Yibo Huang was pursuing his Ph.D. at Fudan University and interning at ByteDance Inc.
+
+Ethernet (RoCE) in its data centers [21, 43]. The remaining challenge was to integrate that infrastructure into inference and training services without sacrificing scalability or avail-ability. This paper reports that integration experience. We present 
+
+ByteExpress (BE ), a software communication layer built on hardware RDMA NICs (RNICs). Applications continue to use Archon, our existing RPC framework. Archon passes messages to BE through a socket-like interface, and BE issues verbs to the RNIC using Reliable Connection (RC) transport. The RNIC provides transport offload; BE manages buffers, schedules transfers, and bounds outstanding work; Archon handles request-level recovery. This division of responsibility is central to the design. The workload makes the integration challenging in three ways. First, message sizes and buffer lifetimes vary with the model and request, making fixed receive buffers awkward to expose directly to applications. Second, fan-out requests and fan-in responses create many logical connections and bursts of concurrent transfers. Third, the completion of an inference request or training iteration can depend on its slowest sub-request. Hardware transport reliability alone cannot recover from every failed node, stalled connection, or unavailable service replica. Our experience yields three main lessons. • Zero-copy communication is an interface and memory-management problem. We build bemalloc on the existing 
+
+rpmalloc allocator to make dynamically allocated appli-cation buffers RDMA-capable. The resulting ownership model lets the communication layer hand received buffers to application threads without copying. Batched work re-quests and completion-based receive notification then re-duce engine overhead (§5). • Scaling requires controlling distinct resources at distinct layers. QP multiplexing reduces connection-state pres-sure, and thread domains avoid contention in shared driver structures. Receive credits protect posted receive capac-ity, whereas a separate per-engine send window bounds outstanding bytes during incasts. These mechanisms com-plement RNIC congestion control and fabric flow control; they address different bottlenecks (§6). • Reliable transport is only one part of service availability. 
+
+We retain RPC-level timeouts, retries, replica selection, and TCP fallback, and combine them with connection moni-toring and replicated deployment. This allows recovery 1arXiv:2610.12815v2 [cs.LG] 12 Oct 2026 Ranker/Trainer   
+
+> Parameter Servers
+> Shard 0 Shard 1 Shard n-1 ... Ranker/Trainer ... Pull/Push Parameters
+
+Figure 1: Parameter-server architecture: rankers fetch sharded model parameters for inference; trainers also push parameter updates. decisions to use service context that is unavailable to the RNIC (§7). The contribution is the cross-layer co-design across these mechanisms and the operational lessons from deploying them. At the time of this study, the RDMA-based ML systems had supported production recommendation services for over two years. For a production recommendation inference workload, RDMA reduced average PS fetch latency by 35.7%, P99 la-tency by 43.7%, and total CPU usage by 10.69% relative to the widely deployed TCP. In the training workload, RDMA with the software send window reduced P99 push latency by 74.0% relative to TCP and eliminated observed PFC pauses during the reported measurement interval (§8). 
+
+## 2 Background 2.1 Inference and Training Systems 
+
+At ByteDance, parameter-server-based systems [29] support model training and personalized ranking for recommendation, search, and advertising. Figure 1 shows the two main roles: workers and parameter servers (PSs). A worker is a ranker 
+
+during inference and a trainer during training. Model parame-ters are partitioned into n shards, for example by hashing, and stored across n parameter servers. For online inference, an application forwards a user request to a ranker. A request may require evaluating k models. The ranker fetches the required parameters, evaluates the mod-els, and returns the ranking results. Because the parameters can span multiple shards, one user request becomes multiple concurrent sub-requests to parameter servers. Each ranker also keeps multiple user requests outstanding through asyn-chronous network I/O. Request and response sizes vary with user attributes and model structure, ranging from kilobytes to megabytes. Prior work reports similarly variable message sizes [5, 39, 50]. For training, each trainer works on a model, loads train-ing data, fetches parameters, performs forward and backward propagation, and pushes updates to parameter servers. Re-peated parameter exchanges generate incasts at both workers and servers. Throughout the paper, Fetch denotes parameter retrieval; the synthetic experiment labels the corresponding operation Pull .The measurements in this paper cover different workloads. In the training workload discussed in §6.3, mean and P99 message sizes are 20 KB and 50 KB, respectively. The allo-cator benchmark instead uses synthetic large allocations of 64 KB–1 MB and small allocations of 16 B–16 KB (§5.2). The production inference evaluation uses 300 parameter servers and 124 rankers; the training evaluation uses 124 parameter servers and 346 trainers (§8). These examples characterize the evaluated cases, not a single distribution shared by all services. 
+
+## 2.2 RDMA: A Primer 
+
+Remote Direct Memory Access (RDMA) provides low-latency, high-throughput communication using specialized NICs. RNICs offload transport processing and expose opera-tions to user-space software, avoiding kernel-network-stack overhead on the data path. Software still allocates buffers, posts operations, and processes completions; RDMA does not eliminate application-side CPU work. A queue pair (QP) is a communication endpoint with a send queue (SQ) and a receive queue (RQ). Applications access RNIC functionality through the verbs interface, which sup-ports resource creation, work-request submission, and com-pletion polling. Completed operations are reported through a completion queue (CQ). Two-sided messaging verbs, SEND and RECV , require par-ticipation from both endpoints: the receiver posts a receive buffer before the incoming send can be completed. One-sided memory verbs include WRITE , READ , and atomic operations; RDX proposes extending RDMA beyond memory access to remote code execution [17]. They access registered remote memory without requiring the remote CPU to execute a match-ing operation for each transfer. The remote application must nevertheless arrange memory registration, access permissions, and buffer lifetimes. RC UC UD SEND/RECV ✓ ✓ ✓
+
+WRITE ✓ ✓ ✗
+
+READ/ATOMIC ✓ ✗ ✗
+
+Connection-oriented ✓ ✓ ✗
+
+Reliable ✓ ✗ ✗
+
+Maximum message size 2GB 2GB MTU Table 1: Comparison of RDMA transports. Table 1 summarizes three RDMA transport modes: Reli-able Connection (RC), Unreliable Connection (UC), and Un-reliable Datagram (UD). RC and UC are connection-oriented and support large messages; their supported memory oper-ations differ. UD supports connectionless communication to multiple destinations, but each message is limited to the maximum transmission unit (MTU) and reliability must be supplied above the transport. BE uses RC to retain hardware 2reliability and large-message support while managing connec-tion count in software. In our deployment, RC runs on RoCE-capable hardware. DCQCN [51] controls RNIC sending rates in response to con-gestion feedback, while Priority Flow Control (PFC) pauses traffic classes at the link layer to limit buffer overflow. RC re-liability, congestion control, and PFC serve distinct purposes. Sections 5.4 and 6.3 explain the additional software controls used by BE .
+
+## 3 Deployment Requirements 
+
+Our goal is to improve communication performance while retaining the scalability and availability expected of produc-tion inference and training services. The following workload properties determine our design choices. 
+
+Variable messages and buffer lifetimes. Inference and training exchange messages whose sizes are not always known before a request is processed. Application threads may also retain or transfer ownership of a received buffer while computing a result. A fixed receive-buffer layout can complicate zero-copy integration in this setting. Registering a new buffer for every message avoids that layout constraint but adds registration overhead and increases the number of memory regions. We therefore need dynamic allocation from reusable, registered memory (§5.2). 
+
+Large transfers favor RC, but RC connections must be managed. UD-based designs such as FaSST and eRPC [22, 25] demonstrate the benefits of connectionless communica-tion, particularly for small messages. Our workload also in-cludes messages much larger than the MTU. Sending them over UD requires software fragmentation, reassembly, and reliability. Section 5.1 compares RC and UD throughput un-der several link-rate and MTU configurations. We choose RC for its hardware support for reliable, large-message transfers, then multiplex logical connections to limit QP-state pressure (§6.1). This is a choice for our workload and deployment, not a general argument against UD. 
+
+Receive capacity and fabric congestion are separate con-straints. A sender can exhaust posted receive requests even when the network is uncongested. Conversely, a receiver with available buffers can still be reached through a congested net-work. We address the first problem with credits for operations that consume receive requests (§5.4). We address the second by limiting outstanding bytes per engine, in addition to the existing DCQCN and PFC mechanisms (§6.3). Keeping these controls separate makes their roles explicit: receive credits prevent receiver-not-ready (RNR) events; the send window limits the amount of data injected during concurrent transfers. 
+
+Incast makes tail behavior a scaling concern. Many work-ers can contact the same parameter server, and responses from many servers can converge on a worker. Although a sin-gle flow’s bandwidth-delay product may be small relative to switch buffering, the aggregate traffic from many concurrent Engine   
+
+> Scheduler
+> Socket
+> RPC
+> Service
+> RPC
+> Service
+> Socket
+> PS
+> RPC
+> Channel
+> Socket
+> Scheduler
+> Congestion
+> Control
+> Engine
+> RPC
+> Channel Message
+> Socket Fragment
+> bemalloc
+> Ranker/Trainer
+
+Figure 2: Communication stack: Archon provides RPCs; Byte-Express manages buffers and message transfers over hardware RDMA. flows can exceed that capacity. In our training deployment, hardware congestion control alone did not prevent sustained PFC pauses and poor request latency. This observation mo-tivates a software bound on outstanding data, rather than as-suming that the fabric can absorb every burst. 
+
+Service recovery requires application context. An RNIC can provide reliable delivery on a functioning connection, but it cannot select another service replica or decide how to retry a failed RPC. Fan-out operations are particularly sensitive to slow or failed sub-requests. We therefore retain Archon’s RPC abstraction and extend its existing availability mechanisms to cover RDMA connection failures and fallback to TCP (§7). 
+
+## 4 System Overview 
+
+Figure 2 shows the communication path between a ranker or trainer and a parameter server. Applications issue RPCs through Archon, our existing RPC framework. Archon uses 
+
+ByteExpress through socket-like endpoints, an abstraction also used by rack-scale PCIe interconnects [16]. BE translates message transfers into verbs operations on hardware RNICs. Applications therefore retain an RPC interface rather than directly managing verbs, QPs, or remote addresses. 
+
+BE separates logical connections from physical transport resources. A socket represents a logical connection, such as an RPC channel. An engine owns one RC QP and its associ-ated transport state. Sockets with the same remote destination can share an engine, and a scheduler coordinates their trans-fers. This multiplexing reduces the number of QPs without requiring applications to share RPC channels explicitly. The bemalloc allocator supplies registered buffers to both the application and communication layers. On receipt, buffer ownership can pass to an application thread without a copy. For large outgoing messages, BE exchanges destination-buffer metadata and then transfers the payload using RDMA writes. It divides these transfers into fragments so that the scheduler can interleave sockets and enforce a per-engine send window. The design uses three distinct forms of transport control. Receive credits track posted receive capacity for SEND and 
+
+WRITE_WITH_IMM ; a software send window limits outstand-3Link rate MTU RC (Gbps) UD (Gbps) 25G 1024B 23.15 22.97 100G 1024B 92.26 48.29 100G 4096B 97.03 95.74 200G 4096B 191.36 114.70 Table 2: RC and UD throughput measured with ib_send_bw 
+
+at different link rates and MTUs. ing bytes; and RNIC DCQCN controls the hardware sending rate. PFC remains enabled in the fabric as a link-level pro-tection mechanism. Archon provides recovery above these layers through timeouts, retries, replica selection, and TCP fallback. The following sections describe how these compo-nents address performance, scalability, and availability. 
+
+## 5 Building a High-Performance Communication Engine 
+
+This section describes the data path, from transport selection and buffer allocation to message transfer and work-request processing. The key requirement is to preserve the benefits of hardware RDMA while supporting variable-size messages and application-controlled buffer lifetimes. 
+
+## 5.1 Choosing RC for Large-Message IO 
+
+BE uses RC to retain hardware support for reliable, large-message transfers. UD avoids maintaining a dedicated trans-port connection to each peer, but its MTU-sized messages re-quire additional software processing for larger payloads. The measurements in Table 2 illustrate how this tradeoff changes with link rate and MTU. At 25 Gbps with a 1,024-byte MTU, RC and UD both ap-proach the link rate. At 100 Gbps with the same MTU, RC reaches 92.26 Gbps while UD reaches 48.29 Gbps; increasing the MTU to 4,096 bytes brings both close to line rate. At 200 Gbps with a 4,096-byte MTU, RC reaches 191.36 Gbps and UD reaches 114.70 Gbps. Thus, packet-processing rate can constrain throughput as link bandwidth grows, even though UD performs well in other configurations. These mea-surements support our choice of RC for the evaluated work-load, rather than a general claim that UD is always bandwidth-limited. Section 6.1 explains how we manage the connection-state cost of that choice. 
+
+## 5.2 RDMA Memory Management 
+
+To support zero-copy transfers of large, variable-size mes-sages, we need dynamic allocation of registered memory. Ideally, allocating and freeing RDMA buffers should be as straightforward as using a general-purpose allocator such as 
+
+jemalloc [8] or tcmalloc [28]. We implement this interface by extending an existing allocator with memory registration and memory-region tracking. 
+
+> // Init memory pool for a given device context RdmaMemoryPool::Init(ibv_ctx); // Allocate a block of RDMA registered memory void* block = RdmaMemoryPool::Allocate(size); // Get MR in O(1) time when needed const struct ibv_mr* mr = RdmaMemoryPool::GetMR(block); // free the block RdmaMemoryPool::Deallocate(block);
+
+Figure 3: bemalloc interface: allocate registered memory, look up memory-region metadata, and release the allocation. We build bemalloc (ByteExpress malloc) on rpmalloc [20], chosen for its compact implementation (approximately 3,000 lines of C) and allocation performance. The underlying allo-cator obtains large blocks of size B, for example 4 MB, from the operating system and subdivides them to serve allocation requests. It can return a block when no allocations remain in use. We use its block-allocation and block-release callbacks to invoke ibv_reg_mr() and ibv_dereg_mr() , respectively, and store memory-region information in the block metadata. The same approach can be applied to allocators that expose comparable callbacks. 
+
+Allocation interface. bemalloc hides registration details behind a standalone interface while retaining the performance of the underlying allocator. Figure 3 shows a wrapper that exposes a global RDMA memory pool through static func-tions. After initialization with an RDMA device context, 
+
+Allocate() returns registered memory, GetMR() retrieves its memory-region metadata in O(1) time, and Deallocate() 
+
+returns the allocation to the pool. The interface adds RDMA-capable memory management rather than changing rpmal-loc ’s allocation algorithm. Registering large blocks also limits memory-region pro-liferation. Registering each small allocation separately can increase pressure on RNIC caches that hold memory-region metadata [2, 22, 42, 47]. bemalloc instead amortizes each reg-istration across many allocations. It also inherits rpmalloc ’s thread-local and global caches, including support for freeing memory from a thread other than the allocating thread. This supports the buffer-ownership transfers used by our inference and training systems. 
+
+Registration cost and pool reuse. Registration remains necessary when the allocator acquires a new block, and dereg-istration is required when it releases one. Their cost is amor-tized across allocations from that block. Once the registered pool reaches a stable size, subsequent allocation and deal-location operations can be served from cached blocks with-out further registration. Thus, registration is largely removed from the steady-state allocation path; it is not free during pool growth or release. Figure 5 illustrates this behavior on one online inference node. Sampled every 30 seconds from startup, its registered-memory footprint reaches approximately 2 GB in the first 40.0 0.5 1.0 1.5 2.0 2.5 3.0 1 2 3 4 5 6 7 8
+
+> Million ops / CPU sec Threads
+> bemalloc jemalloc mimalloc rpmalloc tcmalloc
+
+(a) Large-block operation rate. 02000 4000 6000 8000 10000 12000 14000 16000 1 2 3 4 5 6 7 8 
+
+> Memory usage (MiB) Threads
+> bemalloc jemalloc mimalloc rpmalloc tcmalloc
+
+(b) Large-block peak memory. 0510 15 20 25 30 35 40 1 2 3 4 5 6 7 8 
+
+> Million ops / CPU sec Threads
+> bemalloc jemalloc mimalloc rpmalloc tcmalloc
+
+(c) Small-block operation rate. 0200 400 600 800 1000 1200 1 2 3 4 5 6 7 8 
+
+> Memory usage (MiB) Threads
+> bemalloc jemalloc mimalloc rpmalloc tcmalloc
+
+(d) Small-block peak memory. 
+
+Figure 4: Allocator operation rate and peak memory versus thread count. Large allocations span 64 KB–1 MB; small allocations span 16 B–16 KB. Time (Sec) RDMA Memory (GB) 0.00 0.50 1.00 1.50 2.00 2.50 0 500 1000 1500 
+
+> RDMA Memory (GB) vs. Time (Sec)
+
+Figure 5: Registered RDMA memory footprint on one infer-ence node, sampled every 30 s from startup and stabilizing near 2.2 GB. interval, then rises slowly to approximately 2.2 GB and sta-bilizes. Allocation and deallocation continue after this point, but cached registered blocks serve those operations. 
+
+Allocator evaluation. Figure 4 compares bemalloc with general-purpose allocators. The large-allocation benchmark uses exponentially distributed sizes in the range 64 KB–1 MB; the small-allocation benchmark uses sizes in the range 16 B– 16 KB with a linear size distribution. Both vary the thread count from one to eight and include approximately 10% cross-thread operations. bemalloc tracks rpmalloc closely in oper-ations per second and peak memory usage, indicating that the added RDMA bookkeeping has little overhead in these tests. They provide the highest operation rates among the evaluated allocators, at the cost of peak memory usage up to approximately 50% higher than the alternatives. 
+
+## 5.3 Message I/O 
+
+5.3.1 Zero-Copy Buffer Ownership 
+
+bemalloc lets the application and communication layers share the same buffers. On receipt, the RNIC places message data directly into registered buffers allocated on demand. The com-munication layer then passes those buffers to the applica-tion, which can retain them, hand them to another thread, and free them after processing. This avoids coupling application buffer lifetimes to a fixed receive ring. Designs based on fixed receive buffers [6, 23, 33, 48] require a different ownership discipline to reuse those buffers safely. On the send path, applications allocate network-bound pay-loads through bemalloc , making them directly accessible to Sender  Receiver 
+
+> WriteRequest
+> (length)
+> WriteResponse
+> (addr, rkey)
+> WRITE fragment 0
+> WRITE fragment 1
+> WRITE_WITH_IMM
+> fragment 2
+> Receiver allocates
+> buffer
+> Receiver gets
+> notification
+
+Figure 6: Large-message transfer: exchange destination-buffer metadata, write payload fragments, and notify the re-ceiver with a final WRITE_WITH_IMM .the RNIC. Other application allocations need not change. Here, zero-copy means avoiding additional payload copies between application buffers and communication buffers; it does not imply that all model processing or serialization is copy-free. 
+
+5.3.2 Transferring Large Messages 
+
+BE uses one-sided WRITE operations for large payloads. Fig-ure 6 shows the transfer sequence. The sender first obtains the destination address and remote memory key through a re-quest/response exchange using SEND /RECV . The receiver allo-cates the destination buffer through bemalloc . This exchange adds one round-trip time (RTT) before the payload transfer. If an application can supply valid remote-buffer metadata in advance, as with some statically allocated tensor buffers, BE 
+
+can omit that exchange. After exchanging metadata, BE writes the payload in frag-ments, with scheduling opportunities between fragments. For a destination address p and fragment size S, successive frag-ments are written to p, p + S, and so on, producing a contigu-ous message at the receiver. Fragmentation lets the scheduler interleave sockets and enforce the send window described 5Receive   
+
+> Queue
+> Work Request Chain
+> Work
+> Request
+> Work
+> Request
+> Work
+> Request
+> Work
+> Request
+> Work
+> Request
+> inflight_head pending_head free_head
+> QP
+> Engine
+
+Figure 7: RDMA engine: one QP, receive resources, and a work-request chain partitioned into in-flight, pending, and free entries. in §6.3; the receiver does not need to copy fragments into a separate reassembly buffer. 
+
+BE sends the final fragment with WRITE_WITH_IMM , which carries 32 bits of immediate data and generates a receiver-side completion. The receiver uses this completion to detect that the message has arrived. By contrast, polling a flag embedded in a receive buffer [6, 23, 24, 31] requires a safe ordering relationship between the payload and the flag. This distinction matters when memory regions use relaxed ordering. Relaxed ordering can permit incoming writes to reach memory out of order, so observing a flag alone is not sufficient evidence that the payload is visible. Completion semantics still ensure data visibility, including prior trans-fers [45]. Our notification scheme relies on those completion semantics for fragments issued on the same RC QP. It also lets an I/O thread poll a shared CQ instead of inspecting a separate flag for every outstanding message. The performance benefit of relaxed ordering is hardware-dependent; we do not isolate it in the evaluation. 
+
+## 5.4 RDMA Engine 
+
+Each BE engine owns one QP and its associated state, includ-ing a work-request chain and receive buffers (Figure 7). It is the lowest software layer: it posts verbs operations and processes completions. Above it, sockets represent logical connections and a scheduler coordinates their I/O. We use 
+
+engine when referring to this software state and QP when referring to the RDMA resource. Section 6.1 describes socket multiplexing and scheduling. 
+
+5.4.1 Work Request I/O 
+
+The engine uses preallocated resources and batching to reduce data-path overhead. Its send-side work requests form a circu-lar chain whose length equals the QP send-queue depth. Track-ing occupied entries avoids dynamic work-request allocation and prevents the engine from posting more requests than the send queue can hold. We use relatively shallow queues, for example a depth of 32, provided that they allow enough outstanding work to sustain the target throughput. 
+
+Work-request chain. The chain has three contiguous seg-ments: in flight , pending , and free . In-flight requests have been posted to the RNIC and await completion; processing their completions frees the corresponding slots. Pending re-quests have been prepared but not posted. The engine submits them together with one ibv_post_send() call, using door-bell batching [24]. Only the last request in a batch requests a completion notification, reducing completion-processing overhead. When free slots are available, the scheduler polls sockets for work; each selected socket prepares a request of at most one fragment. The engine tracks the segment boundaries in the circular chain. 
+
+5.4.2 Flow Control 
+
+BE uses SEND /RECV for control messages and small payloads. A SEND consumes a posted receive request at the peer; if none is available, the peer reports receiver not ready (RNR), causing retries and potentially a transport error. WRITE_WITH_IMM 
+
+also consumes a receive request. We therefore track receive capacity explicitly. This flow control protects endpoint receive queues; it is separate from the network congestion control in §6.3. 
+
+Receive-credit flow control. Inspired by receiver-driven transport [37], each sender maintains credits for available receive requests at its peer. The endpoints exchange the ini-tial credit count during connection setup. Posting a SEND or 
+
+WRITE_WITH_IMM consumes one credit; ordinary WRITE oper-ations do not consume credits because they do not use receive requests. The sender waits when it lacks the required credit. The receiver replenishes capacity in batches. After con-suming k receive requests, it posts k replacements with one 
+
+ibv_post_recv() call and sends a credit update to the peer. Batching reduces the frequency of posting calls and credit messages. We use k = d/2, where d is the receive-queue depth. Choosing k < d leaves capacity available while an update is in transit, although a sufficiently delayed update can still stall the sender. This scheme targets RNR avoidance with dedicated receive queues. The optional shared-receive-queue configuration trades this per-peer accounting for shared buffer capacity (§6.2.2). 
+
+## 5.5 Evaluation 
+
+We evaluate ByteExpress with synthetic workloads. Figure 8 compares mean and P99 message latency with eRPC [22] for message sizes from 32 B to 16 KB. The latency experiment permits one message to remain outstanding at a time. Figure 9 compares peak throughput across four link-rate/MTU configurations: 25 Gbps/1 KB, 100 Gbps/1 KB, 100 Gbps/4 KB, and 200 Gbps/4 KB. It includes eRPC and RC/UD perftest baselines. The throughput setup uses one QP to send 1 MB messages between two nodes, with a 32-byte response per message and sufficient concurrency to saturate the path. 
+
+ByteExpress achieves latency and throughput comparable to or better than the plotted alternatives in these configura-tions. These results measure the complete communication path; they do not isolate the contribution of each optimization. 60510 15 32B 128B 1KB 4KB 16KB 
+
+> Latency ( μs) Message size
+> BE (avg) BE (p99) eRPC (avg) eRPC (p99)
+
+Figure 8: ByteExpress and eRPC latency with one mes-sage outstanding. 050 100 150 200 25G/1k 100G/1k 100G/4k 200G/4k 
+
+> Throughput (Gbps) Link Rate/MTU
+> perftest (RC) perftest (UD) ByteExpress eRPC
+
+Figure 9: Peak throughput by link rate/MTU—ByteExpress vs. eRPC vs. RC/UD perftest. 010 20 30 40 50 60 70 80 90 100 1 2 4 8 16 32 64 ∞
+
+> Throughput (Gbps) Fragment Size (KB)
+> 25G NIC 100G NIC
+
+Figure 10: Throughput vs. fragment size on 25 and 100 Gbps links. 0510 15 20 8 64 256 
+
+> Message Rate (M/s) QP Num
+> IO w/ contention IO w/o Contention
+
+Figure 11: 512-byte message rate vs. QP count in eight IO threads w/ or w/o contention. The latency and throughput plots use different message-size settings and should be interpreted separately. 
+
+## 6 Scaling Connections & Concurrent PS Ops 
+
+Scaling the communication path requires managing both con-nection state and aggregate traffic. This section describes QP multiplexing, thread-aware resource management, and a software send window for incast workloads. 
+
+## 6.1 QP Management 
+
+RNICs have limited cache space for QP context. When the active working set exceeds that capacity, the NIC must fetch missing context from host memory through DMA, increasing overhead. BE reduces this pressure by multiplexing logical connections onto QPs. Archon keeps multiple requests outstanding through RPC channels, each with its own socket. With TCP, each socket has a separate transport connection. With BE , sockets directed to the same remote address can share one engine (§5.4). 
+
+Multiplexing sockets onto QPs. BE maintains a connec-tion table that maps remote addresses to engines. When an application calls connect() , BE attaches the socket to an existing engine for that address, if available. Otherwise, it cre-ates an engine and reports connection success asynchronously after setup completes. This allows one QP to serve multiple logical connections to each remote address. Sharing an engine introduces scheduling head-of-line (HoL) blocking: a large message from one socket can de-lay smaller messages from another. BE fragments messages so that the scheduler can interleave their work requests. Frag-ment size trades scheduling granularity against per-request overhead. Figure 10 shows that approximately 2 KB frag-ments can saturate the tested 25 Gbps link with one QP, whereas fragments larger than 8 KB are needed for near-line-rate throughput on the tested 100 Gbps link. Each socket queues outgoing messages. When selected by the scheduler, it prepares a work request for at most one fragment by supplying that fragment’s address and length; no payload copy is required. Under round-robin scheduling with 
+
+n active sockets and maximum fragment size S, at most (n −
+
+1)S bytes from other sockets are selected between a socket’s turns. This is a bound on scheduler service between turns, I/O thread  engine 
+
+engine  scheduler 
+
+map engines to I/O threads 
+
+Figure 12: RDMA engine assignment—each engine (and its QPs) belongs to one I/O thread; one thread manages multiple engines. not on end-to-end latency: already-posted work, congestion, or loss recovery can still stall the shared QP. We use round-robin scheduling because sockets have comparable roles in the evaluated systems; other policies could prioritize latency-sensitive traffic. Figure 13 adds large flows to an engine that already carries a small flow. With 4 KB fragments, the small flow’s latency still increases as contention grows, but remains substantially lower than without fragmentation. Fragmentation therefore mitigates message-scheduling HoL blocking; it does not elim-inate blocking caused by transport ordering, packet loss, or congestion control. 
+
+## 6.2 Avoiding Contention in Multithreaded I/O 
+
+6.2.1 Thread Ownership and Provider Resources 
+
+Figure 12 shows the mapping of engines to I/O threads. Each engine is bound to one thread, so operations on its data struc-tures do not require locks between I/O threads. A thread can manage many engines. We assign engines in round-robin order, which is sufficient for the evaluated workload. 
+
+Contention inside the RDMA provider. Single-thread ownership of each engine did not eliminate all contention. In an experiment with eight threads and a varying number of QPs, the 512-byte message rate dropped sharply beyond 64 QPs (Figure 11). Profiling showed substantial time in spin locks inside ibv_post_send() . QPs assigned to different application threads were sharing provider-side structures: the provider did not automatically inherit the application’s own-ership arrangement. 70100 200 300 400 500 600 700 0 1 2 4 8
+
+> Average Latency ( μs) # Large flows
+> no fragmentation 4KB fragmentation
+
+Figure 13: Small-flow latency under com-peting large flows, w/ or w/o 4KB frag. BW            
+
+> PS1~PS3 Worker
+> PS1~PS17 BW
+> T0
+> P1~P2 P4
+> P0 L1 P1 P0 T2 P0
+> P1~P18 P19 P20
+> BW Traffic Incast Traffic PFC
+> 100G 100G
+
+Figure 14: Synthetic incast topology showing workers, parameter servers, bandwidth-test flows, incast traffic, and PFC propagation. 
+
+Resource Allocation 
+
+QP One per remote address RQ One per QP, without SRQ SRQ One per thread, when enabled CQ One per thread TD One per thread MR One per registered block PD One globally Table 3: Allocation of RDMA resources in BE . Dedicated RQs and per-thread SRQs are alternative configurations. 
+
+Thread-aware resource allocation. We use a separate thread domain (TD) for each I/O thread to communicate the ownership arrangement to the verbs provider. Thread domains permit provider optimizations for resources accessed by a single thread [44]. This requires the application to respect that ownership discipline. Separating threads into independent protection domains (PDs) would complicate cross-thread use of registered memory; instead, our configuration retains a common protection domain while associating resources with their respective thread domains. 
+
+6.2.2 Sharing Queues Within an I/O Thread 
+
+Single-thread ownership also lets engines share selected re-sources without introducing locks between I/O threads. Ta-ble 3 summarizes the allocation: QPs remain associated with remote addresses, while CQs and TDs are allocated per thread and registered memory belongs to a common PD. This re-duces per-QP overhead, although QP-specific state still grows with connection count. 
+
+Completion queues. Each I/O thread maintains one CQ for the send and receive queues of its assigned QPs. It re-trieves completion queue entries (CQEs) in batches with 
+
+ibv_poll_cq() and uses each entry’s QP number to identify the corresponding engine. This extends the engine’s batched completion processing (§5.4) across connections and avoids polling a separate CQ for every QP. 
+
+Shared receive queues. Dedicated RQs reserve receive buffers for individual peers. As an alternative, BE can create one shared receive queue (SRQ) per I/O thread, allowing all engines assigned to that thread to draw from a common buffer pool instead of using dedicated RQs. This improves buffer utilization but changes the flow-control contract. The credit scheme in §5.4.2 tracks per-peer receive capacity and does not directly apply to a shared pool. Engines can be created and destroyed dynamically, so precise allocation of shared capacity requires additional coordination. In SRQ mode, we use larger queues and configure RNR timeouts and retry counts to reduce the impact of receive-buffer exhaustion. This mitigates RNR events but does not enforce the per-peer receive-capacity bound of the dedicated-queue credit scheme. The choice is therefore between explicit per-peer capacity accounting and more flexible sharing of receive buffers. 
+
+## 6.3 Application-Level Congestion Control 
+
+Incast places a different limit on scale: many individually efficient senders can collectively overwhelm a receiver’s net-work path. We supplement hardware congestion control with a software bound on outstanding bytes. 
+
+Iterative incasts in training. Both inference and training exhibit fan-in and fan-out, but repeated parameter synchro-nization in training can sustain concurrent transfers to the same destinations. In the training workload considered here, mean and P99 message sizes are 20 KB and 50 KB. Con-current Fetch /Push requests can produce substantial incast congestion and frequent received PFC pause frames. Our objective is to sustain concurrent transfers with low tail latency while reducing PFC activity. Absence of PFC pauses does not imply absence of congestion; it indicates that the measured workload did not trigger that protection mechanism. We use request P99 latency as a proxy for communication stalls, rather than as a direct measure of end-to-end training throughput. Prior work has also identified congestion challenges in RDMA networks [10, 22, 51]. In our deployment, DCQCN alone did not react quickly enough to the observed incasts. Its rate-control dynamics motivate additional control over how much data software makes outstanding. Software transports such as eRPC [22] offer a different design point; we retain RC offload and add a software admission bound above it. 80510 15 20 25 Worker BW Victim BW   
+
+> Throughput (Gbps)  No Control 16KB 8KB 4KB (a) Worker and victim bandwidth. 020 40 60 80 100 Pull P50 Lat Pull P99 Lat
+> Latency ( μs)
+> No Control 16KB 8KB 4KB (b) P50 and P99 pull latency.
+
+Figure 15: PS performance in the synthetic inference work-loads with no software window or 4, 8, and 16 KB windows. 
+
+Window size Servers before PFC 
+
+4 KB 1,218 8 KB 567 16 KB 273 No software control 63 Table 4: Reported server count before PFC is observed, by software window size. 
+
+A per-engine send window. BE bounds the bytes in flight on each engine using a configurable send window, denoted 
+
+Cwnd in the experiments. Together with fragmentation, this limits the amount of data an engine can make outstanding. DCQCN continues to regulate the RNIC’s sending rate, and PFC remains enabled in the fabric. RC supplies transport reliability. These roles should not be conflated: the software window is an outstanding-data limit, DCQCN is a rate-control mechanism, and PFC is link-level backpressure. Fragment and window sizes are chosen according to mes-sage sizes and incast scale. This configuration-based approach suits our training workloads with relatively stable traffic pat-terns, but it is not an adaptive congestion-control algorithm. A per-engine bound also does not impose a fixed bound on aggregate traffic as the number of active engines grows. We have not established the stability or fairness of the combined controls across arbitrary workloads. Figure 14 shows the synthetic worker/parameter-server setup, and Figure 15 reports bandwidth and request latency. Table 4 reports the server count before PFC is observed for each window setting. Reducing the window increases the reported count from 63 without software control to 1,218 with a 4 KB window. The experiment illustrates the effect of limiting outstanding data in this setup; it does not establish a universal PFC-free scale limit. 
+
+## 7 Maintaining Service Availability 7.1 Transport Reliability & Service Recovery 
+
+Online inference must return results within service latency tar-gets, while training must make progress despite failures. Fan-out makes both sensitive to slow sub-requests: a single stalled destination can delay a larger operation. RC handles transport-level delivery on a functioning connection, but recovery from node failures, persistent path failures, and unavailable replicas requires decisions above the transport layer. Network monitoring can help locate faults [1,12], and prior deployments combine network and application mechanisms for recovery [9]. We follow the same general principle: retain service-level recovery in Archon and add the RDMA-specific monitoring and fallback mechanisms needed by our deploy-ment. 
+
+## 7.2 Deployment and Recovery Mechanisms 
+
+Archon supported production inference and training before the RDMA deployment, including RPC-level availability poli-cies and load balancing. Integrating BE preserves those poli-cies. Before deployment, we test RDMA-equipped machines with Collie [26] to identify performance anomalies. We also use a watchdog-based approach to contain PFC storms [11]. 
+
+Replication across failure domains. Rankers and param-eter servers are deployed across multiple geographic data centers. Within a data center, parameter-server replicas are placed in different mini-pods, each replica containing the n
+
+shards described in §2.1. The network between mini-pods within a big-pod supports the lossless RDMA configuration. Replication provides alternative service destinations when a node or path fails; integrated network monitoring helps locate the underlying problem. 
+
+Connection monitoring. BE detects QP errors through completion polling and verbs return values. It also sends keepalive messages to detect failures such as a remote kernel panic or power loss. Each engine periodically sends its peer a monotonically increasing sequence number. If the peer’s sequence number does not advance before the keepalive time-out, the engine enters an error state, notifies the upper layer, and reclaims connection resources. The send interval and failure-detection timeout must accommodate normal schedul-ing delays. 
+
+RPC-assisted recovery. Archon uses separate connection and request timeouts, chosen for the cluster topology and service requirements. Example thresholds are Tc = 10 ms for connections and Tr = 40 ms for requests. A timed-out request may be retried probabilistically to tolerate transient failures. These transport and request timeouts serve different purposes from the keepalive mechanism. Recovery proceeds through several options. First, the sys-tem attempts to change the connection path using the RNIC’s port-affinity support [41]; the reported deployment uses MLNX OFED 5.0 or later with compatible firmware. If recon-necting does not resolve the failure, Archon selects a nearby replica in another mini-pod. If RDMA communication re-mains unavailable, it falls back to TCP, following the gen-eral approach used in prior RDMA deployments [9]. In the reported deployment, this fallback restores high throughput within one minute. Section 9 discusses the need to character-ize recovery more systematically. 9CPU metric RDMA TCP Reduction 
+
+Total CPU usage 51.31% 57.45% 10.69% Software interrupts 0.16% 1.70% 90.6% System 4.18% 7.08% 41.0% User 47.0% 48.7% 3.5% Table 5: CPU usage during the peak-load Toutiao inference interval. Reductions are relative to TCP. 
+
+Latency RDMA TCP Reduction 
+
+Mean 8.1 ms 12.6 ms 35.7% P99 35.5 ms 63.1 ms 43.7% Table 6: PS Pull latency at inference peak. Archon also temporarily quarantines destinations with re-peated failures. For example, within a five-minute window, more than M = 30 connection failures or N = 50 request fail-ures to a node can place it on an exclusion list. Other replicas serve requests while engineers investigate the node offline. The effectiveness of this policy depends on replica health and available capacity. These mechanisms describe the recovery architecture, not an end-to-end availability guarantee. In particular, retry safety for state-changing operations such as Push depends on RPC and application semantics. The measurements in this paper do not establish exactly-once execution or quantify availability under all failure modes. 
+
+## 8 Production Deployment and Evaluation 
+
+At the time of this study, ByteDance had deployed the RDMA-enabled inference and training systems in tens of data-center clusters over a period of more than two years, supporting services including Toutiao, TikTok, and Xigua Video. This section reports CPU utilization and request latency from two production workloads. Our baseline is the deployed Linux kernel TCP/IP stack. It provides an operational reference for the migration, but the available results do not compare all possible TCP tuning choices or alternative user-space transports. The microbench-marks in §5.5 provide separate comparisons with eRPC and RDMA test baselines. 
+
+## 8.1 Online Inference 
+
+Figure 16 shows a production dashboard for a Toutiao recom-mendation service. The cluster contains 300 parameter servers and 124 rankers, each equipped with a 25 Gbps Mellanox ConnectX-5 NIC. We measure mean and 99th-percentile (P99) latency for parameter Fetch requests. The RDMA and TCP measurements are reported at matched operation loads. The relative latency gap is largest during peak load. Ta-bles 5 and 6 summarize the 21:00–22:00 interval. RDMA reduces total CPU usage from 57.45% to 51.31%, a decrease                 
+
+> Metric TCP RDMA HW only RDMA HW + SW
+> Fetch P99 650 ms 1.04 s 338 ms
+> Push P99 1.03 s 1.12 s 268 ms PFC duration N/A 1 s per 30 s 0Loss indicator 1%–4% 3K NAKs per 30 s 0
+
+Table 7: Metrics for the busiest trainers. HW: hardware con-gestion control; SW: software send window. TCP loss rates and RDMA NAK counts are not directly comparable. of 6.14 percentage points, or 10.69% relative to TCP. The largest relative reductions are in software-interrupt and sys-tem CPU time, consistent with reducing kernel networking overhead. The results do not separately quantify how the saved CPU capacity is used by the application. Mean fetch latency decreases by 4.5 ms (35.7%), and P99 latency decreases by 27.6 ms (43.7%). These are parameter-fetch measurements, rather than end-to-end recommendation latency. They show that reducing communication overhead benefits the measured service, while leaving open how much of the gap a differently configured TCP baseline could re-cover. 
+
+## 8.2 Offline Training 
+
+The training evaluation runs an internal production job on TCP and RDMA clusters with 124 parameter servers and 346 trainers, each equipped with a 25 Gbps Mellanox ConnectX-5 NIC. Trainers repeatedly issue Fetch and Push requests to retrieve parameters and submit updates. Table 7 distinguishes RDMA with hardware congestion control alone from RDMA with the additional BE software window. Both RDMA configurations retain DCQCN and the fabric’s PFC configuration. Without the software window, the measured P99 fetch and push latencies exceed those of TCP, and the deployment observes PFC pauses. With the window, P99 fetch latency falls from 1.04 s to 338 ms. P99 push latency is 268 ms, a 74.0% reduction relative to TCP’s 1.03 s. No PFC pauses or negative acknowledgments are reported during the observation interval. These measurements support bounding outstanding data for this workload; they do not show that the fabric is congestion-free or that PFC can be disabled safely. 
+
+## 9 Deployment Lessons in Production 
+
+Our experience deploying RDMA in production ML inference and training systems yielded several practical lessons. 
+
+Integrate RDMA buffer ownership across layers. The practical value of bemalloc is the buffer-ownership contract it enables across the application and transport. Registered memory becomes useful to applications when allocation, seri-alization, transfer, and reclamation follow a consistent lifetime model. Integrating this contract beneath Archon’s RPC inter-face allows applications to benefit from zero-copy transfers while retaining their existing communication abstraction. 10 Figure 16: PS performance in a production recommendation inference workload: mean and P99 for TCP and RDMA in microseconds, sampled at one-minute intervals for the busiest rankers. 
+
+Control receiver capacity and outstanding traffic sepa-rately. Receive credits protect posted receive capacity, while the software send window bounds outstanding data above DCQCN and PFC. In the production training workload, hardware congestion control alone left P99 latency above the deployed TCP baseline. Adding the software window reduced P99 push latency to 268 ms, with no PFC pauses observed during the measurement interval (Table 7). The operational lesson is to assign each control a specific resource to protect. 
+
+Align RDMA resource sharing with IO thread ownership. 
+
+Assigning each engine to one I/O thread removed contention in our own data structures, but provider-side spin locks still limited message rate as QP counts grew. Thread domains aligned provider resources with application ownership, while per-thread queue sharing reduced resource overhead (§6.2). Effective scaling therefore required inspecting contention across the application–provider boundary. 
+
+Keep RDMA transport reliability close to service policy. 
+
+Archon retained responsibility for request timeouts, replica selection, and TCP fallback, while BE supplied connection-error and keepalive signals (§7). This division lets recovery use service context, including replica placement across failure domains and the exclusion of repeatedly failing destinations. Preserving these policies was a central part of integrating RDMA into an existing production service. 
+
+## 10 Related Work 
+
+RDMA systems and machine learning. RDMA has been used in key-value stores [23, 31], distributed transac-tions [7, 49], distributed storage systems [13, 14], cloud se-curity system [32], disaggregation [19, 34, 46], and RPC [22, 47]. EFLOPS [5] studies RDMA-enabled distributed train-ing through system and algorithm co-design, while Xue et al. [50] integrate RDMA into distributed machine learning. Rather, our focus is the operational RDMA co-design across registered-memory allocation, message transport, resource sharing, and RPC-level recovery for PS-based inference and training. 
+
+Connection scaling. QP context and resource sharing are established RDMA design concerns [24, 36]. SkyRDMA [15] explores offloaded RDMA connection sharing policies at the hardware level in AI clouds. Prior work also explores software-defined scheduling of RNIC resources [18] and GPU fabrics [3]. Dynamically Connected transport provides an-other approach: an initiator can communicate with multiple targets without a dedicated RC connection to each [40]. BE 
+
+instead multiplexes logical sockets over RC QPs and uses thread domains to align provider resources with I/O-thread ownership. 
+
+Congestion control. DCQCN [51], TIMELY [35], Swift [27], and HPCC [30] explore different congestion sig-nals and transport-control designs. Instead, our software win-dow provides application-level control over outstanding RC traffic, layered above the existing DCQCN configuration and complementary to prior studies. 
+
+## 11 Conclusion 
+
+Deploying RDMA in production inference and training sys-tems requires coordinating application interfaces, memory ownership, transport resources, and service recovery. Byte-Express combines an RDMA-aware allocator and zero-copy transfers with QP multiplexing, thread-aware resource man-agement, receive credits, and a software send window. Archon retains the RPC-level context needed for retries, replica se-lection, and TCP fallback. The reported deployments demon-strate lower parameter-fetch latency and CPU usage relative to the deployed TCP baseline, while exposing limits that hard-ware offload alone does not resolve. The broader lesson is to assign each layer a clear responsibility and evaluate the result-ing communication path under the concurrency and failure patterns of the target workload. 
+
+## References     
+
+> [1] Behnaz Arzani, Selim Ciraci, Luiz Chamon, Yibo Zhu, Hongqiang Harry Liu, Jitu Padhye, Boon Thau Loo, and Ge-off Outhred. 007: Democratically finding the cause of packet
+
+11 drops. In 15th USENIX Symposium on Networked Systems Design and Implementation (NSDI 18) , pages 419–435, 2018. [2] Matthew Burke, Sowmya Dharanipragada, Shannon Joyner, Adriana Szekeres, Jacob Nelson, Irene Zhang, and Dan RK Ports. Prism: Rethinking the rdma interface for distributed systems. In Proceedings of the ACM SIGOPS 28th Symposium on Operating Systems Principles , pages 228–242, 2021. [3] Danyang Chen, Yufeng Gu, Yibo Huang, Chengxuan Pei, Peichun Hua, Yang Zhou, and Yunming Xiao. Unlocking software-defined gpu fabric scheduling in the llm era. In Pro-ceedings of the 17th ACM SIGOPS Asia-Pacific Workshop on Systems , pages 118–125, 2026. [4] Jack Choquette, Wishwesh Gandhi, Olivier Giroux, Nick Stam, and Ronny Krashinsky. Nvidia a100 tensor core gpu: Perfor-mance and innovation. IEEE Micro , 41(2):29–35, 2021. [5] Jianbo Dong, Zheng Cao, Tao Zhang, Jianxi Ye, Shaochuang Wang, Fei Feng, Li Zhao, Xiaoyong Liu, Liuyihan Song, Liwei Peng, et al. Eflops: Algorithm and system co-design for a high performance distributed training platform. In 2020 IEEE International Symposium on High Performance Computer Ar-chitecture (HPCA) , pages 610–622. IEEE, 2020. [6] Aleksandar Dragojevi´ c, Dushyanth Narayanan, Miguel Cas-tro, and Orion Hodson. Farm: Fast remote memory. In 11th USENIX Symposium on Networked Systems Design and Imple-mentation (NSDI 14) , pages 401–414, 2014. [7] Aleksandar Dragojevi´ c, Dushyanth Narayanan, Edmund B Nightingale, Matthew Renzelmann, Alex Shamis, Anirudh Badam, and Miguel Castro. No compromises: Distributed transactions with consistency, availability, and performance. In Proceedings of the 25th symposium on operating systems principles , pages 54–70, 2015. [8] Facebook. jemalloc memory allocator. http://jemalloc.n et/ , 2010. [9] Yixiao Gao, Qiang Li, Lingbo Tang, Yongqing Xi, Pengcheng Zhang, Wenwen Peng, Bo Li, Yaohui Wu, Shaozong Liu, Lei Yan, et al. When cloud storage meets rdma. In 18th USENIX Symposium on Networked Systems Design and Implementation (NSDI 21) , pages 519–533, 2021. [10] Yixiao Gao, Yuchen Yang, Tian Chen, Jiaqi Zheng, Bing Mao, and Guihai Chen. Dcqcn+: Taming large-scale incast con-gestion in rdma over ethernet networks. In 2018 IEEE 26th International Conference on Network Protocols (ICNP) , pages 110–120. IEEE, 2018. [11] Chuanxiong Guo, Haitao Wu, Zhong Deng, Gaurav Soni, Jianxi Ye, Jitu Padhye, and Marina Lipshteyn. RDMA over com-modity Ethernet at scale. In Proceedings of the 2016 ACM SIGCOMM Conference , pages 202–215, 2016. [12] Chuanxiong Guo, Lihua Yuan, Dong Xiang, Yingnong Dang, Ray Huang, Dave Maltz, Zhaoyi Liu, Vin Wang, Bin Pang, Hua Chen, et al. Pingmesh: A large-scale system for data center network latency measurement and analysis. In Proceedings of the 2015 ACM Conference on Special Interest Group on Data Communication , pages 139–152, 2015. [13] Bobo Huang, Li Jin, Zhihui Lu, Ming Yan, Jie Wu, Patrick CK Hung, and Qifeng Tang. Rdma-driven mongodb: An approach of rdma enhanced nosql paradigm for large-scale data process-ing. Information Sciences , 502:376–393, 2019. [14] Bobo Huang, Li Jin, ZhiHui Lu, Xin Zhou, Jie Wu, Qifeng Tang, and Patrick CK Hung. Bor: Toward high-performance permissioned blockchain in rdma-enabled network. IEEE Transactions on Services Computing , 13(2):301–313, 2019. [15] Yibo Huang, Lizhou Gao, Liang Wang, Ziqian Liu, Chengx-uan Pei, Yaowen Guo, Hongchen Ren, Xin Li, Junpeng Zhang, Chao Pei, et al. Skyrdma: Fully offloaded cloud rdma virtual-ization. [16] Yibo Huang, Yukai Huang, Ming Yan, Jiayu Hu, Cunming Liang, Yang Xu, Wenxiong Zou, Yiming Zhang, Rui Zhang, Chunpu Huang, et al. An ultra-low latency and compatible pcie interconnect for rack-scale communication. In Proceedings of the 18th International Conference on emerging Networking EXperiments and Technologies , pages 232–244, 2022. [17] Yibo Huang, Yiming Qiu, Daqian Ding, Patrick Tser Jern Kon, Yiwen Zhang, Yuzhou Mao, Archit Bhatnagar, Mosharaf Chowdhury, Srinivas Devadas, Jiarong Xing, et al. Remote di-rect code execution. In Proceedings of the 24th ACM Workshop on Hot Topics in Networks , pages 300–307, 2025. [18] Yibo Huang, Yiming Qiu, Yunming Xiao, Archit Bhatnagar, Sylvia Ratnasamy, and Ang Chen. Exposing rdma nic re-sources for software-defined scheduling. In Proceedings of the 9th Asia-Pacific Workshop on Networking , pages 1–8, 2025. [19] Yibo Huang, Yiming Qiu, Zhenning Yang, Yi Dai, Dingming Wu, Fan Lai, Jiarong Xing, and Ang Chen. Towards fully disaggregated recommendation model serving. In Proceedings of the 16th ACM SIGOPS Asia-Pacific Workshop on Systems ,pages 38–45, 2025. [20] Mattias Jansson. rpmalloc - general purpose memory allocator. 
+
+https://github.com/mjansson/rpmalloc , 2017. [21] Yimin Jiang, Yibo Zhu, Chang Lan, Bairen Yi, Yong Cui, and Chuanxiong Guo. A unified architecture for accelerating dis-tributed dnn training in heterogeneous gpu/cpu clusters. In 
+
+14th USENIX Symposium on Operating Systems Design and Implementation (OSDI 20) , pages 463–479, 2020. [22] Anuj Kalia, Michael Kaminsky, and David Andersen. Datacen-ter RPCs can be general and fast. In 16th USENIX Symposium on Networked Systems Design and Implementation (NSDI 19) ,pages 1–16, 2019. [23] Anuj Kalia, Michael Kaminsky, and David G Andersen. Using RDMA efficiently for key-value services. In Proceedings of the 2014 ACM Conference on SIGCOMM , pages 295–306, 2014. [24] Anuj Kalia, Michael Kaminsky, and David G Andersen. De-sign guidelines for high performance RDMA systems. In 
+
+2016 USENIX Annual Technical Conference (USENIX ATC 16) , pages 437–450, 2016. [25] Anuj Kalia, Michael Kaminsky, and David G Andersen. Fasst: Fast, scalable and simple distributed transactions with two-sided rdma datagram rpcs. In 12th USENIX Symposium on Operating Systems Design and Implementation (OSDI 16) ,pages 185–201, 2016. 
+
+12 [26] Xinhao Kong, Yibo Zhu, Huaping Zhou, Zhuo Jiang, Jianxi Ye, Chuanxiong Guo, and Danyang Zhuo. Collie: Finding per-formance anomalies in RDMA subsystems. In 19th USENIX Symposium on Networked Systems Design and Implementation (NSDI 22) , pages 287–305, Renton, WA, April 2022. USENIX Association. [27] Gautam Kumar, Nandita Dukkipati, Keon Jang, Hassan MG Wassel, Xian Wu, Behnam Montazeri, Yaogong Wang, Kevin Springborn, Christopher Alfeld, Michael Ryan, et al. Swift: Delay is simple and effective for congestion control in the dat-acenter. In Proceedings of the Annual conference of the ACM Special Interest Group on Data Communication on the applica-tions, technologies, architectures, and protocols for computer communication , pages 514–528, 2020. [28] Sangho Lee, Teresa Johnson, and Easwaran Raman. Feedback directed optimization of tcmalloc. In Proceedings of the work-shop on Memory Systems Performance and Correctness , pages 1–8, 2014. [29] Mu Li, David G Andersen, Jun Woo Park, Alexander J Smola, Amr Ahmed, Vanja Josifovski, James Long, Eugene J Shekita, and Bor-Yiing Su. Scaling distributed machine learning with the parameter server. In 11th USENIX Symposium on Oper-ating Systems Design and Implementation (OSDI 14) , pages 583–598, 2014. [30] Yuliang Li, Rui Miao, Hongqiang Harry Liu, Yan Zhuang, Fei Feng, Lingbo Tang, Zheng Cao, Ming Zhang, Frank Kelly, Mohammad Alizadeh, et al. Hpcc: High precision congestion control. In Proceedings of the ACM Special Interest Group on Data Communication , pages 44–58. 2019. [31] Hyeontaek Lim, Dongsu Han, David G Andersen, and Michael Kaminsky. MICA: A holistic approach to fast in-memory key-value storage. In 11th USENIX Symposium on Networked Systems Design and Implementation (NSDI 14) , pages 429– 444, 2014. [32] Hongyi Liu, Jiarong Xing, Yibo Huang, Danyang Zhuo, Srini-vas Devadas, and Ang Chen. Remote direct memory introspec-tion. In 32nd USENIX Security Symposium (USENIX Security 23) , pages 6043–6060, 2023. [33] Youyou Lu, Jiwu Shu, Youmin Chen, and Tao Li. Octopus: an rdma-enabled distributed persistent memory file system. In 
+
+2017 USENIX Annual Technical Conference (USENIX ATC 17) , pages 773–785, 2017. [34] Hao Mei, Lizhou Gao, Yuanyi Zhu, Liang Wang, Peng Yang, Chao Pei, Chuhao Chen, Zijian Li, Jian Zhao, Dongbo Gu, et al. Distdpu: A disaggregated dpu architecture for high-performance and cost-efficient ai clouds. In Proceedings of the ACM SIGCOMM 2026 Conference , pages 519–534, 2026. [35] Radhika Mittal, Terry Lam, Nandita Dukkipati, Emily Blem, Hassan Wassel, Monia Ghobadi, Amin Vahdat, Yaogong Wang, David Wetherall, and David Zats. TIMELY: RTT-based con-gestion control for the datacenter. In Proceedings of ACM SIGCOMM , pages 537–550, 2015. [36] Sumit Kumar Monga, Sanidhya Kashyap, and Changwoo Min. Birds of a feather flock together: Scaling rdma rpcs with flock. In Proceedings of the ACM SIGOPS 28th Symposium on Oper-ating Systems Principles , pages 212–227, 2021. [37] Behnam Montazeri, Yilong Li, Mohammad Alizadeh, and John Ousterhout. Homa: A receiver-driven low-latency transport protocol using network priorities. In Proceedings of the 2018 Conference of the ACM Special Interest Group on Data Com-munication , pages 221–235, 2018. [38] Deepak Narayanan, Mohammad Shoeybi, Jared Casper, Patrick LeGresley, Mostofa Patwary, Vijay Korthikanti, Dmitri Vain-brand, Prethvi Kashinkunti, Julie Bernauer, Bryan Catanzaro, et al. Efficient large-scale language model training on gpu clus-ters using megatron-lm. In Proceedings of the International Conference for High Performance Computing, Networking, Storage and Analysis , pages 1–15, 2021. [39] Maxim Naumov, John Kim, Dheevatsa Mudigere, Srinivas Sridharan, Xiaodong Wang, Whitney Zhao, Serhat Yilmaz, Changkyu Kim, Hector Yuen, Mustafa Ozdal, et al. Deep learning training in facebook data centers: Design of scale-up and scale-out systems. arXiv preprint arXiv:2003.09518 , 2020. [40] NVIDIA. RDMA Aware Networks Programming User Man-ual. https://docs.nvidia.com/rdma-aware-network s-programming-user-manual-1-7.pdf . Section 8.6.1, Dynamically Connected Transport. Accessed October 8, 2026. [41] NVIDIA. Mlnx_ofed new features. https://docs.nvidia. com/networking/display/MLNXOFEDv471001/Changes+a nd+New+Features , 2021. [42] NVIDIA. Optimized memory access. https://docs.nvidi a.com/networking/display/MLNXOFEDv531001/Optimiz ed+Memory+Access , 2021. [43] Yanghua Peng, Yibo Zhu, Yangrui Chen, Yixin Bao, Bairen Yi, Chang Lan, Chuan Wu, and Chuanxiong Guo. A generic com-munication scheduler for distributed dnn training acceleration. In Proceedings of the 27th ACM Symposium on Operating Systems Principles , pages 16–29, 2019. [44] rdma-core contributors. ibv_alloc_td(3): Allocate a Thread Domain. https://github.com/linux- rdma/rdma- c ore/blob/master/libibverbs/man/ibv_alloc_td.3 .Accessed October 8, 2026. [45] rdma-core contributors. ibv_reg_mr(3): Register or Deregister a Memory Region. https://github.com/linux-rdma/rd ma-core/blob/master/libibverbs/man/ibv_reg_mr.3 .Accessed October 8, 2026. [46] Yizhou Shan, Shin-Yeh Tsai, and Yiying Zhang. Distributed shared persistent memory. In Proceedings of the 2017 Sympo-sium on Cloud Computing , pages 323–337, 2017. [47] Shin-Yeh Tsai and Yiying Zhang. Lite kernel RDMA sup-port for datacenter applications. In Proceedings of the 26th Symposium on Operating Systems Principles , pages 306–324, 2017. [48] Xingda Wei, Zhiyuan Dong, Rong Chen, and Haibo Chen. Deconstructing rdma-enabled distributed transactions: Hybrid is better! In 13th USENIX Symposium on Operating Systems Design and Implementation (OSDI 18) , pages 233–251, 2018. [49] Xingda Wei, Jiaxin Shi, Yanzhe Chen, Rong Chen, and Haibo Chen. Fast in-memory transaction processing using RDMA and HTM. In Proceedings of the 25th Symposium on Operating Systems Principles , pages 87–104, 2015. 
+
+13 [50] Jilong Xue, Youshan Miao, Cheng Chen, Ming Wu, Lintao Zhang, and Lidong Zhou. Fast distributed deep learning over RDMA. In Proceedings of the Fourteenth EuroSys Conference 2019 , pages 1–14, 2019. [51] Yibo Zhu, Haggai Eran, Daniel Firestone, Chuanxiong Guo, Marina Lipshteyn, Yehonatan Liron, Jitendra Padhye, Shachar Raindel, Mohamad Haj Yahia, and Ming Zhang. Congestion control for large-scale rdma deployments. ACM SIGCOMM Computer Communication Review , 45(4):523–536, 2015. 
+
+14

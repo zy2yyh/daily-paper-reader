@@ -1,0 +1,1478 @@
+Title: SP-Allreduce: Symmetric Tree Schedules for Tori and Beyond
+
+URL Source: https://arxiv.org/pdf/2610.16387v1
+
+Published Time: Wed, 14 Oct 2026 02:46:19 GMT
+
+Number of Pages: 29
+
+Markdown Content:
+# SP-Allreduce: Symmetric Tree Schedules for Tori and Beyond 
+
+Mikhail Cherniavskii, Andrey Kupavskii, Georgy Mironov, Stanislav Moiseev 
+
+Abstract 
+
+Allreduce is a fundamental communication primitive in large-scale distributed training, and torus interconnects remain widely deployed in high-performance systems. We introduce SP-allreduce, a new allreduce algorithm for d-dimensional tori that exploits the symmetry of the topology and routes only along shortest paths. We call an allreduce algorithm fully bandwidth-optimal if it incurs no bandwidth overhead, no multihop-induced traffic inflation, and achieves perfect per-round load balance. SP-allreduce is based on a family of carefully symmetrized shortest-path trees that guarantees full bandwidth optimality in the α–β model. We prove that it uses the minimum possible number of rounds among all fully bandwidth-optimal allreduce algorithms on d-dimensional tori, and therefore the minimum running time in this class. In this sense, SP-allreduce refines Bucket allreduce: it preserves Bucket’s key strengths while reducing the number of rounds by a factor of two. We further extend our approach to broader symmetric topologies and to communication trees of prescribed depths. Experimentally, the resulting algorithms improve over the best compared state-of-the-art algorithms for tori by up to 1 .19 × on square tori and 1 .65 × on rectangular tori across the tested configurations. On HyperX and spine-leaf networks, we demonstrate gains of up to 14 .82 × and 1 .72 ×, respectively, over the best evaluated baselines. 
+
+# 1 Introduction 
+
+The allreduce operation is a fundamental building block for both high-performance computing (HPC) and distributed deep learning. It is used to aggregate and redistribute model gradients and other global states, and is a major factor in the end-to-end runtime: prior work reports that collective operations, and allreduce in particular, may account for up to 40% of training time in large distributed ML workloads and a substantial fraction of core-hours in production HPC systems [6, 9, 12, 27, 32, 36]. Modern deep learning frameworks such as PyTorch expose allreduce as the main primitive for data-parallel training and heavily rely on optimized communication backends [28]. The importance of allreduce has motivated a long line of work on performance models, algorithmic variants, and implementations of allreduce and related collective operations. Torus and torus-like networks are widely deployed in systems targeting both traditional HPC and machine-learning workloads. Multi-dimensional tori are used in IBM BlueGene/L and its suc-cessors [1]; Fujitsu’s 6D Tofu-D interconnect is used in the Fugaku supercomputer, Wisteria/BDEC-01 (Odyssey), TOKI-SORA, several PRIMEHPC FX1000-based systems, and Nagoya University’s Flow supercomputer [3, 14, 20, 21, 24]. For ML workloads, vendors increasingly favor torus or torus-like fabrics: Google’s TPU v5, v6 and Ironwood systems use 2D/3D tori and optical reconfig-uration to scale to thousands of accelerators [15, 16, 25, 34], AWS Trainium (Trn1, Trn2) uses a 2D torus for chip-to-chip connections [4], Graphcore IPU-PODs implement a dense IPU interconnect with torus structure [18]. The allreduce collective operation combines values from all computing nodes and returns the result to every node. On general interconnects, its cost is typically modeled in the α–β message-cost model [30]. The latency term charges a fixed initiation cost α for each communication round; the 1arXiv:2610.16387v1 [cs.DC] 12 Oct 2026 bandwidth term is proportional to the amount of data transmitted, with β denoting the time to transmit one bit along a link. For small messages, the data-transfer time is short, so the initiation costs of successive rounds can account for a large part of the total time. Reducing the number of rounds is therefore particularly important in this regime. Ring allreduce [29] transmits the minimum total volume, but requires 2( p−1) rounds for p nodes. Classical recursive doubling and halving–doubling [30] require O(log p) communication rounds, but their communication partners may be separated by several physical links on a torus, increasing total link traffic. Different transmissions may also load the same physical links, making the distribution of traffic another factor in the bandwidth term. Section 2 introduces parameters in the α–β model that account for communication volume, physical route lengths, and link-load imbalance. On the one hand, the torus’s limited degree and low bisection bandwidth constrain collective performance; on the other hand, its regular structure favors allreduce algorithms that are explicitly topology-aware. Indeed, there are several allreduce algorithms that were specifically designed for torus networks. Bucket allreduce [5, 22, 31] is a canonical example: it preserves nearest-neighbor communication and is bandwidth-optimal on tori, but it requires a number of rounds that scales linearly with the torus diameter, which can hurt performance for small and medium message sizes. Torus-aware algorithms such as Swing [12] and Trivance [26] retain the logarithmic-round struc-ture while reducing routing overhead through their choice of communication partners. Swing uses pairwise exchanges, whereas Trivance exchanges data with two peers at each step. We introduce SP-allreduce, which on tori can be viewed as an improved version of Bucket. More generally, its tree-symmetrization approach applies to a broader class of topologies with sufficient symmetry. We divide the input vector into chunks and assign them to copies of a base tree obtained using network symmetries. On equal-sided tori, translations, global reflection, and cyclic coordinate permutations form a subgroup of the topology’s automorphism group that can map any directed physical link to any other. Applying these transformations to both the tree and its communication rounds distributes traffic equally across links in every round. We also adapt the construction to HyperX and spine-leaf networks. 
+
+1.1 Our Contributions 
+
+We introduce the SP-allreduce algorithm for torus networks and establish its bandwidth properties, analyze the number of rounds, and extend the construction: 1. SP-allreduce is fully bandwidth-optimal , i.e., it incurs no bandwidth overhead, introduces no multihop-induced traffic inflation (no additional link traffic due to multi-hop routing), and achieves perfectly balanced link utilization in every round. The symmetry argument also applies to other communication trees and sufficiently symmetric topologies. 2. SP-allreduce completes in 2 d⌊n/ 2⌋ rounds on a d-dimensional n×· · ·× n torus, approximately a factor of two fewer than Bucket [22]. We prove that this count is optimal among all fully bandwidth-optimal schemes for odd n and exceeds the optimum by one round for even n.The proof derives the structure of the communication scheme from the minimum transmission volume and one-hop routing. 3. We extend the approach to communication trees of prescribed depth, introducing k-SP-allreduce. A tree of depth k gives k reduction rounds followed by k dissemination rounds. Allowing a tree edge to connect nonadjacent network nodes can reduce this depth, while its physical route may increase the traffic. Experimentally, these schedules outperform the best compared torus algorithm over a wider range of message sizes. 24. Experimentally, the resulting algorithms improve over the best compared state-of-the-art algorithms for tori by up to 1 .19 × on square tori and 1 .65 × on rectangular tori across the tested configurations. On HyperX and spine-leaf networks, we demonstrate gains of up to 14 .82 × and 1 .72 ×, respectively, over the best evaluated baselines. 
+
+# 2 Model and Background 
+
+2.1 Allreduce and its representation 
+
+Allreduce combines values from all computing nodes and returns the combined value to every node. Let p be the number of nodes, each holding a vector of N bits. The reduction combines correspond-ing vector elements using an associative and commutative operator. A common implementation consists of two stages: reduce-scatter, during which the values are collected and combined, and allgather, during which the reduced values are communicated back to every node. We view an allreduce algorithm at two levels. At the abstract level, an allreduce scheme specifies, for each round s ∈ { 1, . . . , S }, a set (or multiset) Ps of directed transmissions 
+
+u M
+
+−→ v, 
+
+meaning that node u sends a message M of size |M | to node v in round s. Transmissions in a round use data available at its beginning; received values are available for subsequent rounds. The total amount of data communicated by the abstract scheme is Vol abs = 
+
+> S∑
+> s=1
+> ∑
+> (uM
+> −→ v)∈P s
+
+|M |,
+
+and the average amount of data sent per node is Vavg = Vol abs /p .At the network level, each transmission must be mapped to the topology, i.e., implemented by routing the corresponding data from u to v along a physical path. The communicating nodes need not be adjacent in the topology. A message contributes its size to the load of every physical link on its route; different transmissions can contribute to the load of the same link. Represent the physical network by a directed graph G = ( V, E ), with the two directions of each connection represented by separate edges. On a torus, every vertex is a computing node. On a spine-leaf network, input vectors reside at hosts and paths may pass through forwarding switches. In the regular case with p computing nodes of out-degree D, |E| = pD . All links have the same bandwidth, and β is the time to transmit one bit along one link. We use a multiport model in which a node can use its incident links concurrently. 
+
+2.2 The α–β model and bandwidth deficiencies 
+
+The classical cost model for an allreduce operation is the α–β model [30]. Its multiport form is 
+
+Tallreduce = αS + β Vavg 
+
+D ,
+
+where S is the number of rounds and α is the latency incurred by initiating a round. This expression treats the communication volume as evenly distributed over the available links. 3To account for the mapping of transmissions to the topology, let ℓs(e) be the number of bits carried by directed physical link e in round s. We approximate the bandwidth cost of a round by its maximum link load and sum these costs over the rounds: 
+
+Q =
+
+> S∑
+> s=1
+
+max  
+
+> e∈E
+
+ℓs(e), Tmodel = αS + βQ. (1) The following classical bound provides the reference communication volume [29]. 
+
+Proposition 2.1. Let G be a network with p nodes. Assume that vectors of N bits at each node need to be reduced. Then the average number of bits a node needs to send is at least 
+
+Vmin = N 2p − 2
+
+p . (2) 
+
+Proof. Take one position of the input vectors. Order the message deliveries within each round arbitrarily, keeping their contents fixed as at the beginning of that round. Let v be the first node to obtain the complete result in this ordering. Each other node must have sent its contribution at least once, giving at least p − 1 transmissions. After v obtains the result, each of the other p − 1nodes still needs at least one incoming transmission to obtain it. Thus at least 2 p − 2 transmissions are necessary for each position. In total, at least 2 N (p−1) bits must be transmitted, or 2 N (p−1) /p 
+
+bits on average per node. A tree attains this bound with p − 1 reduction transmissions and p − 1 dissemination transmis-sions for each chunk. A fruitful point of view on allreduce that this proposition suggests is to model it as a collection of graphs (typically, trees), where each graph records the sequence of communications used to reduce a given vector position. We distinguish three factors in the bandwidth cost of the resulting scheme. 
+
+Definition 2.2 (Bandwidth deficiency) . The bandwidth deficiency is Ψ = Vavg 
+
+Vmin 
+
+= Vol abs 
+
+2N (p − 1) ≥ 1. (3) It measures the communication volume of the abstract scheme relative to the minimum. 
+
+Definition 2.3 (Multi-hop path deficiency) . Fix a mapping of the abstract allreduce scheme into the topology. For each transmission ( u M
+
+−→ v) ∈ P s, let Ps(u, v ; M ) be the chosen physical path and let len( Ps(u, v ; M )) denote its length in physical edges. The multi-hop path deficiency is Θ =  
+
+> S∑
+> s=1
+> ∑
+> (uM
+> −→ v)∈P s
+
+|M | len( Ps(u, v ; M ))  
+
+> S∑
+> s=1
+> ∑
+> (uM
+> −→ v)∈P s
+
+|M |
+
+= Vol phys 
+
+Vol abs 
+
+≥ 1, (4) where Vol phys = ∑ 
+
+> s
+> ∑
+> e
+
+ℓs(e) counts the volume over physical links. The two expressions are equivalent because each message contributes its size to every link on its route. Thus Θ is the message-size-weighted average path length, and Θ = 1 exactly when every transmission uses a path of length one, between adjacent nodes. 4Definition 2.4 (Load-balancing deficiency) . Define the average link load in round s as ¯ℓs =
+
+|E|−1 ∑ 
+
+> e
+
+ℓs(e). The load-balancing deficiency is Ω =  
+
+> ∑
+> s
+
+max e ℓs(e) 
+
+> ∑
+> s
+
+¯ℓs
+
+≥ 1. (5) It measures the multiplicative increase in the modeled bandwidth cost caused by per-round link-load imbalance. In particular, equal total traffic over the full execution does not imply equal traffic in each round. For a regular topology with |E| = pD , substituting these definitions into Equation (1) gives 
+
+Tmodel = αS + β 2N (p − 1) 
+
+pD ΨΘΩ . (6) Approximating ( p − 1) /p by one yields the form αS + β(2 N/D )ΨΘΩ. We retain the finite-p factor when deriving bounds. 
+
+Definition 2.5 (Full bandwidth optimality) . An allreduce scheme is fully bandwidth-optimal if Ψ = Θ = Ω = 1: it transmits the minimum volume, incurs no additional traffic from multi-hop routing, and balances link loads perfectly in every round. For schemes with these properties, the bandwidth term is fixed. Minimizing their α–β execution time therefore reduces to minimizing the number of rounds. 
+
+2.3 Torus notation 
+
+The equal-sided torus T dn has vertex set Zdn, with neighbors differing by +1 or −1 in one coordinate. For n ≥ 3, its degree is D = 2 d and its diameter is H = d⌊n/ 2⌋. For the two-dimensional rectangular torus Tm,n , the diameter is H = ⌊m/ 2⌋ + ⌊n/ 2⌋.
+
+2.4 Related work 
+
+We briefly review representative allreduce baselines for torus and torus-like interconnects, compar-ing their communication rounds, transmitted volume, physical routes, and link utilization. Ap-pendix C gives the quantitative comparison in our deficiency model and its derivations. 
+
+Hamiltonian ring allreduce. Ring allreduce [29] performs reduce-scatter followed by allgather along Hamiltonian cycles in 2( p − 1) rounds. When the cycles use physical links, it achieves Ψ = Θ = 1. A balanced multiport implementation runs several rings on separate chunks and distributes traffic equally across physical links in every round, giving Ω = 1. Such an implementation is fully bandwidth-optimal . Its main drawback is the linear number of rounds. 
+
+Bucket algorithm. Bucket [22, 31] performs reduce-scatter and allgather along the coordinate rings of a torus, using only nearest-neighbor exchanges. On T dn , its balanced multiport schedule is fully bandwidth-optimal , with Ψ = Θ = Ω = 1, and requires 2 d(n − 1) rounds. SP-allreduce preserves these bandwidth properties while approximately halving the number of rounds. 
+
+Swing. Swing [12] refines doubling-like allreduce algorithms by choosing partners with shorter physical routes on tori, thereby reducing the multi-hop path deficiency Θ. For n = 2 m, SwingL re-quires log 2 p rounds, while SwingB performs reduce-scatter and allgather in 2 log 2 p rounds. SwingB achieves minimum abstract communication volume, with Ψ = 1, whereas SwingL incurs additional abstract traffic. 5Trivance. Trivance [26] extends logarithmic-round allreduce schemes by using simultaneous ex-changes with two peers to combine contributions from three groups per step. For n = 3 t, TrivanceL requires log 3 p rounds, while TrivanceB performs reduce-scatter and allgather in 2 log 3 p rounds. TrivanceB achieves minimum abstract communication volume, with Ψ = 1, whereas TrivanceL incurs additional abstract traffic. 
+
+Other approaches. A complementary line of work aims to synthesize collective schedules auto-matically for a given accelerator fabric, rather than relying on a fixed closed-form algorithm. Most such systems generate step schedules that explicitly track data dependencies across synchronized rounds and optimize link usage within each round [7, 8, 33]. To keep the search tractable, these ap-proaches use communication sketches in TACCL or symmetry-driven reductions in SyCCL [8, 33]. Greedy synthesizers such as TACOS and MultiTree, as well as tree-based constructions such as Blink, provide further approaches to topology-aware collective design [19, 35, 37]. ForestColl [38] constructs tree-flow schedules via spanning-tree packing, aiming to maximize throughput by balancing aggregate link load over the entire collective rather than enforcing perfectly balanced utilization in each synchronized round. Our analysis instead tracks the round structure and per-round physical-link loads. Finally, a separate line of work co-designs the interconnect itself to improve collective perfor-mance [39]. This direction is orthogonal to our setting, where the topology is fixed. SP-allreduce uses an explicit construction with formal bandwidth and round-count guarantees on equal-sided tori, and adapts the same tree-symmetrization approach to other topologies. 
+
+# 3 SP-allreduce: Construction and Symmetry 
+
+3.1 SP-allreduce construction 
+
+We first construct one tree and then propagate it using torus symmetries to balance the load. 
+
+Step 1 (Data partition). Each node splits its data into 2 d · nd equal chunks, indexed by triples (x, ε, j ) ∈ Zdn × { +1 , −1} × { 0, . . . , d − 1}.
+
+Here x specifies the root at which the chunk will be reduced, while ε and j specify the reflection and coordinate permutation used to construct its tree. 
+
+Step 2 (Construction of allreduce trees). Fix the root 0 = (0 , . . . , 0) and construct any BFS (breadth-first search) tree T0 of the torus rooted at 0. Figure 1(a) shows an example on 8 × 8. Orient all edges toward the root. Construct the other trees as follows. 
+
+Reflection. Set T +0 = T0 and obtain T − 
+
+> 0
+
+by reflecting every coordinate. Replace each vertex (u1, . . . , u d) by ( −u1, . . . , −ud), with coordinates taken modulo n. Thus an edge u → v
+
+becomes −u → − v.
+
+Cyclic coordinate shifts. Let ρ(u1, . . . , u d) = ( u2, . . . , u d, u 1). Apply the d transforma-tions ρj , j = 0 , . . . , d − 1, to each of T +0 and T − 
+
+> 0
+
+, obtaining the trees T ε,j  
+
+> 0
+
+.
+
+Translation to all roots. For each node x ∈ Zdn, translate each T ε,j  
+
+> 0
+
+by x. An edge u → v
+
+becomes u + x → v + x, with all coordinates taken modulo n. Denote the translated tree by T ε,j x .As a result, for each root x we obtain 2 d aggregation trees spanning the entire torus. The chunk indexed by ( x, ε, j ) is assigned to T ε,j x .6(a) Torus 8 x 8   
+
+> Tree depth: 8
+> (b) HyperX 8 x 8
+> Tree depth: 2 Horizontal link Vertical link Root (0, 0)
+
+Figure 1: Examples of base trees on 8 × 8: (a) a BFS tree on a torus; (b) the HyperX windmill used in Section 6.2. Only tree edges are shown, with arrows in the reduction direction. Each curved edge in (b) is a single physical link between nodes in the same row or column. 
+
+Step 3 (Reduce-scatter phase). The depth of each tree equals the torus diameter H = d⌊n/ 2⌋.Communication proceeds in H rounds. For each chunk ( x, ε, j ), in round i = 1 , . . . , H , every vertex at tree depth H − i + 1 sends its partial aggregate to its parent. The parent combines the received values with its own contribution. At the end of this phase, root x holds the reduced chunk ( x, ε, j ) from all nodes. 
+
+Step 4 (Allgather phase). The allgather phase reverses the reduce-scatter: for each index ( x, ε, j ), root x sends the reduced chunk back to all nodes along the same tree in the opposite direc-tion. This takes another H rounds. Every node then holds all reduced chunks and thus the allreduce result. Communication along all trees happens in parallel. In round i, along each directed edge v → w,vertex v sends together the chunks assigned to trees that use this edge in that round. In algebraic terms, Step 2 applies the subgroup Γ = {u 7 → x + ερ j (u) : x ∈ Zdn, ε ∈ { +1 , −1}, 0 ≤ j < d }
+
+of the torus automorphism group. It has 2 dn d elements for n ≥ 3. Translations move a directed edge to any position, cyclic coordinate shifts move it to any axis, and reflection reverses its direction. These transformations can map any directed physical link to any other. We next express this construction in general terms and prove that it balances the load in every round. 73.2 A communication tree and its symmetric copies 
+
+A base construction consists of a rooted spanning tree T over the nodes, a physical path Ruv for every tree edge, and a round assignment σ. The tree is logical: its adjacent vertices need not be adjacent in G. In reduce-scatter, edges point toward the root; in allgather, the aggregate follows the same tree and physical paths in reverse. For a tree of edge depth h, reduce-scatter takes h rounds. In round s, vertices at depth h − s + 1 send to their parents. Thus each vertex receives and reduces the contributions from its children before sending its aggregate to its parent. Reversing these rounds gives h allgather rounds. Let Γ ≤ Aut( G) be a subgroup of the automorphism group of G. For each γ ∈ Γ, apply γ to the tree and its physical routes, retaining the round assigned to each transmission. In particular, a route ( v0, v 1, . . . , v m) becomes ( γ(v0), γ (v1), . . . , γ (vm)). The resulting construction is denoted by (γT, γR, γσ ). Split each input vector into |Γ| equal chunks, one for each γ ∈ Γ, and run the corresponding tree schedules in parallel. Chunks with the same sender, receiver, round, and physical route can be packed into a single message. 
+
+3.3 Per-round balance 
+
+The orbit of a directed physical edge e is the set {γ(e) : γ ∈ Γ}. Thus two edges belong to the same orbit if a transformation in Γ maps one to the other. The action is directed-edge transitive if all directed physical edges belong to a single orbit. 
+
+Lemma 3.1 (Orbit balance) . For the equal-chunk family indexed by Γ, links in the same directed-edge orbit carry equal volume in each round. If Γ is transitive on all directed physical links, then 
+
+Ω = 1 .Proof. Let as(e) be the base load on physical link e in round s, for a chunk of unit size. With chunk size c = N/ |Γ|, the transformed family has 
+
+ℓs(e) = c ∑
+
+> γ∈Γ
+
+as(γ−1e).
+
+For any η ∈ Γ, replacing γ by ηγ shows that ℓs(ηe ) = ℓs(e). Thus loads are constant within each orbit in every round. If there is one orbit, the maximum equals the average in each round, which gives Ω = 1 by Equation (5). This argument applies to any network with such a group of automorphisms and to any base tree with specified routes and rounds. In particular, the base tree need not be a BFS tree of the topology. 
+
+Several edge orbits. If there is more than one edge orbit, symmetrization balances the load within each orbit, but the loads of different orbits can differ. It therefore does not by itself guarantee Ω = 1. 84 Fully Bandwidth-Optimal Allreduce on Tori 
+
+4.1 Bandwidth guarantees 
+
+Theorem 4.1 (Equal-sided torus schedule) . On T dn , n ≥ 3, SP-allreduce uses 2dn d chunks and 
+
+2H = 2 d⌊n/ 2⌋ rounds. It achieves Ψ = Θ = Ω = 1 , and its α–β running time is 
+
+TSP = 2 αH + β 2N (p − 1) 
+
+pD , p = nd, D = 2 d. (7) 
+
+Proof. For each chunk, the reduction and dissemination each traverse exactly the p − 1 edges of its tree once. Summing chunk sizes gives Vol abs = 2 N (p − 1) and hence Ψ = 1. Every tree edge is one physical hop, so Θ = 1. The group is directed-edge transitive, so Lemma 3.1 gives Ω = 1. Breadth-first tree depth equals root eccentricity, which is H at every vertex of the torus. The prescribed level schedule therefore uses H rounds per phase. Substitution in Equation (6) proves the cost expression. 
+
+4.2 Optimality of SP-allreduce 
+
+We analyze each position of the input vector separately. Fix a position i, which we call an elementary chunk in this argument. Its complete aggregate is the result of reducing the contributions at position 
+
+i from all p nodes. For a fully bandwidth-optimal scheme, Ψ = 1 implies exactly 2 p−2 transmissions for this chunk, and Θ = 1 implies that every transmission connects adjacent nodes. Two structural facts apply to this chunk. In the first round that produces its complete aggre-gate, the result becomes available either at a single node or simultaneously at two adjacent nodes exchanging complementary partial aggregates (Lemma A.2, Structure in the equality case ). After that round, every transmission of this chunk carries its complete aggregate to a node that has not yet obtained it (Lemma A.4, Dissemination after the first complete aggregate ). Since allreduce completes only when every node has the reduced value at every vector position, a lower bound on the rounds required for this chunk also applies to the entire operation. 
+
+Theorem 4.2 (Optimality of SP-allreduce) . On the equal-sided torus T dn , n ≥ 3, let Smin be the minimum number of rounds among all fully bandwidth-optimal allreduce schemes. With H =
+
+d⌊n/ 2⌋,
+
+Smin =
+
+> {
+
+2H, n odd ,
+
+2H − 1, n even .
+
+SP-allreduce uses 2H rounds. Its α–β running time is therefore minimum in this class for odd n
+
+and exceeds the minimum by α for even n.Proof. Fix an arbitrary vector position i and let r∗ be the first round after which at least one node holds its complete aggregate. Throughout the proof, all inputs, aggregates, and transmissions refer to this elementary chunk. Each node of T dn has eccentricity H. For two adjacent nodes, their joint eccentricity—the maximum distance from any node to the nearer of the two—is 
+
+ρ =
+
+> {
+
+H, n odd ,H − 1, n even .
+
+These distance identities are proved in Corollary A.5. If a single node first obtains the result, every input must reach it by round r∗, so r∗ ≥ H.By Lemma A.4, at least H further rounds are necessary to deliver the result to all nodes. Hence 
+
+S ≥ 2H.9If two adjacent nodes first obtain the result, Lemma A.2 shows that they exchange comple-mentary aggregates in round r∗. Every input must therefore reach one of these nodes before the exchange, giving r∗ ≥ ρ + 1. Dissemination requires at least ρ further rounds, so S ≥ 2ρ + 1. Combining the two cases gives S ≥ 2H for odd n and S ≥ 2H − 1 for even n.Theorem 4.1 establishes that SP-allreduce is fully bandwidth-optimal and takes 2 H rounds. It attains the bound for odd n. For even n, a BFS forest with two adjacent roots has depth H − 1. Reducing each component to its root, exchanging the root aggregates, and disseminating the result along the forest take 2 H − 1 rounds in total. Symmetrizing this schedule gives a fully bandwidth-optimal scheme; Proposition A.6 proves this construction. Thus SP-allreduce takes exactly one more round than the optimum for even n.All fully bandwidth-optimal schemes have the same bandwidth term in Equation (6). Their modeled times differ only through αS , proving the running-time claims. For even n, SP-allreduce uses dn rounds, whereas the conventional multiport Bucket count is 2d(n − 1). The ratio is 2( n − 1) /n , approaching two as n grows. Both schedules have the same bandwidth term in the model; the smaller number of rounds reduces the latency term αS .
+
+# 5 k-SP-allreduce on Tori 
+
+In SP-allreduce, every transmission connects physically adjacent nodes. We now allow nonadjacent nodes to communicate within a single round by routing their transmissions along shortest physical paths. This permits communication trees of smaller depth and therefore fewer rounds. The tree construction retains minimum abstract communication volume, with Ψ = 1, and the same sym-metrization on equal-sided tori gives Ω = 1. Using paths longer than one physical link introduces Θ > 1. The experiments show that this trade-off extends the range of message sizes for which the tree schedules outperform the compared algorithms. A rooted spanning tree is a k-hop tree if every root-to-leaf path contains at most k tree edges. A tree of actual depth h(T ) ≤ k requires h(T ) reduce-scatter rounds followed by h(T ) allgather rounds. Here k bounds the depth of the communication tree, not the physical length of an individual route. Assign edge ( u, v ) the weight dist G(u, v ), and let 
+
+W (T ) = ∑ 
+
+> uv ∈E(T)
+
+dist G(u, v ). (8) Each tree still has p − 1 edges, so the symmetrized family transmits 2 N (p − 1) bits at the abstract level and 2 N W (T ) bits over physical links. Consequently, Ψ = 1 , Θ = W (T )
+
+p − 1 . (9) On an equal-sided torus, the subgroup from Section 3 gives Ω = 1 by Lemma 3.1. Substitution into Equation (6) yields 
+
+Tmodel (T ) = 2 αh (T ) + 2βN pD W (T ). (10) For a fixed depth bound k, minimizing the bandwidth term therefore reduces to finding a minimum-weight rooted k-hop spanning tree on the complete graph of network nodes, with shortest-path distances as weights. For trees of the same depth, the latency term is also fixed. We compare different depths in the experiments. The general minimum-weight k-hop spanning-tree problem 10 is NP-hard, already for k = 2 [11]. We use an integer linear programming (ILP) formulation of the minimum-weight rooted spanning-tree problem with a prescribed depth bound. On 8 × 8, the solvers obtain minimum-weight trees for the tested depth bounds. For related formulations with hop constraints, see [17]. 
+
+# 6 Extensions to Other Topologies 
+
+We adapt the SP-allreduce approach to other topologies by choosing a base communication tree, shortest physical routes for its edges, and a subgroup of network automorphisms. We briefly describe the resulting constructions for rectangular tori, HyperX, and spine-leaf networks. 
+
+6.1 Rectangular tori 
+
+For a two-dimensional rectangular torus Tm,n , use translations and global reflection: Γ = {(x, y ) 7 → (a + εx, b + εy ) : ( a, b ) ∈ Zm × Zn, ε ∈ { +1 , −1}} .
+
+This subgroup of Aut( Tm,n ) has 2 mn elements and two directed-edge orbits: horizontal and vertical links. One base tree need not distribute its traffic equally between these orbits. Two suitably chosen BFS trees suffice. 
+
+Theorem 6.1 (Two-tree balance on rectangular tori) . For every m, n ≥ 3, there exist two BFS trees rooted at (0 , 0) whose families under Γ, with 4mn equal chunks in total, give a fully bandwidth-optimal allreduce schedule in 2H rounds, where H = ⌊m/ 2⌋ + ⌊n/ 2⌋.
+
+The proof is given in Appendix B. The experiments in Section 7.5 use this two-tree construction on all three rectangular tori. 
+
+6.2 HyperX 
+
+In a HyperX n × n, each node is connected to the other 2( n − 1) nodes of its row and column [2, 13]. Its graph is Kn □ Kn and has diameter two. The base tree has depth two. The root is connected to every other node in its row and column, forming a cross. Nodes in the upper-left and lower-right quadrants attach to the cross node in their column; nodes in the other two quadrants attach to the cross node in their row. This produces the windmill pattern illustrated in Figure 1(b). The subgroup consists of translations of Z2 
+
+> n
+
+and the four rotations by multiples of 90 ◦. Its directed-edge orbits are indexed by min(∆ , n − ∆), where ∆ is the difference in the changing coordinate modulo n.At each reduction round, the windmill uses edges from every orbit in proportion to its size. For even n, the orbit with difference n/ 2 has half as many directed links and receives half as many tree edges. Symmetrization therefore gives equal load on all directed links in every round. 
+
+6.3 Spine-leaf 
+
+We consider a two-tier spine-leaf network based on the Clos architecture [10], in which every leaf switch is connected to every spine switch. Let each leaf have q hosts, let there be q spines and 
+
+l leaves, and denote host i on leaf j by hi,j . We use a shortest-path base tree on the hosts and symmetrize it using the following subgroup of topology automorphisms. 11 Host and leaf indices are represented by tuples. The shifts add fixed offsets componentwise, with each component taken modulo its number of possible values. The subgroup consists of the simultaneous shifts 
+
+hi,j 7 → hi+a, j +b, Lj 7 → Lj+b, Si 7 → Si+a.
+
+The same host-index shift is applied on every leaf and to the spine indices. Splitting the vector into ql equal chunks and applying these transformations generates one routed tree rooted at each host. 
+
+# 7 Experimental Evaluation 
+
+We evaluate SP-allreduce on square and rectangular tori and k-SP-allreduce on square tori. Both are compared with state-of-the-art allreduce algorithms for tori. HyperX and spine-leaf experi-ments demonstrate the extension of the method to other topologies, using the torus algorithms as references. We examine how closely the shortest-path schedules approach the bandwidth upper bound, how reducing the tree depth changes the range of message sizes at which they outperform the compared algorithms, and how this range shifts with topology shape, link bandwidth, and hop latency. 
+
+7.1 Methodology 
+
+Simulator and setup. All runs use the Structural Simulation Toolkit (SST) [23], following the setup of [12]. The simulator models routers, links, and queues at packet level. Unless stated otherwise, links carry 400 Gb/s and a hop costs 400 ns (100 ns of link latency and 300 ns of router processing); the reduction itself costs nothing. Each run is one allreduce: every node holds an input vector and starts at the same time. The simulator is deterministic. The square-torus experiments cover 8 × 8, 16 × 16, 32 × 32, and 64 × 64. Figure 3 shows absolute goodput on 8 × 8 and 64 × 64; Figure 2(a) and Table 1 report results for all four sizes. The rectangular tori have 1024 nodes and shapes 64 × 16, 128 × 8, and 256 × 4. We also evaluate HyperX 32 × 32 and a spine-leaf fabric with 16 spines, 32 leaves, and 16 hosts per leaf. On 8 × 8, the bandwidth sweep covers 100, 200, 400, and 800 Gb/s, and 1 .6 and 3 .2 Tb/s; the hop-latency sweep covers 200, 400, 800, and 1600 ns. 
+
+Metric. Elements are 4 bytes, message sizes are powers of two, and the reported time T is the allreduce itself, measured at the last node to finish. For p nodes, each holding an input vector of 
+
+N bits, we define goodput as 
+
+G = N (p − 1) 
+
+pT . (11) Message sizes are stated in bytes, and goodput in Gb/s or Tb/s. 
+
+Goodput upper bound. Goodput is bounded above by half the node’s aggregate outgoing-link capacity. By Proposition 2.1, allreduce sends at least 2 N (p − 1) /p bits per node on average, approximately twice the input-vector size. If each node’s outgoing links have total capacity Bv,then 
+
+T ≥ 2N (p − 1) 
+
+pB v
+
+, G ≤ Gmax = Bv
+
+2 .
+
+12 On a d-dimensional torus, Bv = 2 dB and Gmax = dB ; on HyperX n × n, Bv = 2( n − 1) B and 
+
+Gmax = ( n − 1) B. A spine-leaf host has one link of capacity B, giving Gmax = B/ 2. These bounds give the horizontal upper-bound lines in the figures. 
+
+Chunks. SP-allreduce splits the vector into 2 dn d logical chunks on T dn . Chunks are scheduling units, not packets: transmissions with the same sender, receiver, route, and round are packed into one message. For the two tori shown in Figure 3, the smallest input that gives one four-byte element per chunk is 1 KiB on 8 × 8 and 64 KiB on 64 × 64. 
+
+Baselines. On tori, we compare with Bucket [22, 31], Swing [12], and Trivance [26]. Ring [29] is also included on rectangular tori. On HyperX and spine-leaf, Bucket, Swing, and Trivance serve as reference algorithms; the spine-leaf panel additionally includes recursive doubling [30] and Ring. These two experiments demonstrate the method’s applicability beyond tori and its bandwidth utilization. The Swing and Trivance curves use the better of their latency-oriented and bandwidth-oriented variants at each message size. The k-SP-allreduce curve reports the best measured goodput among the tested depths at each message size. Unless stated otherwise, gains are relative to the best compared algorithm at the same message size. 
+
+7.2 SP-allreduce on square tori 
+
+At each message size, we select the highest measured goodput among the tested depth bounds for k-SP-allreduce and compare it with the highest goodput among Swing, Bucket, and Trivance. Figure 2(a) reports this relative improvement as a percentage. For the tested depth set K, the percentage gain is gain( M ) = 100  
+
+> (
+
+max k∈K Gk(M )max {GSwing (M ), G Bucket (M ), G Trivance (M )} − 1
+
+> )
+
+, (12) where M is the message size in bytes. At the default network setting, k-SP-allreduce improves goodput over the best of Swing, Bucket, and Trivance by up to 1 .19 ×, attained on 16 × 16 at 1 MiB. The maximum gains on 8 × 8, 16 × 16, 32 ×32, and 64 ×64 are 8 .0%, 19 .0%, 17 .7%, and 18 .3%, attained at 1, 1, 4, and 64 MiB, respectively. On 16 × 16, the gain exceeds 5% from 128 KiB through 32 MiB; on 32 × 32, it exceeds 5% from 1 through 64 MiB. The tested depth bounds, including the BFS reference, are K = {1, . . . , 8} on 8 × 8, {2, . . . , 16 }
+
+on 16 × 16, {2, . . . , 32 } on 32 × 32, and {1, . . . , 64 } on 64 × 64. Table 1 reports the depth bound attaining the minimum measured completion time at each message size under the default network setting. Note that Bucket uses approximately twice as many rounds as SP-allreduce. Thus, an approxi-mately 2 × goodput improvement is expected in the small-message regime. At 64 KiB, the measured goodput improvements relative to Bucket are 1 .74 × on 8 × 8 and 2 .00 × on 64 × 64 (Figure 3). 
+
+7.3 Link-bandwidth sensitivity 
+
+Increasing link bandwidth reduces the time spent transmitting a fixed volume, so a larger message is needed before bandwidth savings outweigh communication latency. 13 Table 1: Depth bound k selected by the measured k-SP-allreduce envelope on square tori. Bound 
+
+n denotes the BFS reference on n × n.Input size 8 × 8 16 × 16 32 × 32 64 × 64 64 KiB 1 3 6 10 128 KiB 5 3 6 10 256 KiB 3 3 6 10 512 KiB 5 3 6 10 1 MiB 5 3 6 10 2 MiB 5 4 6 10 4 MiB 5 7 6 10 8 MiB 8 7 9 10 16 MiB 8 7 11 10 32 MiB 8 15 12 11 64 MiB 8 16 20 14 128 MiB 8 16 22 14 256 MiB 8 16 22 14 Figure 2(b) compares k-SP-allreduce with the best of Swing, Bucket, and Trivance at each message size. Positive goodput gains persist across the tested link rates, with the largest gain reaching 20 .6% at 3 .2 Tb/s and 1 MiB. 
+
+7.4 Hop-latency sensitivity 
+
+Increasing physical hop latency makes communication latency more costly, so larger messages are needed for bandwidth savings to compensate for it. Figure 2(c) compares k-SP-allreduce with the best of Swing, Bucket, and Trivance at each message size. At 1600 ns per hop, k-SP-allreduce reaches a gain of 20 .2% at 512 KiB. These mea-surements concern physical hop latency, which is included in the simulator but not separately modeled by Equation (6). 
+
+7.5 Rectangular tori 
+
+Figure 4 compares three 1024-node tori: 64 × 16, 128 × 8, and 256 × 4. The corresponding SP-allreduce round counts are 80, 136, and 260. All three have the same goodput bound of 800 Gb/s at the default link rate. All three experiments use the two-BFS-tree construction of Theorem 6.1, with Ψ = Θ = Ω = 1. At 256 MiB, SP-allreduce reaches approximately 778, 764, and 731 Gb/s, or 97 .2%, 95 .5%, and 91 .4% of the common upper bound. The shortest-path construction and equal per-round loads across the horizontal and vertical link classes preserve high bandwidth utilization even on the most elongated torus. The measured values approach the same 800 Gb/s reference, rather than a smaller bound imposed by the topology’s aspect ratio. The relative advantage grows with elongation. The maximum SP-allreduce improvement over the best compared algorithm is approximately 1 .22 × on 64 × 16 at 64 MiB, 1 .34 × on 128 × 8 at 128 MiB, and 1 .65 × on 256 × 4 at 64 MiB. At 256 MiB, Bucket reaches approximately 706, 620, and 502 Gb/s, while Swing reaches 598, 509, and 361 Gb/s. Thus increasing the aspect ratio lowers SP-allreduce goodput at this fixed message size, but lowers the competitors’ goodput more strongly. 14 (a) Square tori 
+
+8x8 16x16 32x32 64x64 
+
+4
+
+> KiB
+
+8
+
+> KiB
+
+16 
+
+> KiB
+
+32 
+
+> KiB
+
+64 
+
+> KiB
+
+128 
+
+> KiB
+
+256 
+
+> KiB
+
+512 
+
+> KiB
+
+1
+
+> MiB
+
+2
+
+> MiB
+
+4
+
+> MiB
+
+8
+
+> MiB
+
+16 
+
+> MiB
+
+32 
+
+> MiB
+
+64 
+
+> MiB
+
+128 
+
+> MiB
+
+256 
+
+> MiB
+
+-40% -20% 0% 10% 20% 
+
+> Goodput gain (%)
+
+(b) 8 x 8: link bandwidth 
+
+100 Gb/s 200 Gb/s 400 Gb/s 800 Gb/s 1.6 Tb/s 3.2 Tb/s 
+
+4
+
+> KiB
+
+8
+
+> KiB
+
+16 
+
+> KiB
+
+32 
+
+> KiB
+
+64 
+
+> KiB
+
+128 
+
+> KiB
+
+256 
+
+> KiB
+
+512 
+
+> KiB
+
+1
+
+> MiB
+
+2
+
+> MiB
+
+4
+
+> MiB
+
+8
+
+> MiB
+
+16 
+
+> MiB
+
+32 
+
+> MiB
+
+64 
+
+> MiB
+
+128 
+
+> MiB
+
+256 
+
+> MiB
+
+-40% -20% 0% 10% 20% 
+
+> Goodput gain (%)
+
+(c) 8 x 8: hop latency 
+
+200 ns 400 ns 800 ns 1600 ns 
+
+4
+
+> KiB
+
+8
+
+> KiB
+
+16 
+
+> KiB
+
+32 
+
+> KiB
+
+64 
+
+> KiB
+
+128 
+
+> KiB
+
+256 
+
+> KiB
+
+512 
+
+> KiB
+
+1
+
+> MiB
+
+2
+
+> MiB
+
+4
+
+> MiB
+
+8
+
+> MiB
+
+16 
+
+> MiB
+
+32 
+
+> MiB
+
+64 
+
+> MiB
+
+128 
+
+> MiB
+
+256 
+
+> MiB
+
+-40% -20% 0% 10% 20% 
+
+> Goodput gain (%)
+
+Message size Figure 2: k-SP-allreduce goodput gain over the best of Swing, Bucket, and Trivance: (a) square tori, (b) link-bandwidth sweep on 8 × 8, and (c) hop-latency sweep on 8 × 8. 15 Upper bound Bucket Swing Trivance k-SP-allreduce SP-allreduce 
+
+(a) Torus 8 x 8 
+
+4
+
+> KiB
+
+8
+
+> KiB
+
+16 
+
+> KiB
+
+32 
+
+> KiB
+
+64 
+
+> KiB
+
+128 
+
+> KiB
+
+256 
+
+> KiB
+
+512 
+
+> KiB
+
+1
+
+> MiB
+
+2
+
+> MiB
+
+4
+
+> MiB
+
+8
+
+> MiB
+
+16 
+
+> MiB
+
+32 
+
+> MiB
+
+64 
+
+> MiB
+
+128 
+
+> MiB
+
+256 
+
+> MiB
+
+0200 400 600 800 
+
+> Goodput (Gb/s)
+
+Small messages 
+
+> 0100 200
+
+4 16 64 256 
+
+> Message size (KiB)
+
+(b) Torus 64 x 64 
+
+4
+
+> KiB
+
+8
+
+> KiB
+
+16 
+
+> KiB
+
+32 
+
+> KiB
+
+64 
+
+> KiB
+
+128 
+
+> KiB
+
+256 
+
+> KiB
+
+512 
+
+> KiB
+
+1
+
+> MiB
+
+2
+
+> MiB
+
+4
+
+> MiB
+
+8
+
+> MiB
+
+16 
+
+> MiB
+
+32 
+
+> MiB
+
+64 
+
+> MiB
+
+128 
+
+> MiB
+
+256 
+
+> MiB
+
+0200 400 600 800 
+
+> Goodput (Gb/s)
+
+Small messages 
+
+> 020 40
+
+4 16 64 256 
+
+> Message size (KiB)
+
+Message size Figure 3: Goodput on (a) 8 × 8 and (b) 64 × 64 tori at the default link bandwidth and hop latency. Insets show the small-message range on an expanded vertical scale. 16 Upper bound Bucket Swing Trivance Ring SP-allreduce 
+
+(a) Torus 64 x 16 
+
+4
+
+> KiB
+
+8
+
+> KiB
+
+16 
+
+> KiB
+
+32 
+
+> KiB
+
+64 
+
+> KiB
+
+128 
+
+> KiB
+
+256 
+
+> KiB
+
+512 
+
+> KiB
+
+1
+
+> MiB
+
+2
+
+> MiB
+
+4
+
+> MiB
+
+8
+
+> MiB
+
+16 
+
+> MiB
+
+32 
+
+> MiB
+
+64 
+
+> MiB
+
+128 
+
+> MiB
+
+256 
+
+> MiB
+
+0200 400 600 800 
+
+> Goodput (Gb/s)
+
+Small messages 
+
+> 025 50
+
+4 16 64 256 
+
+> Message size (KiB)
+
+(b) Torus 128 x 8 
+
+4
+
+> KiB
+
+8
+
+> KiB
+
+16 
+
+> KiB
+
+32 
+
+> KiB
+
+64 
+
+> KiB
+
+128 
+
+> KiB
+
+256 
+
+> KiB
+
+512 
+
+> KiB
+
+1
+
+> MiB
+
+2
+
+> MiB
+
+4
+
+> MiB
+
+8
+
+> MiB
+
+16 
+
+> MiB
+
+32 
+
+> MiB
+
+64 
+
+> MiB
+
+128 
+
+> MiB
+
+256 
+
+> MiB
+
+0200 400 600 800 
+
+> Goodput (Gb/s)
+
+Small messages 
+
+> 020 40
+
+4 16 64 256 
+
+> Message size (KiB)
+
+(c) Torus 256 x 4 
+
+4
+
+> KiB
+
+8
+
+> KiB
+
+16 
+
+> KiB
+
+32 
+
+> KiB
+
+64 
+
+> KiB
+
+128 
+
+> KiB
+
+256 
+
+> KiB
+
+512 
+
+> KiB
+
+1
+
+> MiB
+
+2
+
+> MiB
+
+4
+
+> MiB
+
+8
+
+> MiB
+
+16 
+
+> MiB
+
+32 
+
+> MiB
+
+64 
+
+> MiB
+
+128 
+
+> MiB
+
+256 
+
+> MiB
+
+0200 400 600 800 
+
+> Goodput (Gb/s)
+
+Small messages 
+
+> 010 20
+
+4 16 64 256 
+
+> Message size (KiB)
+
+Message size Figure 4: Goodput on rectangular tori with 1024 nodes at the default network setting. SP-allreduce uses the two-tree construction on all three topologies. Insets show the small-message range on an expanded vertical scale. 17 The node count, degree, and bandwidth upper bound remain unchanged, so topology shape is a substantial factor in the comparison. 
+
+7.6 HyperX and spine-leaf 
+
+We follow Swing [12] by conducting experiments on HyperX. We also run Trivance on HyperX using the same approach as for Swing. Figure 5 shows the results on HyperX 32 × 32 and on a spine-leaf fabric with 16 spines and 32 leaves. The evaluated baselines are Swing, Trivance, and Bucket, with Ring and recursive doubling also included on spine-leaf. On HyperX, the 62 links per node give a goodput upper bound of 12 .4 Tb/s at the default link bandwidth. SP-allreduce reaches approximately 11 .76 Tb/s at 256 MiB, or 94 .9% of this bound. Swing, the fastest compared implementation at this size, reaches 0 .794 Tb/s, or 6 .4% of the same bound. The measured goodput ratio between SP-allreduce and Swing is 14 .82 ×.A limitation of the evaluated Swing, Trivance, and Bucket implementations is that they are poorly suited to exploiting HyperX’s connectivity: they use only 4 of the 62 links per node in each round, whereas SP-allreduce uses all 62 links. This difference explains the large goodput gap. In our experiments, Swing reaches approximately 0 .794 Tb/s, close to its four-link goodput limit of 4B/ 2 = 0 .800 Tb/s at the default link bandwidth B.On spine-leaf, each host has one 400 Gb/s link, giving a 200 Gb/s goodput upper bound. SP-allreduce reaches approximately 199 .7 Gb/s at 256 MiB, or 99 .8% of the bound. At large message sizes, Bucket, Swing, and recursive doubling also approach this limit. SP-allreduce’s maximum improvement over the best compared baseline is 1 .72 × at 32 KiB, with approximately 28 .4 Gb/s versus 16 .5 Gb/s for Trivance. 
+
+# 8 Conclusion 
+
+On equal-sided tori, symmetrizing a BFS tree under a group acting transitively on directed phys-ical edges yields minimum abstract communication volume, one-hop transmissions, and perfect per-round load balance. The schedule takes 2 H = 2 d⌊n/ 2⌋ rounds. The minimum-transmission argument gives a sharp lower bound of 2 H for odd side lengths and 2 H − 1 for even side lengths. The described construction is optimal in the first case and uses exactly one additional round in the second. Experimentally, the resulting algorithms improve over the best compared state-of-the-art al-gorithms for tori by up to 1 .19 × on square tori and 1 .65 × on rectangular tori across the tested configurations. On HyperX and spine-leaf, the approach nearly attains the bandwidth upper bound and improves over the best evaluated baselines by up to 14 .82 × and 1 .72 ×, respectively. The ana-lytical guarantees use the homogeneous multiport model of Section 2; the simulations also account for physical hop latency. 18 (a) HyperX 32 x 32 
+
+Upper bound Bucket Swing Trivance SP-allreduce 
+
+4
+
+> KiB
+
+8
+
+> KiB
+
+16 
+
+> KiB
+
+32 
+
+> KiB
+
+64 
+
+> KiB
+
+128 
+
+> KiB
+
+256 
+
+> KiB
+
+512 
+
+> KiB
+
+1
+
+> MiB
+
+2
+
+> MiB
+
+4
+
+> MiB
+
+8
+
+> MiB
+
+16 
+
+> MiB
+
+32 
+
+> MiB
+
+64 
+
+> MiB
+
+128 
+
+> MiB
+
+256 
+
+> MiB
+
+04812 
+
+> Goodput (Tb/s)
+
+Small messages    
+
+> 00.2 0.4
+> 416 64 256
+> Message size (KiB)
+
+(b) Spine-leaf: 16 spines, 32 leaves 
+
+Upper bound Bucket Swing Trivance Rec. doubling Ring SP-allreduce 
+
+4
+
+> KiB
+
+8
+
+> KiB
+
+16 
+
+> KiB
+
+32 
+
+> KiB
+
+64 
+
+> KiB
+
+128 
+
+> KiB
+
+256 
+
+> KiB
+
+512 
+
+> KiB
+
+1
+
+> MiB
+
+2
+
+> MiB
+
+4
+
+> MiB
+
+8
+
+> MiB
+
+16 
+
+> MiB
+
+32 
+
+> MiB
+
+64 
+
+> MiB
+
+128 
+
+> MiB
+
+256 
+
+> MiB
+
+050 100 150 200 
+
+> Goodput (Gb/s)
+
+Small messages    
+
+> 062.5 125
+> 416 64 256
+> Message size (KiB)
+
+Message size Figure 5: SP-allreduce beyond tori: goodput on (a) HyperX 32 × 32 and (b) spine-leaf with 16 spines, 32 leaves, and 16 hosts per leaf. Comparisons use Swing, Trivance, and Bucket, with Ring and recursive doubling also shown on spine-leaf. HyperX values use Tb/s; spine-leaf values use Gb/s. Insets expand the small-message range. 19 References 
+
+[1] Narasimha R Adiga, George Almási, George S Almasi, Yariv Aridor, Rajkishore Barik, D Beece, Ralph Bellofatto, Gyan Bhanot, Randy Bickford, M Blumrich, et al. 2002. An overview of the BlueGene/L supercomputer. In SC’02: Proceedings of the 2002 ACM/IEEE Conference on Supercomputing . IEEE, 60–60. [2] Jung Ho Ahn, Nathan Binkert, Al Davis, Moray McLaren, and Robert S Schreiber. 2009. HyperX: topology, routing, and packaging of efficient large-scale networks. In Proceedings of the Conference on High Performance Computing Networking, Storage and Analysis . 1–11. [3] Yuichiro Ajima, Takahiro Kawashima, Takayuki Okamoto, Naoyuki Shida, Kouichi Hirai, Toshiyuki Shimizu, Shinya Hiramoto, Yoshiro Ikeda, Takahide Yoshikawa, Kenji Uchida, et al. 2018. The tofu interconnect d. In 2018 IEEE International Conference on Cluster Computing (CLUSTER) . IEEE, 646–654. [4] Amazon. 2025. AWS Trn2 Architecture. https://awsdocs-neuron.readthedocs-hosted. com/en/latest/about-neuron/arch/neuron-hardware/trn2-arch.html . Accessed: 2025-12-02. [5] Michael Barnett, R Littlefield, David G. Payne, and R Vandegeijn. 1995. Global combine algorithms for 2-D meshes with wormhole routing. J. Parallel and Distrib. Comput. 24, 2 (1995), 191–201. [6] Tal Ben-Nun and Torsten Hoefler. 2019. Demystifying parallel and distributed deep learning: An in-depth concurrency analysis. ACM Computing Surveys (CSUR) 52, 4 (2019), 1–43. [7] Zixian Cai, Zhengyang Liu, Saeed Maleki, Madanlal Musuvathi, Todd Mytkowicz, Jacob Nel-son, and Olli Saarikivi. 2021. Synthesizing optimal collective algorithms. In Proceedings of the 26th ACM SIGPLAN Symposium on Principles and Practice of Parallel Programming . 62–75. [8] Jiamin Cao, Shangfeng Shi, Jiaqi Gao, Weisen Liu, Yifan Yang, Yichi Xu, Zhilong Zheng, Yu Guan, Kun Qian, Ying Liu, et al. 2025. SyCCL: Exploiting symmetry for efficient collective communication scheduling. In Proceedings of the ACM SIGCOMM 2025 Conference . 645–662. [9] Sudheer Chunduri, Scott Parker, Pavan Balaji, Kevin Harms, and Kalyan Kumaran. 2018. Characterization of MPI usage on a production supercomputer. In SC18: International Con-ference for High Performance Computing, Networking, Storage and Analysis . IEEE, 386–400. [10] Charles Clos. 1953. A Study of Non-Blocking Switching Networks. Bell System Technical Journal 32, 2 (March 1953), 406–424. doi: 10.1002/j.1538-7305.1953.tb01433.x 
+
+[11] Geir Dahl. 1998. The 2-hop spanning tree problem. Operations Research Letters 23, 1–2 (1998), 21–26. doi: 10.1016/S0167-6377(98)00029-7 
+
+[12] Daniele De Sensi, Tommaso Bonato, David Saam, and Torsten Hoefler. 2024. Swing: Short-cutting rings for higher bandwidth allreduce. In 21st USENIX Symposium on Networked Sys-tems Design and Implementation (NSDI 24) . 1445–1462. [13] Jens Domke, Satoshi Matsuoka, Ivan R Ivanov, Yuki Tsushima, Tomoya Yuki, Akihiro No-mura, Shin’ichi Miura, Nie McDonald, Dennis L Floyd, and Nicolas Dubé. 2019. HyperX topology: First at-scale implementation and comparison to the fat-tree. In Proceedings of the International Conference for High Performance Computing, Networking, Storage and Analysis .1–23. 20 [14] Fujitsu. 2019. FUJITSU Supercomputer PRIMEHPC FX1000. https://www. fujitsu.com/global/about/corporate/history/products/computer/supercomputer/ primehpc-fx1000.html . Accessed: 2025-12-02. [15] Google Cloud. 2025. Cloud TPU Documentation. https://docs.cloud.google.com/tpu/ docs/v6e . (2025). Accessed: 2025-12-02. [16] Google Cloud. 2025. Ironwood: The first Google TPU for the age of inference. https://blog. google/products/google-cloud/ironwood-tpu-age-of-inference/ . (2025). Accessed: 2025-12-02. [17] Luis Gouveia. 1996. Multicommodity flow models for spanning trees with hop constraints. 
+
+European Journal of Operational Research 95, 1 (1996), 178–190. doi: 10.1016/0377-2217(95) 00090-9 
+
+[18] Graphcore. 2025. Graphcore IPU-POD System. https://docs.graphcore.ai/projects/ bow-pod256-datasheet/en/latest/product-description.html . Accessed: 2025-12-02. [19] Jiayi Huang, Pritam Majumder, Sungkeun Kim, Abdullah Muzahid, Ki Hwan Yum, and Eun Jung Kim. 2021. Communication algorithm-architecture co-design for distributed deep learning. In 2021 ACM/IEEE 48th Annual International Symposium on Computer Architecture (ISCA) . IEEE, 181–194. [20] Information Technology Center, Nagoya University. 2021. Supercomputer “Flow” Type I Subsystem (FX1000). https://www.hpci-office.jp/en/using_hpci/hardware_software_ resource/2021/itc_nagoya-u_2021-3 . Accessed: 2025-12-02. [21] Information Technology Center, The University of Tokyo. 2021. Introduction to the Wisteria/BDEC-01 Supercomputer System. https://www.cc.u-tokyo.ac.jp/en/ supercomputer/wisteria/system.php . Accessed: 2025-12-02. [22] Nikhil Jain and Yogish Sabharwal. 2010. Optimal bucket algorithms for large MPI collectives on torus interconnects. In Proceedings of the 24th ACM International Conference on Super-computing . 27–36. [23] Curtis L Janssen, Helgi Adalsteinsson, Scott Cranford, Joseph P Kenny, Ali Pinar, David A Evensky, and Jackson Mayo. 2010. A simulator for large-scale parallel computer architectures. 
+
+International Journal of Distributed Systems and Technologies (IJDST) 1, 2 (2010), 57–73. [24] Japan Aerospace eXploration Agency. 2020. TOKI-SORA Supercomputer System. https: //top500.org/system/179895/ . Accessed: 2025-12-02. [25] Norm Jouppi, George Kurian, Sheng Li, Peter Ma, Rahul Nagarajan, Lifeng Nai, Nishant Patil, Suvinay Subramanian, Andy Swing, Brian Towles, et al. 2023. TPU v4: An optically reconfigurable supercomputer for machine learning with hardware support for embeddings. In 
+
+Proceedings of the 50th Annual International Symposium on Computer Architecture . 1–14. [26] Anton Juerss, Vamsi Addanki, and Stefan Schmid. 2026. Trivance: Latency-Optimal AllReduce by Shortcutting Multiport Networks. In Proceedings of the ACM SIGCOMM 2026 Conference .doi: 10.1145/3789240.3829181 
+
+21 [27] Benjamin Klenk, Nan Jiang, Greg Thorson, and Larry Dennison. 2020. An in-network archi-tecture for accelerating shared-memory multiprocessor collectives. In 2020 ACM/IEEE 47th Annual International Symposium on Computer Architecture (ISCA) . IEEE, 996–1009. [28] Shen Li, Yanli Zhao, Rohan Varma, Omkar Salpekar, Pieter Noordhuis, Teng Li, Adam Paszke, Jeff Smith, Brian Vaughan, Pritam Damania, et al. 2020. PyTorch distributed: Experiences on accelerating data parallel training. arXiv preprint arXiv:2006.15704 (2020). [29] Pitch Patarasuk and Xin Yuan. 2009. Bandwidth optimal all-reduce algorithms for clusters of workstations. J. Parallel and Distrib. Comput. 69, 2 (2009), 117–124. [30] Rolf Rabenseifner. 2004. Optimization of collective reduction operations. In International Conference on Computational Science . Springer, 1–9. [31] Paul Sack and William Gropp. 2015. Collective algorithms for multiported torus networks. 
+
+ACM Transactions on Parallel Computing (TOPC) 1, 2 (2015), 1–33. [32] Amedeo Sapio, Marco Canini, Chen-Yu Ho, Jacob Nelson, Panos Kalnis, Changhoon Kim, Arvind Krishnamurthy, Masoud Moshref, Dan Ports, and Peter Richtárik. 2021. Scaling dis-tributed machine learning with {In-Network } aggregation. In 18th USENIX Symposium on Networked Systems Design and Implementation (NSDI 21) . 785–808. [33] Aashaka Shah, Vijay Chidambaram, Meghan Cowan, Saeed Maleki, Madan Musuvathi, Todd Mytkowicz, Jacob Nelson, Olli Saarikivi, and Rachee Singh. 2023. {TACCL }: Guiding col-lective algorithm synthesis using communication sketches. In 20th USENIX Symposium on Networked Systems Design and Implementation (NSDI 23) . 593–612. [34] Amin Vahdat and Mark Lohmeyer. 2024. Enabling next-generation AI workloads: Announcing TPU v5p and AI Hypercomputer. Google Cloud, December 6 (2024). [35] Guanhua Wang, Shivaram Venkataraman, Amar Phanishayee, Nikhil Devanur, Jorgen Thelin, and Ion Stoica. 2020. Blink: Fast and generic collectives for distributed ML. Proceedings of Machine Learning and Systems 2 (2020), 172–186. [36] Weiyang Wang, Moein Khazraee, Zhizhen Zhong, Manya Ghobadi, Zhihao Jia, Dheevatsa Mudigere, Ying Zhang, and Anthony Kewitsch. 2023. {TopoOpt }: Co-optimizing network topology and parallelization strategy for distributed training jobs. In 20th USENIX Symposium on Networked Systems Design and Implementation (NSDI 23) . 739–767. [37] William Won, Midhilesh Elavazhagan, Sudarshan Srinivasan, Swati Gupta, and Tushar Kr-ishna. 2024. Tacos: Topology-aware collective algorithm synthesizer for distributed machine learning. In 2024 57th IEEE/ACM International Symposium on Microarchitecture (MICRO) .IEEE, 856–870. [38] Liangyu Zhao, Saeed Maleki, Yuanhong Wang, Zezhou Wang, Ziyue Yang, Hossein Pourreza, and Arvind Krishnamurthy. 2024. ForestColl: Throughput-Optimal Collective Communica-tions on Heterogeneous Network Fabrics. arXiv preprint arXiv:2402.06787 (2024). [39] Liangyu Zhao, Siddharth Pal, Tapan Chugh, Weiyang Wang, Jason Fantl, Prithwish Basu, Joud Khoury, and Arvind Krishnamurthy. 2025. Efficient {Direct-Connect } Topologies for Collective Communications. In 22nd USENIX Symposium on Networked Systems Design and Implementation (NSDI 25) . 705–737. 22 A Minimum Transmissions and the Structure of an Allreduce Schedule 
+
+A.1 A one-chunk information-flow model 
+
+Fix one elementary chunk, corresponding to a single position i of the input vector. Let G be the communication graph and let V = V (G), |V | = p. For a vertex v, let 
+
+Kt(v) ⊆ V
+
+denote the set of original inputs at position i whose aggregate is known at v after round t. Initially 
+
+K0(v) = {v}. In round t + 1, a transmission u → v sends the aggregate over Kt(u), where Kt(v)denotes the state at vertex v at the beginning of the round. At the end of the round, v forms 
+
+Kt+1 (v) by taking the union of Kt(v) and all sets received in that round. The goal of allreduce for this chunk is to reach 
+
+KT (v) = V for every v ∈ V. 
+
+For a state K = {K(v) : v ∈ V }, define its covering number by 
+
+c(K) := min {r : there exist v1, . . . , v r such that K(v1) ∪ · · · ∪ K(vr) = V }.
+
+Thus initially c(K0) = p, while if some vertex knows the full aggregate then c = 1. We shall use the following elementary observation. If one individual transmission is added to a state, then the covering number can decrease by at most one. Indeed, if after the transmission a cover of size c′ uses the newly formed set A ∪ B, then before the transmission one could replace it by the two sets A and B, obtaining a cover of size at most c′ + 1. 
+
+A.2 Transmission lower bound 
+
+Proposition A.1 (Transmission lower bound) . In the above model, any allreduce schedule for one elementary chunk uses at least 2p − 2 transmissions. Proof. Let τ be the first round after which at least one vertex knows the full aggregate V . Put 
+
+q := c(Kτ −1)and let 
+
+r := |{ v ∈ V : Kτ (v) = V }| 
+
+be the number of vertices that first know the full aggregate after round τ . Since no vertex is full before round τ , we have q ≥ 2. Before round τ , the covering number has decreased from p to q. Since each individual trans-mission decreases it by at most one, there must have been at least p − q transmissions before round 
+
+τ .Now consider round τ . Fix a vertex v with Kτ (v) = V . If v receives sv messages in this round, then the sv received sets together with the old set Kτ −1(v) cover V . Therefore sv + 1 ≥ q, and hence sv ≥ q − 1. Summing over the r vertices that become full in round τ , the round contains at least r(q − 1) transmissions. After round τ , there are p − r vertices which do not yet know the full aggregate. Each of them must receive at least one later transmission in order ever to become full. Hence there are at least 
+
+p − r transmissions after round τ .23 Altogether, the total number of transmissions is at least (p − q) + r(q − 1) + ( p − r) = 2 p − q + r(q − 2) = 2 p − 2 + ( r − 1)( q − 2) .
+
+Since r ≥ 1 and q ≥ 2, this is at least 2 p − 2. 
+
+A.3 Structure in the equality case 
+
+Lemma A.2 (Structure in the equality case) . Suppose an allreduce schedule for one elementary chunk uses exactly 2p−2 transmissions. Let τ , q, and r be as in the proof above. Then, immediately before round τ , the inclusion-maximal sets among 
+
+{Kτ −1(v) : v ∈ V }
+
+are pairwise disjoint, form a partition of V , and each maximal set has a unique holder. Moreover, if r > 1, then q = 2 . In this case exactly two vertices can become full in round τ ,and this can only happen by a bidirectional exchange of two complementary maximal aggregates. If transmissions are restricted to physical neighbors, the two holders are adjacent in the topology. Proof. Since the schedule uses exactly 2 p − 2 transmissions, all inequalities in the proof of the proposition must be tight. In particular, before round τ there are exactly p − q transmissions, and these transmissions reduce the covering number from p to q. Hence every one of these transmissions reduces the covering number by exactly one. We now prove by induction over the individual transmissions before round τ that the maximal aggregates are pairwise disjoint and have unique holders. To avoid any ambiguity about simulta-neous transmissions, fix an arbitrary ordering of the transmissions inside each round, but keep the payload of every transmission equal to the aggregate known by the sender at the beginning of that round. Processing the transmissions one by one with these fixed payloads gives the same state at the end of the round, since all updates are unions. Initially the maximal sets are the singletons {v}, and each has a unique holder. Suppose that before some individual transmission the maximal sets are 
+
+P1, . . . , P h,
+
+pairwise disjoint, covering V , and each Pi has a unique holder. Then c = h. Consider a transmission whose payload S is contained in Pi, and whose recipient currently holds a set contained in Pj .We claim that this transmission can decrease c only if 
+
+S = Pi, K(v) = Pj , i̸ = j, 
+
+where v is the recipient. Indeed, if i = j, the transmission only combines information already contained in the same maximal component and cannot reduce the number of components needed to cover V . If S ⊊ Pi, then the part Pi \ S still has to be covered by the unique maximal aggregate 
+
+Pi; the new set does not replace Pi. Similarly, if the recipient holds a proper subset of Pj , then the old maximal aggregate Pj is still needed. Thus the covering number cannot drop unless the whole component Pi is sent to the unique holder of a different whole component Pj .In that case the transmission replaces the two maximal components Pi and Pj by their union 
+
+Pi ∪ Pj . The new maximal components are 
+
+Pi ∪ Pj , Pk (k̸ = i, j ),
+
+24 which are again pairwise disjoint and cover V . The holder of Pi ∪Pj is unique, namely the recipient. The old holder of Pi may still possess Pi, but Pi is now a proper subset of the maximal set Pi ∪ Pj ,so it is no longer a maximal aggregate. Thus the induction continues. Since every pre-τ transmission must decrease the covering number, the induction applies to all transmissions before round τ . Hence, just before round τ , the maximal aggregates are pairwise disjoint, form a partition of V , and have unique holders. It remains to analyze the first-full round. Exact optimality also gives 2p − 2 = 2 p − 2 + ( r − 1)( q − 2) ,
+
+and therefore (r − 1)( q − 2) = 0 .
+
+Thus either r = 1, or q = 2. Assume r > 1. Then q = 2, so immediately before round τ there are exactly two maximal aggregates, say 
+
+A ⊔ B = V, 
+
+with unique holders a and b. Each vertex that becomes full in round τ must receive at least 
+
+q − 1 = 1 message, and by tightness it receives exactly one relevant message. For one received aggregate together with its old aggregate to cover V = A ⊔ B, the vertex must already hold one of A, B and receive the other. Since A and B have unique holders, only a and b can become full in this round. Thus r ≤ 2. If r = 2, then a receives B from b, and b receives A from a, so the two holders exchange their complementary aggregates; under one-hop routing, this exchange uses a physical edge. This proves the final claim. 
+
+A.4 The number of rounds with one-hop transmissions 
+
+For the remainder of the proof, G is the physical topology and Θ = 1: every transmission follows a path of length one, so only adjacent network nodes communicate in a round. 
+
+Definition A.3. For a set S ⊆ V (G), write ecc( S) := max   
+
+> x∈V(G)
+
+dist G(x, S ).
+
+In particular, ecc( v) := ecc( {v}), ecc( uv ) := ecc( {u, v })for an edge uv ∈ E(G). 
+
+Lemma A.4 (Dissemination after the first complete aggregate) . Consider the one-chunk model with one-hop transmissions. Suppose an allreduce schedule uses exactly 2p − 2 transmissions. Let 
+
+τ be the first round after which some vertex knows the full aggregate V , and let 
+
+Fτ := {v ∈ V : Kτ (v) = V }.
+
+Then every transmission after round τ is sent by a vertex that is already full at the beginning of that round, and its recipient becomes full at the end of that round. Consequently, every vertex y that is not full at time τ receives the full aggregate along a causal path starting from Fτ . In particular, if the schedule finishes after T rounds, then 
+
+dist G(y, F τ ) ≤ T − τ for every y ∈ V. 
+
+25 Proof. Let 
+
+q := c(Kτ −1), r := |Fτ |.
+
+From the transmission lower-bound proof, the number of transmissions is at least (p − q) + r(q − 1) + ( p − r) = 2 p − 2 + ( r − 1)( q − 2) .
+
+Since the schedule uses exactly 2 p − 2 transmissions, all inequalities in that proof are tight. In particular, after round τ there are exactly p − r transmissions. Every vertex outside Fτ must receive at least one transmission after round τ , since otherwise it can never learn the full aggregate. There are exactly p − r such vertices and exactly p − r post-τ
+
+transmissions. Hence each vertex outside Fτ receives exactly one post-τ transmission, and no vertex that is already full can receive a post-τ transmission. Moreover, the unique post-τ transmission received by a vertex outside Fτ must make it full immediately. It remains to show that the sender of such a transmission must already be full. Let 
+
+P1, . . . , P q
+
+be the inclusion-maximal aggregates immediately before round τ . By the equality-case structure, these sets are pairwise disjoint, form a partition of V , and each Pi has a unique holder. Consider a post-τ transmission u → v whose recipient v is not full at the beginning of the round. Since v / ∈ Fτ and has not yet received its unique post-τ transmission, its current aggregate is still the same as at time τ , and hence is contained in one of the Pi’s. The same is true for u if u is not full at the beginning of the round. We claim that two non-full vertices cannot together cover V . Indeed, if r = 1, then one of the unique holders of the Pi’s became full in round τ . If q = 2, the complementary maximal aggregate is still held by its unique holder, but the other maximal aggregate is held only by the full vertex; hence no two non-full vertices hold complementary maximal aggregates. If q ≥ 3, the union of two sets each contained in single parts of the partition P1, . . . , P q cannot cover V . If r > 1, then exact optimality gives q = 2, and the two unique holders of the two maximal aggregates both become full in round τ . Thus any non-full vertex holds a proper subset of one of the two parts, and again two non-full vertices cannot cover V .Therefore, if the sender u were not full, then the union of the payload sent by u and the old aggregate at v would still be a proper subset of V . This contradicts the fact that v’s unique post-τ
+
+transmission must make v full. Hence the sender is full at the beginning of the round. Thus fullness propagates after round τ only by transmissions from already full vertices to not-yet-full vertices. Since information can traverse at most one edge per round, every vertex made full after τ lies on a causal path starting from Fτ , of length at most the number of remaining rounds. Hence dist G(y, F τ ) ≤ T − τ
+
+for every y ∈ V .
+
+Corollary A.5 (Vertex and edge eccentricities on equal-sided tori) . On T dn , every node has eccen-tricity H = d⌊n/ 2⌋, and every adjacent pair has joint eccentricity H − 1 for even n and H for odd 
+
+n.Proof. Distances in a Cartesian product add, and every node of Cn has eccentricity ⌊n/ 2⌋. Thus every node of T dn has eccentricity H. Consider adjacent nodes differing in coordinate j. In each of the other d − 1 coordinates, the largest distance contribution is ⌊n/ 2⌋. In coordinate j, the maximum distance to the nearer endpoint of an edge of Cn is n/ 2 − 1 for even n and ( n − 1) /2 for odd n. Adding these contributions gives H − 1 and H, respectively. 26 A.5 Sharpness on even equal-sided tori 
+
+Proposition A.6 (Attaining the even-side bound) . For even n ≥ 4, there is a fully bandwidth-optimal allreduce schedule on T dn taking 2H − 1 rounds, where H = dn/ 2.Proof. Let n be even and H = dn/ 2. Choose adjacent nodes a, b of T dn . Their joint eccentricity is H − 1, as established in Corollary A.5. A BFS forest rooted at {a, b } assigns every other node a parent whose distance to this root set is one smaller. It has two components, p − 2 edges, and depth H − 1. Reduce each component to its root in H − 1 rounds, using p − 2 transmissions. The roots then exchange their complementary aggregates in one round, using two transmissions. Both now know the complete result. Disseminating it along the forest takes another H − 1 rounds and p − 2transmissions. The total is 2 H − 1 rounds and 2 p − 2 transmissions, all between physical neighbors. Apply the torus subgroup from Section 3 to this entire schedule, including the forest, the central exchange, and all round assignments, and assign equal chunks to its copies. The proof of Lemma 3.1 depends only on the transformed round loads, so it also applies to this schedule. It gives Ω = 1, while the transmission count and one-hop routes give Ψ = Θ = 1. Thus the even-side lower bound is attained within the fully bandwidth-optimal class. This construction establishes sharpness of the bound; the SP-allreduce algorithm evaluated in the experiments remains the 2 H-round construction of Section 3. 
+
+# B Two-Tree Balance on Rectangular Tori 
+
+Proof of Theorem 6.1. Fix the root (0 , 0) in Tm,n , with m, n ≥ 3, and let Sℓ be the set of nodes at distance ℓ from the root. Write Lℓ = |Sℓ|. A BFS tree chooses, for each node in Sℓ, a parent in 
+
+Sℓ−1.Let Aℓ count the nodes of Sℓ with y = 0, and Bℓ those with x = 0. These nodes must choose a horizontal and a vertical parent edge, respectively. Each of the remaining Cℓ = Lℓ − Aℓ − Bℓ nodes can choose either direction, by decreasing its distance in that coordinate. We first show that 
+
+Aℓ, B ℓ ≤ ⌊ Lℓ/2⌋. (13) For ℓ = 1, both counts are two and L1 = 4. For ℓ ≥ 2, each axis contributes at most two nodes. If Aℓ > 0, then ℓ ≤ ⌊ m/ 2⌋, and there are at least four mixed-coordinate nodes with coordinate distances ℓ − 1 and 1. Indeed, the first distance is strictly below m/ 2 and has two choices, and distance one on the other cycle also has two choices. Therefore Lℓ ≥ 5 whenever Aℓ > 0, which implies the first inequality. The same argument with the coordinates exchanged proves the second. If the relevant axis count is zero, its inequality is immediate. In T1, choose exactly ⌊Lℓ/2⌋ horizontal parent edges from layer Sℓ; in T2, choose exactly ⌈Lℓ/2⌉.Both choices are feasible by Equation (13): the number of horizontal edges can be any integer from 
+
+Aℓ to Lℓ − Bℓ. The remaining edges are vertical. Choices can be made independently at each layer because every parent edge decreases distance to the root. They therefore define two spanning BFS trees, both of depth H = ⌊m/ 2⌋ + ⌊n/ 2⌋.Together, the two trees have exactly Lℓ horizontal and Lℓ vertical parent edges from layer Sℓ.Symmetrize both trees under the subgroup Γ of translations and global reflection from Section 6.1. There are 2 mn transformations and two directed-edge orbits, each with 2 mn edges. Divide the input into 4 mn equal chunks, one per tree and transformation. In reduction round s = H − ℓ + 1, 27 Lemma 3.1 makes the load constant within each orbit. The total traffic in each orbit is 
+
+N
+
+4mn |Γ|Lℓ = N L ℓ
+
+2 ,
+
+so every directed link in either orbit carries N L ℓ/(4 mn ) bits. The reversed allgather rounds have the same balance. Hence Ω = 1. Each tree uses exactly p − 1 edges per phase, all between adjacent nodes, giving Ψ = Θ = 1. The schedule has 2 H rounds, completing the proof. 
+
+# C Deficiencies of the Torus Algorithms 
+
+All volumes are in bits; p = nd and the torus has 2 dp directed links. We assume equal-sized chunks and shortest coordinate routes. Swing is analyzed for n = 2 m, m ≥ 2, and Trivance for n = 3 t.These radix assumptions are specific to each algorithm and do not extend the formulas to arbitrary side lengths. SwingB and SwingL split the input into 2 d equal parts and run one subcollective on each, with pairs using opposite directions and rotated across coordinates. Trivance splits the input into d
+
+equal-sized subvectors and runs one subcollective on each, using two communication directions. These are the multiport variants used in the experiments. Let K2 = dm and K3 = dt for their respective radix cases. For Swing, define 
+
+ak = 2k+1 + ( −1) k
+
+3 , Am =
+
+> m−1∑
+> k=0
+
+ak = 4n − 3 − (−1) m
+
+6 .
+
+The message-size-weighted physical path lengths are F2(n, d ) for SwingB with n = 2 m and F3(n, d )for TrivanceB with n = 3 t:
+
+F2(n, d ) = 1 − 2−d
+
+1 − n−dm−1∑
+
+> k=0
+
+ak2−dk , (14) 
+
+F3(n, d ) = 1 − 3−d
+
+1 − n−dt−1∑
+
+> k=0
+
+3(1 −d)k. (15) The following derivations use the stated routing and multiport assumptions and count communi-cation volumes and route lengths. 
+
+C.1 SP-allreduce and Bucket 
+
+SP-allreduce and the balanced multiport Bucket schedule [22, 31] both transmit the minimum abstract volume 2 N (p − 1). Every transmission connects physical neighbors, and all directed links have equal load in each round. Thus both have Ψ = Θ = Ω = 1. Theorem 4.1 proves these properties for SP-allreduce. 
+
+C.2 SwingB 
+
+In reduce-scatter round s ∈ { 0, . . . , K 2 − 1}, each of the 2 d subcollectives sends a message of size 
+
+bs = N
+
+2d 2s+1 
+
+28 per node, at distance a⌊s/d ⌋. Each node therefore sends N/ 2s+1 bits in this round. The reverse allgather has the same volumes and path lengths, giving Vol abs = 2 pN 
+
+> K2−1
+
+∑
+
+> s=0
+
+2−s−1 = 2 pN (1 − 2−K2 ) = 2 N (p − 1) .
+
+Hence Ψ = 1. Weighting by physical distance gives Θ = 
+
+∑K2−1 
+
+> s=0
+
+a⌊s/d ⌋2−s−1
+
+1 − 1/p .
+
+Grouping s = dk + j, 0 ≤ j < d , and using ∑d−1 
+
+> j=0
+
+2−j−1 = 1 − 2−d gives (14). 
+
+C.3 SwingL 
+
+Each of the 2 d subcollectives sends N/ (2 d) bits per node in each of K2 rounds, so every node sends 
+
+N bits in total per round. Consequently Vol abs = pN K 2, Ψ = pdm 
+
+2( p − 1) , Θ = d ∑ 
+
+> k
+
+ak
+
+dm = Am
+
+m .
+
+C.4 TrivanceB and TrivanceL on n = 3 t
+
+In reduce-scatter round s, each node sends two messages per subcollective, each of size N/ (d3s+1 ), over distance 3 ⌊s/d ⌋. There are d subcollectives. Thus Vol abs = 4 pN 
+
+> K3−1
+
+∑
+
+> s=0
+
+3−s−1 = 2 pN (1 − 3−K3 ) = 2 N (p − 1) ,
+
+which proves Ψ = 1, and Θ = 2 ∑K3−1 
+
+> s=0
+
+3⌊s/d ⌋3−s−1
+
+1 − 1/p .
+
+Grouping s = dk + j yields (15). For TrivanceL, each of the two messages contains the entire subvector, of size N/d bits. The abstract communication volume is 2 pN K 3, hence Ψ = pdt p − 1 , Θ = 1
+
+t
+
+> t−1
+
+∑
+
+> k=0
+
+3k = n − 12t .
+
+The factor two in the per-node traffic is essential: the same subvector is sent to both peers, not divided between them. For fixed d > 1, the weighted sums also give lim  
+
+> m→∞
+
+F2(2 m, d ) = 2d(2 d − 1) (2 d − 2)(2 d + 1) , lim  
+
+> t→∞
+
+F3(3 t, d ) = 3d − 13d − 3 .
+
+These limits follow by summing geometric series. For d = 2, they are 6 /5 and 4 /3, respectively, along the two different radix sequences. 29

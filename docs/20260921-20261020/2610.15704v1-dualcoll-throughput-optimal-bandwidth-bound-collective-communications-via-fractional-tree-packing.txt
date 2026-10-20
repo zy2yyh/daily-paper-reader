@@ -1,0 +1,1649 @@
+Title: DualColl: Throughput-Optimal Bandwidth-Bound Collective Communications via Fractional Tree Packing
+
+URL Source: https://arxiv.org/pdf/2610.15704v1
+
+Published Time: Wed, 14 Oct 2026 01:54:38 GMT
+
+Number of Pages: 20
+
+Markdown Content:
+# DualColl: Throughput-Optimal Bandwidth-Bound Collective Communications via Fractional Tree Packing 
+
+# Namir Ballan 
+
+Technion – Israel Institute of Technology Haifa, Israel namir.ballan@campus.technion.ac.il 
+
+# Reuven Cohen 
+
+Technion – Israel Institute of Technology Haifa, Israel rcohen@cs.technion.ac.il 
+
+# Abstract 
+
+Large-scale distributed training increasingly makes collective com-munication bandwidth-bound. In modern GPU clusters, commu-nication libraries such as NCCL implement collectives including AllReduce over heterogeneous interconnects such as NVLink, In-finiBand, and Ethernet, making efficient use of available network bandwidth a central systems challenge. ForestColl showed that collective communication on such fab-rics can be formulated using fractional tree packing; its scalable polynomial-time construction is developed for AllGather, with AllReduce obtained by composing AllGather and ReduceScatter. We present DualColl, which targets bandwidth-bound AllReduce directly. Under the tree-based AllReduce model, DualColl applies a Garg–Könemann-style multiplicative-weights algorithm and, for any 0 < 𝜖 < 1, computes a feasible schedule whose throughput is at least (1 − 𝜖 )2 of the optimal AllReduce throughput. Its key compo-nent is an exact minimum-cost collective-tree oracle that projects physical-link dual prices onto a logical graph of participating ranks, reducing each iteration to shortest-path computations followed by a minimum spanning tree. We further extend the framework to local equal-next-hop packet-sprayed routing and to networks without explicit per-tree bandwidth control. For the latter, we introduce a tree-coupled max-min bandwidth-sharing model and show that tree duplication approximates an explicit fractional allocation with a provable accuracy-complexity tradeoff. Finally, we extend the fractional-packing framework to additional collective operations and multiple concurrent collective groups. 
+
+# Keywords 
+
+collective communication, AllReduce, fractional tree packing, multi-plicative weights, packet spraying, max-min fairness, GPU clusters, datacenter networks 
+
+# 1 Introduction 
+
+Large-scale distributed training relies heavily on collective commu-nication. In data-parallel training, for example, workers compute gradients locally and then use AllReduce to obtain the same ag-gregated result. Similar communication patterns arise in tensor, pipeline, and expert parallelism, as well as distributed inference. As model sizes, accelerator counts, and local computation rates grow, these collectives increasingly become bandwidth-bound, making efficient use of network capacity a central performance concern. In GPU clusters, collective operations are commonly imple-mented by communication libraries such as NVIDIA NCCL, which provides topology-aware implementations of AllReduce, AllGather, ReduceScatter, and related operations across multi-GPU and multi-node systems [6]. Such systems combine heterogeneous resources: intra-node links such as NVLink or NVSwitch may be substantially faster than inter-node Ethernet or InfiniBand links, and oversub-scription may vary across the network hierarchy. Consequently, ob-taining high collective throughput requires communication sched-ules that account for the capacities and topology of the underlying fabric. A useful abstraction for bandwidth-bound collective commu-nication is a collection of communication trees. For AllReduce, a tree reduces a data chunk toward a root and broadcasts the result back along the tree. Different chunks may be assigned to different trees, each operating at a continuous rate. With data partitioned proportionally to these rates, the resulting steady-state collective throughput is the sum of the bandwidths assigned to the active trees. ForestColl [16] established fractional tree packing as a powerful approach to collective scheduling on heterogeneous fabrics. In this formulation, candidate trees receive continuous rates whose sum is maximized subject to physical-link capacity constraints. ForestColl’s scalable polynomial-time construction is developed for AllGather, with AllReduce obtained by composing AllGather with ReduceScatter. This composition, however, is not guaranteed to be optimal for AllReduce, as the counterexample in Appendix A shows. DualColl instead targets bandwidth-bound AllReduce directly. It retains the fractional tree-packing abstraction but develops a differ-ent algorithmic framework for solving it. For the tree-based AllRe-duce formulation, DualColl computes a feasible solution whose throughput is within a (1 − 𝜖 )2 factor of the optimum. To the best of our knowledge, DualColl is the first polynomial-time algorithm with a provable near-optimality guarantee for bandwidth-bound AllReduce on switched topologies. DualColl uses a Garg–Könemann-style multiplicative-weights algorithm. The algorithm maintains a dynamic price for every phys-ical link and repeatedly requests a minimum-cost collective tree. Its key problem-specific component is an exact oracle that projects physical-link prices onto a logical graph containing only the partic-ipating ranks and then computes a minimum spanning tree. This avoids enumerating the exponentially many candidate trees. We also extend the framework toward practical network op-eration. First, we consider local equal-next-hop packet spraying, in which a logical flow is distributed fractionally over multiple shortest-path links rather than routed along a scheduler-selected path. Fine-grained multipath packet spraying is increasingly rele-vant in AI-oriented network fabrics; for example, the Ultra Ethernet Transport architecture supports packet spraying across multiple 
+
+> 1arXiv:2610.15704v1 [cs.DC] 11 Oct 2026 Namir Ballan and Reuven Cohen
+
+paths to improve load balancing and network utilization for AI and HPC workloads [14]. Our model captures the topology-based, congestion-oblivious form of such spraying. Second, because real networks do not generally expose explicit per-tree bandwidth control, we introduce a tree-coupled max-min bandwidth-sharing model. We show that duplicating trees acts as an effective weight under max-min sharing and can approximate a desired fractional allocation with a provable accuracy–complexity tradeoff. Finally, we extend the fractional-packing framework to additional collective operations and multiple concurrent collective groups. The main contributions of this paper are as follows: 
+
+• We give, to the best of our knowledge, the first polynomial-time algorithm with a provable near-optimality guarantee for bandwidth-bound AllReduce on switched topologies. Unlike ForestColl’s composition of AllGather and ReduceScatter, which can be strictly suboptimal for AllReduce (Appendix A), DualColl targets the AllReduce formulation directly. 
+
+• We develop a Garg–Könemann-style approximation algorithm with an exact minimum-cost collective-tree oracle based on dual-cost projection and a minimum spanning tree, avoiding explicit enumeration of exponentially many candidate trees. 
+
+• We extend the model to local equal-next-hop packet spraying, where a logical flow consumes fractional capacity on multiple physical links. 
+
+• We introduce a tree-coupled max-min bandwidth-allocation model and a tree-duplication construction that approximates explicit fractional tree bandwidths without requiring direct per-tree bandwidth control. 
+
+• We extend the framework to multiple concurrent collective groups and other collective operations. In particular, replacing the AllReduce oracle with one based on rooted spanning arbores-cences enables AllGather within the same fractional-packing framework. The remainder of the paper is organized as follows. Section 2 presents the network model and the fractional tree-packing formu-lation, and Section 3 proves that restricting AllReduce schedules to trees loses no throughput. Section 4 develops the DualColl approx-imation algorithm, its minimum-cost collective-tree oracle, and its approximation and complexity guarantees. Section 5 consid-ers packet-sprayed routing and tree-coupled max-min realization. Section 6 extends the framework to AllGather, ReduceScatter, and multiple concurrent AllReduce groups. Section 7 reviews related work, and Section 8 concludes the paper. 
+
+# 2 Model and ForestColl Foundation 
+
+This section introduces the network and collective-communication model used by DualColl. We then restate the fractional tree-packing formulation underlying ForestColl, which serves as the starting point for our work. Throughout this section, we consider the base-line scheduler-routed model in which every logical communication edge is mapped to a single chosen physical path. The extensions considered later are introduced separately in Section 5. 
+
+# 2.1 Physical Network Model 
+
+We model the physical network as a directed graph 
+
+𝐺 = (𝑉 ∪ 𝑆, 𝐸 ),
+
+where 𝑉 is the set of compute nodes, or ranks, and 𝑆 is the set of switches. Each directed physical edge 𝑒 ∈ 𝐸 has capacity 𝐶 𝑒 > 0. A full-duplex physical link is represented by two directed edges, one in each direction, and the two directions are accounted for by separate capacity constraints. In this paper, we assume that the two directed edges corresponding to the same physical link have equal capacity. For a given collective operation, let 𝑅 ⊆ 𝑉 denote the set of participating ranks. We initially consider a single collective group and assume 𝑅 = 𝑉 for notational simplicity. Multiple concurrent collective groups are considered in Section 6. 
+
+# 2.2 Tree-Based AllReduce 
+
+In an AllReduce operation, every participating rank initially holds an input array, and every rank must obtain the element-wise reduc-tion of all input arrays. A tree-based AllReduce schedule performs this operation in two phases. First, data is reduced from the leaves of a rooted logical tree toward its root. Intermediate ranks combine the values re-ceived from their children with their own local values. Second, the root broadcasts the reduced result back to all ranks along the tree. Note that because data is combined at each intermediate node, the amount of data that a node sends does not increase as we go higher in the tree. A logical tree contains only participating compute nodes. Switches are not represented as logical vertices; they appear only in the physical network over which the logical edges are routed. Let 𝑇 be a logical spanning tree over 𝑅 . Each logical edge of 
+
+𝑇 is mapped by the scheduler to a single physical path in 𝐺 . The complete routing of the logical edges determines how much capacity the tree consumes on every physical edge. A schedule may use several logical trees in parallel. The input array is divided into disjoint chunks, and each chunk is assigned to one tree. Let 
+
+T = {𝑇 1,𝑇 2, . . . ,𝑇 𝑘 }
+
+be the set of selected trees, and let 𝜆 𝑇 ≥ 0 denote the bandwidth assigned to tree 𝑇 , per direction, so that the reduce and broadcast phases each operate simultaneously at rate 𝜆 𝑇 .Restricting attention to schedules of this tree form loses no throughput. Intuitively, consider a tiny shard of the data which is never split by some optimal schedule. If two ranks both act as roots for that shard—each independently computing the fully re-duced value—then work is wasted: the two roots must communicate their own contributions to one another in any case, so rather than exchanging raw contributions it is always at least as good for one of them to send the other its fully reduced result, eliminating one of the two roots. Iterating this observation collapses every shard to a single root, after which its reduction and broadcast each form a tree; a further exchange argument shows the reduce and broadcast trees may be taken identical. We state the resulting guarantee here and prove it in Section 3. 
+
+> 2DualColl: Throughput-Optimal Bandwidth-Bound Collective Communications via Fractional Tree Packing
+
+Theorem 2.1 (Tree-based AllReduce is optimal). Under scheduler-routed single-path routing, on a full-duplex network in which every physical link has equal capacity in both directions, there exists a bandwidth-optimal AllReduce schedule in which each shard is reduced along a tree to a single root and broadcast from that root along the same tree. 
+
+# 2.3 Physical-Link Incidence 
+
+For every physical edge 𝑒 ∈ 𝐸 (a single directed edge) and logical tree 𝑇 , define 𝐴 𝑒,𝑇 as the amount of capacity consumed on 𝑒 when 𝑇 
+
+operates at one unit of bandwidth in both the reduce and broadcast directions simultaneously. Under the scheduler-routed single-path model considered in this section, 𝐴 𝑒,𝑇 is the number of routed logical tree edges whose physical paths traverse 𝑒 . It may be greater than one if several logical edges of the same tree use the same physical edge. If tree 𝑇 is assigned bandwidth 𝜆 𝑇 , then its capacity consumption on physical edge 𝑒 is 
+
+𝐴 𝑒,𝑇 𝜆 𝑇 .
+
+Consequently, the aggregate bandwidth assigned to all trees must satisfy ∑︁  
+
+> 𝑇 ∈ T
+
+𝐴 𝑒,𝑇 𝜆 𝑇 ≤ 𝐶 𝑒 , ∀𝑒 ∈ 𝐸. 
+
+# 2.4 ForestColl Tree-Packing Formulation 
+
+ForestColl established tree packing as a throughput-optimal ab-straction for bandwidth-bound collective communication. DualColl adopts this abstraction as its base optimization problem. Let S denote the set of all feasible logical spanning trees over the participating ranks, including their physical-path mappings. A continuous variable 𝜆 𝑇 specifies the bandwidth assigned to every candidate tree 𝑇 ∈ S .The fractional tree-packing problem is max 
+
+> 𝜆
+
+∑︁ 𝑇 ∈ S 
+
+𝜆 𝑇 (1) subject to ∑︁  
+
+> 𝑇 ∈ S
+
+𝐴 𝑒,𝑇 𝜆 𝑇 ≤ 𝐶 𝑒 , ∀𝑒 ∈ 𝐸, (2) 
+
+𝜆 𝑇 ≥ 0, ∀𝑇 ∈ S . (3) The objective maximizes the aggregate bandwidth of the selected trees, while the constraints ensure that their combined physical-link consumption does not exceed any link capacity. We write OPT = max 
+
+> 𝜆
+
+n Í𝑇 ∈ S 𝜆 𝑇 : 𝜆 satisfies Equations (2)–(3) 
+
+o
+
+for the optimal value of this program, i.e., the maximum aggre-gate tree bandwidth achievable under the model. This fractional tree-packing formulation is throughput-optimal in the sense of ForestColl: its optimum OPT is the largest collective throughput attainable by any schedule in the model. DualColl does not change this formulation; it computes a solution whose throughput is prov-ably close to OPT, as made precise in Section 4.3. Although the formulation contains one variable for every pos-sible tree, only trees with 𝜆 𝑇 > 0 are instantiated in the resulting schedule. Because the number of capacity constraints is polynomial in the network size, there exists an optimal solution that uses only a polynomial number of trees, even though the candidate set S may be exponentially large. 
+
+# 2.5 Throughput and Data Partitioning 
+
+We next explain why the objective in Equation (1) corresponds to maximizing the throughput of a bandwidth-bound AllReduce. Suppose each rank starts with 𝑋 units of data and receives a total of 𝑋 units of reduced data; in AllReduce every rank obtains the full reduced result, so 𝑋 is the size of the data each rank receives, not the aggregate data summed over all ranks. Let 𝑥 𝑇 be the amount of this data carried by tree 𝑇 , so that ∑︁  
+
+> 𝑇 ∈ T
+
+𝑥 𝑇 = 𝑋 . 
+
+A tree assigned bandwidth 𝜆 𝑇 completes its chunk in time 
+
+𝜏 𝑇 = 𝑥 𝑇 
+
+𝜆 𝑇 
+
+.
+
+Although a tree-based AllReduce consists of a reduction phase followed by a broadcast phase, we adopt a bandwidth-dominated, pipelined steady-state interpretation of this expression. We assume the messages are sufficiently large and finely pipelined that the reduction and broadcast of different data segments overlap in steady state, and we define 𝜆 𝑇 as the sustainable steady-state throughput of tree 𝑇 under this pipelined execution. Startup latency and pipeline fill/drain effects are ignored. Under this interpretation the two phases do not serialize per segment, and 𝜏 𝑇 = 𝑥 𝑇 /𝜆 𝑇 is the steady-state completion time of the chunk assigned to 𝑇 .Because all trees execute in parallel, the collective completion time is determined by the slowest tree. It is minimized when all active trees complete simultaneously. This is achieved by assigning data in proportion to the tree bandwidths: 
+
+𝑥 𝑇 = 𝑋 𝜆 𝑇 
+
+Í𝑇 ′ ∈ T 𝜆 𝑇 ′
+
+.
+
+Under this allocation, every active tree completes after 
+
+𝜏 = 𝑋 
+
+Í𝑇 ∈ T 𝜆 𝑇 
+
+.
+
+We have just shown that this completion time is achievable. The following lemma gives a matching lower bound, so this partition is the best possible. Lemma 2.2 (Completion-time lower bound). Let T be a set of trees with bandwidths 𝜆 𝑇 > 0 and aggregate bandwidth Λ =
+
+Í𝑇 ∈ T 𝜆 𝑇 , and let the 𝑋 units of data be partitioned among them in any way. Then some tree completes no earlier than 𝑋 /Λ.
+
+Proof. Let tree 𝑇 carry 𝑥 𝑇 ≥ 0 units, with Í𝑇 𝑥 𝑇 = 𝑋 , and suppose for contradiction that every tree completes before time 
+
+𝑋 /Λ. Then every tree 𝑇 completes at time 𝑥 𝑇 /𝜆 𝑇 < 𝑋 /Λ, that is, 
+
+𝑥 𝑇 < 𝑋 𝜆 𝑇 /Λ. Summing over all trees, 
+
+𝑋 =∑︁  
+
+> 𝑇 ∈ T
+
+𝑥 𝑇 < 𝑋 
+
+Λ∑︁ 𝑇 ∈ T 
+
+𝜆 𝑇 = 𝑋, 
+
+a contradiction. □
+
+> 3Namir Ballan and Reuven Cohen
+
+Therefore, minimizing the completion time of a bandwidth-bound AllReduce is equivalent to maximizing the aggregate tree bandwidth: ∑︁  
+
+> 𝑇 ∈ T
+
+𝜆 𝑇 .
+
+This equivalence relies on the steady-state interpretation above, under which the trees operate concurrently at their assigned sus-tainable rates. 
+
+# 3 Optimality of Tree-Based AllReduce 
+
+This section proves Theorem 2.1. The model of Section 2 restricts AllReduce schedules to collections of logical trees, each of which reduces a shard of the data toward its root and then broadcasts the reduced shard back along the same tree. We show that this restriction loses no throughput, so the optimum OPT of the frac-tional tree-packing formulation is the bandwidth-optimal AllRe-duce throughput itself, and not merely the optimum over a restricted class of schedules. Starting from an arbitrary bandwidth-optimal schedule, we normalize it in three steps, none of which increases any per-edge load or the completion time: each shard is first re-duced to a single root (Lemma 3.4), its reduce and broadcast phases are then made trees rooted there (Lemma 3.5), and finally, under single-path routing, the two trees are made to coincide (Lemma 3.6). Lemmas 3.1–3.3 are the tools used along the way. 
+
+Setting. We fix a shard : a unit of data that the schedule treats uniformly, so that the shard is never split into smaller pieces and every rank’s contribution to it is moved and reduced as a single whole. A schedule for the shard is a finite set of flows , each carrying a payload from one rank to another, and each assigned a rate, that is, a bandwidth. The payload of every flow is the reduction of the contributions of some subset of the ranks, and the fully reduced shard is the reduction over all ranks; since reduction is applied elementwise, every payload has the same size as the shard. A flow of rate 𝑏 places a load of 𝑏 times the fraction of its traffic routed over directed edge 𝑒 on 𝑒 ; the load on 𝑒 is the sum of these over all flows of all shards, and the schedule is feasible if the load on every directed edge 𝑒 is at most 𝐶 𝑒 . As in Section 2, every physical link has equal capacity in both directions, 𝐶 𝑒 = 𝐶 ¯𝑒 , where ¯ 𝑒 denotes the reverse of directed edge 𝑒 .Flow 𝑔 depends on flow 𝑓 if the payload of 𝑔 is computed from data delivered by 𝑓 ; the dependency relation is acyclic. In the bandwidth-bound model, a flow 𝑔 that depends on 𝑓 does not wait for 𝑓 to end: it starts as soon as the data of 𝑓 begins to arrive and pipes that data onward as it moves, so dependent flows run con-currently. We call a rank a root for the shard if it obtains the fully reduced shard without receiving it, that is, it computes the final value locally from partial values it has received. At least one root exists, since the first rank to hold the fully reduced shard cannot have received it, and every rank ends holding the fully reduced shard. For a single directed phase 𝑇 (a reduce in-tree or a broadcast out-tree, together with its physical routing) we write 𝑎 𝑒 (𝑇 ) for the load 𝑇 places on directed edge 𝑒 per unit rate. Lemma 3.1 (Promotion to the fully reduced shard). Let 𝑓 
+
+be a flow whose source already possesses the fully reduced shard. If the payload of 𝑓 is replaced by the fully reduced shard, and the same replacement is applied to every flow that depends on 𝑓 , directly or transitively, then the resulting schedule is still legal. 
+
+Proof. Consider the set D consisting of 𝑓 together with all flows that depend on 𝑓 directly or transitively. We promote every flow in D to carry the fully reduced shard. We must check that each promoted flow’s payload is actually available at its source when the flow is sent, so that the schedule remains executable. Process the flows of D in an order consistent with the depen-dency relation, which is possible since that relation is acyclic. The first flow is 𝑓 itself, and its source possesses the fully reduced shard by hypothesis, so it can send it. Consider any later flow 𝑔 ∈ D with source 𝑢 . Every flow of D on which 𝑔 depends has been processed earlier and now delivers the fully reduced shard, so 𝑢 is receiv-ing the fully reduced shard from flows that 𝑔 depends on and can therefore send it. Thus every promoted flow is executable. A rank that receives a promoted flow receives the fully reduced shard, and holding the final value it is complete for this shard regardless of any other partial values, so its state is consistent. A flow not in D does not depend on 𝑓 , so none of its inputs were altered and its payload is unchanged; hence every rank outside the recipients of D ends exactly as before, and in particular every rank that was already complete remains complete. The schedule is therefore legal. □
+
+Lemma 3.2 (Eqal rates within a shard). Without loss of generality, all flows belonging to the same shard are assigned the same rate. 
+
+Proof. We first discard every flow that does not contribute, directly or transitively, to a final reduced value held by some rank; removing such a flow changes what no rank computes and can only reduce the load on every link. Let the shard have size 𝑠 , let its remaining flows have rates 𝑏 𝑔 > 0, and let 𝑏 min = min 𝑔 𝑏 𝑔 . Every flow of the shard carries a payload of size 𝑠 . Flow 𝑔 therefore needs time 𝑠 /𝑏 𝑔 to transmit its payload, and the shard cannot complete before every flow has done so, that is, before time max 𝑔 𝑠 /𝑏 𝑔 =
+
+𝑠 /𝑏 min . Conversely, since a flow pipes its payload onward as its inputs arrive, its effective rate is the minimum of its own rate and the effective rates of the flows it depends on, so every flow progresses at effective rate at least 𝑏 min . Ignoring start-up and fill/drain effects, as the model of Section 2 does, every flow finishes by time 𝑠 /𝑏 min ,and the shard completes at exactly 𝑠 /𝑏 min .Now lower the rate of every flow 𝑔 with 𝑏 𝑔 > 𝑏 min to 𝑏 min . All flows of the shard then have rate 𝑏 min , so by the argument above the shard still completes at time 𝑠 /𝑏 min . The load that 𝑔 places on a directed edge is proportional to its rate, so every per-edge load is unchanged or smaller; every capacity constraint that held before still holds, and the remaining shards are unaffected. □
+
+Lemma 3.3 (Promotion is not slower). Reordering flows by the promotion of Lemma 3.1, so that a promoted flow forwards the fully reduced shard as it arrives at its source, does not make the schedule slower. 
+
+Proof. By Lemma 3.2 all flows of the shard have the same rate 𝑏 ,so the shard completes at time 𝑠 /𝑏 , where 𝑠 is its size. The promotion keeps every flow with its route and its rate, and changes only payloads, each of which still has size 𝑠 . Since all rates are equal, no 
+
+> 4DualColl: Throughput-Optimal Bandwidth-Bound Collective Communications via Fractional Tree Packing
+
+flow has a higher rate than a flow it depends on, including the flows that now deliver the fully reduced shard to the source of a promoted flow; so no flow is throttled, and the shard still completes at time 
+
+𝑠 /𝑏 . Finally, the bandwidth consumed on every link is unchanged, so the rest of the collective is unchanged and finishes in the same time. □
+
+Lemma 3.4 (Single root). For every feasible schedule there is a feasible schedule with no larger per-edge loads and no larger com-pletion time in which each shard has exactly one root. Equivalently, without loss of generality each shard is reduced into a single root 𝑟 
+
+and every rank other than 𝑟 receives the fully reduced shard at some point of the collective. 
+
+Proof. By Lemma 3.2 we may assume that all flows of the shard have the same rate 𝑏 ; this does not increase any per-edge load and does not change the completion time. Suppose the shard has 
+
+𝑘 ≥ 2 roots 𝑟 1, . . . , 𝑟 𝑘 . Each rank other than a root receives the fully reduced shard from some root; let 𝑆 𝑖 be the set of ranks to which 𝑟 𝑖 
+
+is responsible for delivering it, with 𝑟 𝑖 ∈ 𝑆 𝑖 . We may assume the 𝑆 𝑖 
+
+form a partition of the ranks: if a rank were served by two roots, one of the two deliveries is redundant and may be deleted, which only reduces load, and reassigning the rank to a single server leaves the sets disjoint. Call a flow inter-group if its endpoints lie in different sets of this partition. At least one inter-group flow exists: each root holds the 
+
+fully reduced shard, which incorporates the contributions of ranks in every group, and those contributions can only leave their group along an inter-group flow. Since the dependency relation is acyclic and there are finitely many flows, we may choose a last inter-group flow 𝑓 , one on which no other inter-group flow depends (there may be several). Say 𝑓 goes from a rank of 𝑆 𝑖 to a rank of 𝑆 𝑗 , with 𝑖 ≠ 𝑗 .Consider the flows that depend on 𝑓 , directly or transitively, and that lead to 𝑟 𝑗 . If no such chain exists, then 𝑓 delivers data that never reaches 𝑟 𝑗 and never leaves 𝑆 𝑗 toward any other group, so 
+
+𝑓 is useless and may be deleted, decreasing the load and leaving the set of roots unchanged; we may therefore assume such a chain exists. Let C be this chain of flows, from 𝑓 up to and including the flow that delivers into 𝑟 𝑗 .We now promote C: replace the payload of 𝑓 by the fully reduced shard and apply the same replacement along C. For this to be executable, the source of 𝑓 must hold the fully reduced shard when 
+
+𝑓 fires. It lies in 𝑆 𝑖 , so 𝑟 𝑖 delivers the fully reduced shard to it; we therefore let 𝑓 forward the fully reduced shard as it arrives at its source. This reordering is legitimate because, as shown below, no flow of C carries data that 𝑟 𝑖 or the source of 𝑓 needs in order to obtain the fully reduced shard, so it does not prevent either of them from completing. By Lemma 3.1 the result is a legal schedule, and by Lemma 3.3 it is not slower. It remains to check that this promotion does not destroy the very data it relies on, that is, that no flow of C was needed for 𝑟 𝑖 
+
+to obtain the fully reduced shard. This is where the choice of 𝑓 as the last inter-group flow is used. Every flow of C depends on 𝑓 ,hence carries data that has entered 𝑆 𝑗 through 𝑓 . For such data to contribute to 𝑟 𝑖 ’s reduction it would have to return from 𝑆 𝑗 to 𝑆 𝑖 ,which requires an inter-group flow depending on 𝑓 ; no such flow exists, by the maximality of 𝑓 . Hence 𝑟 𝑖 still computes the fully reduced shard exactly as before, and remains a root. In the modified schedule 𝑟 𝑗 receives the fully reduced shard along the promoted chain instead of computing it from partial values, so 
+
+𝑟 𝑗 is no longer a root, and it still delivers the shard to 𝑆 𝑗 as before. The number of roots has decreased by one, while the per-edge loads and the completion time are unchanged. Repeating the argument until a single root remains, and doing so for every shard, yields the claimed schedule. □
+
+Lemma 3.5 (Each phase is a tree). Consider a shard with a single root 𝑟 . Without loss of generality, its reduce phase is an in-tree, that is, a spanning in-arborescence rooted at 𝑟 , and its broadcast phase is an out-tree, a spanning out-arborescence rooted at 𝑟 .
+
+Proof. By Lemma 3.2 all flows of the shard have a common rate 
+
+𝑏 , and the shard completes at time 𝑠 /𝑏 , where 𝑠 is its size. 
+
+Reduce phase. Call a flow a reduce flow if the computation of the fully reduced shard at 𝑟 depends on it, directly or transitively. Let 
+
+𝐻 be the send graph of the reduce phase: its vertices are the ranks, and it has a directed edge (𝑢, 𝑤 ) whenever at least one reduce flow goes from 𝑢 to 𝑤 . The graph 𝐻 need not be an in-arborescence; a rank may, for instance, send to several ranks. However, every rank has a directed path to 𝑟 in 𝐻 : the contribution of a rank 𝑣 is part of the fully reduced shard, so it leaves 𝑣 on a reduce flow and reaches 
+
+𝑟 along a chain of reduce flows, each of which starts at the rank where the previous one ends. We select an in-arborescence inside 𝐻 . Let 𝑑 (𝑣 ) be the length of a shortest directed path from 𝑣 to 𝑟 in 𝐻 , and consider the ranks in increasing order of 𝑑 (𝑣 ). For every rank 𝑣 ≠ 𝑟 , choose an arbitrary shortest path from 𝑣 to 𝑟 and keep only its first edge (𝑣, 𝑤 ), so that 𝑑 (𝑤 ) = 𝑑 (𝑣 ) − 1. In the resulting graph 𝑅 , every rank other than 𝑟 has exactly one outgoing edge and 𝑟 has none, and 𝑑 strictly decreases along every edge, so 𝑅 contains no cycle. Hence 𝑅 is an in-arborescence spanning the ranks and rooted at 𝑟 .We now reduce along 𝑅 : every rank 𝑣 sends to its parent the reduction of its own contribution and of the payloads it receives from its children, that is, the reduction over the ranks of its subtree in 𝑅 . The subtrees of the children of 𝑟 are disjoint and, together with 𝑟 , cover all ranks, so 𝑟 obtains the fully reduced shard. Each edge (𝑣, 𝑤 ) of 𝑅 is carried by one of the original reduce flows from 𝑣 
+
+to 𝑤 , which keeps its physical route and its rate 𝑏 ; only its payload changes, to the reduction over the subtree of 𝑣 , which is again the reduction of a subset of the ranks and therefore has size 𝑠 . All other reduce flows are dropped. 
+
+Broadcast phase. Let 𝐻 ′ be the send graph of the flows that carry the fully reduced shard, with a directed edge (𝑢, 𝑤 ) whenever at least one such flow goes from 𝑢 to 𝑤 . By Lemma 3.4, every rank other than 𝑟 receives the fully reduced shard from a rank that already holds it; following these deliveries backward, which ter-minates because the dependency relation is acyclic, leads to 𝑟 , so every rank is reachable from 𝑟 in 𝐻 ′. Symmetrically to the reduce phase, let 𝑑 ′ (𝑣 ) be the length of a shortest directed path from 𝑟 to 𝑣 
+
+in 𝐻 ′, and for every rank 𝑣 ≠ 𝑟 keep only the last edge (𝑢, 𝑣 ) of an arbitrary shortest path from 𝑟 to 𝑣 , so that 𝑑 ′ (𝑢 ) = 𝑑 ′ (𝑣 ) − 1. The result is an out-arborescence 𝐷 spanning the ranks and rooted at 𝑟 ,along which 𝑟 forwards the fully reduced shard; each edge of 𝐷 is 
+
+> 5Namir Ballan and Reuven Cohen
+
+carried by one of the original flows, with its route, rate and payload unchanged. All other flows carrying the fully reduced shard are dropped. 
+
+Cost. The new schedule for the shard uses a subset of its original flows, each with its original route, the common rate 𝑏 , and a payload of size 𝑠 . Hence the load on every directed edge is unchanged or smaller, and, since all flows still have rate 𝑏 , the shard still completes at time 𝑠 /𝑏 , as in the proof of Lemma 3.2. The flows of the other shards are untouched, so the rest of the collective is unaffected. □
+
+We refer to a tree that reduces along 𝑇 toward its root and broadcasts along 𝑇 reversed as a simple tree; this is precisely the tree of Section 2, and by construction a simple tree built on a directed phase 𝑇 loads directed edge 𝑒 with 𝑎 𝑒 (𝑇 ) + 𝑎 ¯𝑒 (𝑇 ) per unit rate, and loads ¯ 𝑒 with the same amount. Lemma 3.6 (Common reduce and broadcast tree). Under scheduler-routed single-path routing, consider a feasible schedule in which each shard 𝑖 ∈ { 1, . . . , 𝑘 } is reduced along an in-tree 𝑅 𝑖 to root 𝑟 𝑖 and broadcast from 𝑟 𝑖 along an out-tree 𝐷 𝑖 , at rate 𝜆 𝑖 . Then there is a feasible schedule consisting of 2𝑘 simple trees in which every shard completes at the same time. 
+
+Proof. For each 𝑖 let 𝑇 𝑖 be the simple tree built on 𝑅 𝑖 (reduce along 𝑅 𝑖 , broadcast along 𝑅 𝑖 reversed) and let 𝑇 𝑘 +𝑖 be the simple tree built on 𝐷 𝑖 (reduce along 𝐷 𝑖 reversed, broadcast along 𝐷 𝑖 ), both rooted at 𝑟 𝑖 . Assign each of 𝑇 𝑖 and 𝑇 𝑘 +𝑖 the rate 𝜆 𝑖 /2, and split shard 𝑖 into two halves, one carried by each. Each half is fully reduced to 𝑟 𝑖 and broadcast from 𝑟 𝑖 , so the new schedule performs AllReduce. If shard 𝑖 has size 𝑠 𝑖 , each half has size 𝑠 𝑖 /2 and rate 𝜆 𝑖 /2, so it completes at time (𝑠 𝑖 /2)/( 𝜆 𝑖 /2) = 𝑠 𝑖 /𝜆 𝑖 , exactly when shard 𝑖 
+
+completed before. It remains to show that no directed edge is overloaded. The proof of this relies on single-path routing, under which reversing a routed logical edge places on ¯ 𝑒 exactly the load the original placed on 𝑒 .Fix a physical link with directed edges 𝑒 and ¯ 𝑒 , and let 
+
+𝐿 𝑒 =∑︁ 
+
+> 𝑖
+
+𝜆 𝑖 
+
+𝑎 𝑒 (𝑅 𝑖 ) + 𝑎 𝑒 (𝐷 𝑖 ),𝐿 ¯𝑒 =∑︁ 
+
+> 𝑖
+
+𝜆 𝑖 
+
+𝑎 ¯𝑒 (𝑅 𝑖 ) + 𝑎 ¯𝑒 (𝐷 𝑖 )
+
+be the loads of the original schedule on 𝑒 and ¯ 𝑒 . Feasibility of the original schedule gives 𝐿 𝑒 ≤ 𝐶 𝑒 and 𝐿 ¯𝑒 ≤ 𝐶 ¯𝑒 = 𝐶 𝑒 . In the new schedule, 𝑇 𝑖 loads 𝑒 with (𝜆 𝑖 /2) [ 𝑎 𝑒 (𝑅 𝑖 ) + 𝑎 ¯𝑒 (𝑅 𝑖 )] and 𝑇 𝑘 +𝑖 loads 𝑒 
+
+with (𝜆 𝑖 /2) [ 𝑎 𝑒 (𝐷 𝑖 ) + 𝑎 ¯𝑒 (𝐷 𝑖 )] , so the total load on 𝑒 is ∑︁ 
+
+> 𝑖
+
+𝜆 𝑖 
+
+2
+
+h
+
+𝑎 𝑒 (𝑅 𝑖 ) + 𝑎 ¯𝑒 (𝑅 𝑖 ) + 𝑎 𝑒 (𝐷 𝑖 ) + 𝑎 ¯𝑒 (𝐷 𝑖 )
+
+i
+
+= 𝐿 𝑒 + 𝐿 ¯𝑒 
+
+2 .
+
+By the symmetry of simple trees the load on ¯ 𝑒 is the same quantity. Hence the load on each direction of the edge becomes the average of the two original loads, and 
+
+𝐿 𝑒 + 𝐿 ¯𝑒 
+
+2 ≤ max {𝐿 𝑒 , 𝐿 ¯𝑒 } ≤ 𝐶 𝑒 .
+
+Thus splitting every tree evenly across the two directions can only lower the larger of the two directional loads, and the new schedule respects every capacity. □
+
+Theorem 3.7 (Tree-based AllReduce is optimal; restatement of Theorem 2.1). Under scheduler-routed single-path routing, on a full-duplex network in which every physical link has equal capacity in both directions, there exists a bandwidth-optimal AllReduce schedule in which each shard is reduced along a tree to a single root and broadcast from that root along the same tree. 
+
+Proof. Consider a bandwidth-optimal AllReduce schedule. Ap-plying Lemma 3.4 to every shard yields a feasible schedule with no larger completion time in which each shard has a single root; by Lemma 3.5, we may further assume that each shard is reduced along an in-tree to its root and broadcast from it along an out-tree. Applying Lemma 3.6 yields a feasible schedule of simple trees in which every shard completes at the same time. This schedule is therefore a bandwidth-optimal AllReduce schedule consisting entirely of simple trees. □
+
+# 4 DualColl’s Algorithm 
+
+Section 2 formulated bandwidth-bound AllReduce scheduling as the fractional tree-packing problem in Equations (1)–(3). Although this formulation contains only one capacity constraint per physical link, it has one variable for every feasible collective tree and its physical-path mapping. The number of such routed trees is exponential in the number of participating ranks, which prevents their direct enumeration. DualColl solves this problem using a Garg–Könemann-style multiplicative-weights framework. Rather than constructing the complete linear program, the algorithm maintains a positive price for every physical edge and repeatedly selects a collective tree having minimum cost under the current prices. The selected tree is added to the fractional packing, after which the prices of the physical edges it uses are increased. The key problem-specific component of the framework is there-fore a minimum-cost collective-tree oracle. DualColl implements this oracle by projecting the current physical-edge prices onto a log-ical graph over the participating ranks and computing a minimum spanning tree in the projected graph. 
+
+# 4.1 Multiplicative-Weights Framework 
+
+DualColl maintains a positive price 𝑦 𝑒 for every physical edge and a fractional bandwidth 𝜆 𝑇 for every tree selected so far. Let 𝑚 = |𝐸 |
+
+be the number of physical edges. The algorithm begins by setting 
+
+𝛾 = (1 + 𝜖 )  (1 + 𝜖 )𝑚  −1/𝜖 , 𝑦 𝑒 = 𝛾 𝐶 𝑒 
+
+for every 𝑒 ∈ 𝐸, 
+
+and 𝜆 𝑇 = 0 for all trees. The scale 𝛾 is the standard Garg–Könemann initialization for the packing LP [4]; it depends only on the number of constraints 𝑚 = |𝐸 | and the accuracy 𝜖 , and is chosen so that the final scaled packing satisfies the capacity constraints while retaining a (1 − 𝜖 )2 fraction of the optimum. At each iteration, the algorithm performs the following steps. (1) Invoke the minimum-cost collective-tree oracle under the current prices 𝑦 , obtaining the tree 𝑇 ★ minimizing 
+
+Í𝑒 𝐴 𝑒,𝑇 𝑦 𝑒 .(2) Compute the bottleneck augmentation, the largest band-width 𝑇 ★ may carry before one of its edges reaches unit relative load. 
+
+Δ = min     
+
+> 𝑒 :𝐴 𝑒,𝑇 ★>0
+
+𝐶 𝑒 /𝐴 𝑒,𝑇 ★
+
+> 6DualColl: Throughput-Optimal Bandwidth-Bound Collective Communications via Fractional Tree Packing
+
+(3) Increase the bandwidth of 𝑇 ★ by Δ.(4) For every physical edge used by 𝑇 ★, multiplicatively in-crease its price: 𝑦 𝑒 ← 𝑦 𝑒 
+
+ 1 + 𝜖 𝐴 𝑒,𝑇 ★ Δ/𝐶 𝑒 
+
+.(5) Stop when the dual length 𝐷 (𝑦 ) = Í𝑒 𝐶 𝑒 𝑦 𝑒 reaches 1. The multiplicative updates discourage repeated use of highly loaded physical edges. Initially, all physical-edge prices are small, and the oracle selects a tree having low physical cost. As trees are added to the packing, the prices of frequently used edges increase, so subsequent oracle calls are encouraged to select trees that use less-congested portions of the network. Because each augmentation raises a tree’s bandwidth without regard to the edges already committed to earlier trees, the accumu-lated bandwidths may exceed link capacities. At termination they are uniformly scaled down by log 1+𝜖 
+
+ (1 + 𝜖 )/ 𝛾 , yielding a feasible packing ˆ𝜆 𝑇 = 𝜆 𝑇 /log 1+𝜖 
+
+ (1 + 𝜖 )/ 𝛾  that satisfies Equation (2). Algorithm 1 summarizes the framework. 
+
+Algorithm 1 DualColl fractional tree-packing framework 
+
+Require: Physical network 𝐺 = (𝑉 ∪ 𝑆, 𝐸 ), capacities {𝐶 𝑒 }𝑒 ∈𝐸 ,participating ranks 𝑅 , and accuracy parameter 0 < 𝜖 < 1
+
+Ensure: A feasible fractional tree packing { ˆ𝜆 𝑇 } 
+
+> 1:
+
+𝛾 ← ( 1 + 𝜖 )  (1 + 𝜖 )𝑚  −1/𝜖 ⊲ 𝑚 = |𝐸 | 
+
+> 2:
+
+𝑦 𝑒 ← 𝛾 /𝐶 𝑒 for every 𝑒 ∈ 𝐸  
+
+> 3:
+
+𝜆 𝑇 ← 0 for all trees  
+
+> 4:
+
+while 𝐷 (𝑦 ) = Í𝑒 ∈𝐸 𝐶 𝑒 𝑦 𝑒 < 1 do  
+
+> 5:
+
+𝑇 ★ ← MinCostCollectiveTree (𝐺, 𝑅, 𝑦 ) 
+
+> 6:
+
+Δ ← min 𝑒 : 𝐴 𝑒,𝑇 ★ >0
+
+𝐶 𝑒 
+
+𝐴 𝑒,𝑇 ★
+
+⊲ bottleneck augmentation  
+
+> 7:
+
+𝜆 𝑇 ★ ← 𝜆 𝑇 ★ + Δ 
+
+> 8:
+
+for all 𝑒 ∈ 𝐸 with 𝐴 𝑒,𝑇 ★ > 0 do  
+
+> 9:
+
+𝑦 𝑒 ← 𝑦 𝑒 
+
+
+
+1 + 𝜖 𝐴 𝑒,𝑇 ★ Δ
+
+𝐶 𝑒 
+
+ 
+
+> 10:
+
+end for  
+
+> 11:
+
+end while  
+
+> 12:
+
+ˆ𝜆 𝑇 ← 𝜆 𝑇 
+
+ log 1+𝜖 1+𝜖 𝛾 for all 𝑇  
+
+> 13:
+
+return { ˆ𝜆 𝑇 }
+
+The outer multiplicative-weights framework is generic to frac-tional packing. The main network-specific challenge is implement-ing Line 5 of Algorithm 1, namely, finding a minimum-cost collec-tive tree efficiently. 
+
+# 4.2 Minimum-Cost Collective-Tree Oracle 
+
+For a fixed price vector 𝑦 , the oracle must find a logical spanning tree and its physical routing that minimize ∑︁  
+
+> 𝑒 ∈𝐸
+
+𝑦 𝑒 𝐴 𝑒,𝑇 .
+
+As in ForestColl, the scheduler controls the physical route of every logical edge and may select any admissible path in the physical net-work. Consequently, under the current dual prices, the minimum-cost realization of a logical edge can be obtained through a shortest-path computation using the dual prices as physical-edge weights. For every ordered pair of participating ranks 𝑢, 𝑣 ∈ 𝑅 , let 
+
+𝑑 𝑦 (𝑢, 𝑣 ) = min  
+
+> 𝑃 ∈ P ( 𝑢,𝑣 )
+
+∑︁ 𝑒 ∈𝑃 
+
+𝑦 𝑒 ,
+
+where P ( 𝑢, 𝑣 ) denotes the set of admissible directed physical paths from 𝑢 to 𝑣 .An undirected logical tree edge {𝑢, 𝑣 } is used in one direction during the reduction phase and in the reverse direction during the broadcast phase. Its projected logical-edge weight is therefore 
+
+𝑊 {𝑢,𝑣 } = 𝑑 𝑦 (𝑢, 𝑣 ) + 𝑑 𝑦 (𝑣, 𝑢 ).
+
+Thus, 𝑊 {𝑢,𝑣 } is the total dual-weight cost of the logical tree edge 
+
+{𝑢, 𝑣 }, summing the dual weights along the shortest paths used in the two directions per unit of bandwidth assigned to that edge. Under symmetric full-duplex links, the two directional costs may be equal, but both directions remain represented. DualColl constructs an undirected projected graph 
+
+𝐺 𝑅 = (𝑅, 𝐸 𝑅 ),
+
+whose vertices are the participating ranks. For every unordered pair {𝑢, 𝑣 } ⊆ 𝑅 , the graph contains a logical edge with weight 
+
+𝑊 {𝑢,𝑣 } . Physical switches do not appear as vertices of 𝐺 𝑅 ; they are represented implicitly through the directed physical paths used to compute the projected edge weights. Section 5.3 describes how the projection weights are computed efficiently, both in the scheduler-routed model considered here and in the packet-sprayed model of Section 5. The oracle computes a minimum spanning tree of 𝐺 𝑅 . For every logical edge {𝑢, 𝑣 } selected by the minimum spanning tree, the oracle records a minimum-cost physical path from 𝑢 to 𝑣 and a minimum-cost physical path from 𝑣 to 𝑢 . The resulting routed logical tree is returned to the multiplicative-weights framework. The correctness of this construction relies on the following prop-erty of the routing model, which we state explicitly before using it. 
+
+Assumption (Route separability). Given a logical tree, the admis-sible physical route of each directed logical edge may be selected independently of the routes assigned to all other logical edges of the tree. Route separability is what lets the minimum physical cost of a fixed logical tree decompose into independent per-edge shortest-path computations. It holds in the scheduler-routed model consid-ered here, where each logical edge is routed along a minimum-dual-cost physical path chosen without reference to the other edges. Coupled path constraints—for example, a requirement that the physical paths of different logical edges be edge-disjoint—would violate separability and require a different oracle, since the per-edge minimization would no longer be independent. The projection is valid because the physical dual cost of a routed logical tree is additive over its logical edges. Let 𝑇 be a logical spanning tree. For every logical edge {𝑢, 𝑣 } ∈ 𝑇 ,let 𝑃 𝑢,𝑣 denote the physical path used in one direction and let 𝑃 𝑣,𝑢 
+
+denote the physical path used in the reverse direction. The dual cost of the routed tree is cost 𝑦 (𝑇 ) =∑︁  
+
+> {𝑢,𝑣 } ∈ 𝑇
+
+©«∑︁ 𝑒 ∈𝑃 𝑢,𝑣 
+
+𝑦 𝑒 +∑︁  
+
+> 𝑒 ∈𝑃 𝑣,𝑢
+
+𝑦 𝑒 ª®¬
+
+.
+
+Because the routes of different logical edges can be selected inde-pendently (route separability, stated above), the minimum physical 
+
+> 7Namir Ballan and Reuven Cohen
+
+cost of a fixed logical tree is min    
+
+> {𝑃 𝑢,𝑣 ,𝑃 𝑣,𝑢 }
+
+cost 𝑦 (𝑇 ) =∑︁  
+
+> {𝑢,𝑣 } ∈ 𝑇
+
+𝑊 {𝑢,𝑣 } . (4) Minimizing the right-hand side of Equation (4) over all logical spanning trees is exactly the minimum spanning tree problem in the projected graph 𝐺 𝑅 . Therefore, the projected MST and its associated directed physical paths solve the oracle problem min 𝑇 
+
+Í𝑒 ∈𝐸 𝑦 𝑒 𝐴 𝑒,𝑇 .Theorem 4.1 (Oracle correctness). Under the scheduler-routed model and the route-separability assumption above, dual-cost pro-jection followed by a minimum spanning tree computation returns a routed collective tree of minimum dual cost. 
+
+Proof of Theorem 4.1. For every logical edge {𝑢, 𝑣 }, the pro-jected weight 𝑊 {𝑢,𝑣 } is the minimum combined dual cost of realizing that edge in both physical directions. By Equation (4), the minimum routed cost of any fixed logical tree equals the sum of its projected edge weights. A minimum spanning tree minimizes this sum over all logical spanning trees. Hence, the logical tree and physical paths returned by the oracle minimize ∑︁  
+
+> 𝑒 ∈𝐸
+
+𝐴 𝑒,𝑇 𝑦 𝑒 
+
+over all feasible routed collective trees. □
+
+# 4.3 Approximation and Time Complexity 
+
+We first bound the cost of a single oracle invocation. Let 𝑛 = |𝑅 | be the number of participating ranks and let 𝑁 = |𝑉 ∪ 𝑆 | be the total number of physical-network vertices. The oracle does two things: it computes the projection weights 𝑊 {𝑢,𝑣 } , and it runs a minimum spanning tree on the projected graph. Under the scheduler-routed model the projection weights are shortest-path distances under the dual prices, so, using Dijkstra’s algorithm with a binary heap, one single-source computation requires 𝑂 ((| 𝐸 | + 𝑁 ) log 𝑁 ) time and computing the distances from every participating rank requires 
+
+𝑂 (𝑛 (| 𝐸 | + 𝑁 ) log 𝑁 ). Section 5.3 treats the computation of these weights in detail, including the packet-sprayed case, where the weights are no longer plain shortest-path distances. The projected graph contains 𝑛 vertices and 𝑂 (𝑛 2) edges, so, being dense, its minimum spanning tree can be computed by Prim’s algorithm in 
+
+𝑂 (𝑛 2) time. Hence one oracle invocation requires 
+
+𝑇 oracle = 𝑂  𝑛 (| 𝐸 | + 𝑁 ) log 𝑁 + 𝑛 2  .
+
+DualColl is an instance of the Garg–Könemann fractional-packing scheme applied to Equations (1)–(3). Theorem 4.1 establishes that each iteration selects an exact minimum-cost column, so DualColl inherits that scheme’s approximation guarantee and iteration bound directly. Theorem 4.2 (DualColl guarantee). For any 0 < 𝜖 < 1, Algo-rithm 1 returns a feasible fractional tree packing b𝜆 satisfying ∑︁  
+
+> 𝑇 ∈ S
+
+b𝜆 𝑇 ≥ (1 − 𝜖 )2 OPT .
+
+Proof of Theorem 4.2. Each iteration invokes the minimum-cost collective-tree oracle, which by Theorem 4.1 returns a tree minimizing Í𝑒 𝐴 𝑒,𝑇 𝑦 𝑒 exactly, i.e., an exact minimum-cost column of the packing LP. Algorithm 1 uses this oracle within the Garg– Könemann packing scheme with the standard initialization 𝑦 𝑒 =
+
+𝛾 /𝐶 𝑒 , bottleneck augmentation, multiplicative update, dual-length stopping rule 𝐷 (𝑦 ) ≥ 1, and final scaling by log 1+𝜖 
+
+ (1+𝜖 )/ 𝛾 . Under an exact minimum-cost oracle, that scheme produces a feasible packing within a (1 − 𝜖 )2 factor of the optimum [4], which yields the stated bound. □
+
+Since every iteration performs one oracle call, and the Garg– Könemann packing scheme terminates in 
+
+𝑁 iter = |𝐸 |⌈( 1/𝜖 ) log 1+𝜖 |𝐸 |⌉ = 𝑂 
+
+ |𝐸 | log |𝐸 |
+
+𝜖 2
+
+
+
+iterations [4], the total running time is 
+
+𝑇 DualColl = 𝑂 
+
+ |𝐸 | log |𝐸 |
+
+𝜖 2
+
+𝑛 (| 𝐸 | + 𝑁 ) log 𝑁 + 𝑛 2  
+
+.
+
+DualColl therefore computes a near-optimal solution to the ForestColl fractional tree-packing objective without constructing the exponentially large set of candidate routed trees. 
+
+Generalizing to other collective operations. The same machinery solves the other collective operations with only a change of oracle. For AllGather the objective is a max-min one, maximizing the slow-est node’s aggregate broadcast bandwidth, and a packing variable is a set of 𝑛 trees, one rooted at each compute node. The oracle cor-respondingly returns, instead of a single minimum spanning tree, a minimum spanning arborescence rooted at each node, computed on the same projected graph from the same dual prices; everything outside the oracle—the price updates, the augmentation rule, the stopping condition, and the scaling—is unchanged. The resulting schedule is computed in time 𝑂 
+
+ |𝐸 | log |𝐸 |
+
+> 𝜖 2
+
+ 𝑛  𝑁 + | 𝐸 | log 𝑁 + 𝑛 3  
+
+,which improves on the bound reported for ForestColl, as shown in Appendix B. ReduceScatter is obtained by the same change of oracle, replacing each out-arborescence by an in-arborescence so that the data flows toward the root rather than away from it. Mul-tiple concurrent AllReduce sets are handled by letting a packing variable be a 𝑘 -tuple of trees, one spanning each set, with the oracle computing the 𝑘 minimum-cost trees independently and returning their union as a single column; the shared capacity constraints then couple the sets automatically. We give the details in Section 6. The extensions to the routing and bandwidth-allocation models considered in practical deployments are presented in Section 5. 
+
+# 5 Packet Spraying and Max-Min Fairness 
+
+The fractional packing algorithm of Section 4 computes an explicit bandwidth allocation under the scheduler-routed model. Namely, it returns a set of logical trees 𝑇 1, . . . ,𝑇 𝑘 and assigns each tree a continuous bandwidth 𝑎 𝑖 , with each logical edge mapped to a single chosen physical path. In that model, the scheduler directly controls both the route of every flow and the bandwidth of every tree, subject to the physical capacity constraints. Real deployments differ from this idealization in two respects. First, when packet spraying is used, the fabric spreads a logical flow across several physical paths rather than allowing the scheduler to choose a path. Second, systems usually do not provide explicit per-tree bandwidth control; instead, bandwidth is allocated dynami-cally by the transport protocol and by the network, often according 
+
+> 8DualColl: Throughput-Optimal Bandwidth-Bound Collective Communications via Fractional Tree Packing
+
+to a max-min fairness principle. This section addresses both. We first describe the routing mechanics of the packet-spraying model, which are independent of how bandwidth is subsequently allocated. We then define the tree-coupled version of max-min fairness appro-priate for collective communication, generalize it to packet-sprayed flows, and finally show that by duplicating trees, the protocol model can approximate any explicit fractional allocation arbitrarily well. Packet spraying also forces a change in the formulation itself, which we flag at the outset. Under the scheduler-routed model we were entitled to assume that a tree reduces and broadcasts along the same logical tree: Lemma 3.6 shows that any schedule with distinct reduce and broadcast trees can be converted, at no loss of throughput, into one built from such simple trees. That argument reverses a tree’s routing and charges the reversed phase the mirrored load on the opposite directed edges, which is valid precisely because single-path routing sends a reversed logical edge back along the same physical path, flipping the induced loads 𝑝 𝑒 (𝐹 )
+
+on every physical link. Local equal next-hop spraying does not have this property. What survives is the weaker structure of Lemmas 3.4 and 3.5, which make no reference to how a logical edge is routed— they use only the dependency structure among flows and the fact that the schedule does not split a shard—and therefore hold verbatim under packet spraying: each shard still has a single root, with a reduce in-tree and a broadcast out-tree rooted at it, but the two trees need not coincide. Accordingly, in the packet-sprayed setting a packing variable is a pair consisting of an in-tree and an out-tree sharing a root, and the oracle must select the best such pair rather than a single tree. Section 5.2 develops this formulation and its oracle. 
+
+# 5.1 Packet-Spraying Routing 
+
+We first describe packet spraying purely as a routing mechanism, independent of how bandwidth is later allocated. Modern datacen-ter networks often contain several shortest paths between a pair of endpoints. In packet spraying, traffic between a pair of endpoints is split across the shortest paths. Since collective communication transfers large data chunks, we represent the long-run traffic dis-tribution induced by packet spraying as fractional physical-link loads. We consider local equal next-hop packet spraying. At each switch, a packet is forwarded uniformly at random among all outgoing next hops that continue along a shortest path to its destination. The eligible next-hop set is determined by the routing topology and does not change in response to instantaneous congestion or Layer-2 PAUSE state. This forwarding rule induces fixed long-run physical-link fractions for each logical flow, which can therefore be incorporated directly into the fractional tree-packing model. We do not consider adaptive packet spraying in which congestion or flow-control state dynamically changes next-hop eligibility. For a directed logical flow 𝐹 = (𝑢, 𝑣 ), let 𝑝 𝑒 (𝐹 ) ∈ [ 0, 1] denote the long-run fraction of the packets of 𝐹 that traverse physical directed edge 𝑒 . If 𝐹 does not use 𝑒 , then 𝑝 𝑒 (𝐹 ) = 0; if all of 𝐹 uses 
+
+𝑒 , then 𝑝 𝑒 (𝐹 ) = 1; under packet spraying, intermediate values are possible. To state the forwarding rule precisely, fix a destination 𝑣 and, for a physical node 𝑐 , let 
+
+Γ𝑣 (𝑐 )
+
+denote the set of outgoing neighbors of 𝑐 that continue along a shortest path from 𝑐 to 𝑣 . If a fraction 𝜙 (𝑐 ) of the flow 𝐹 = (𝑢, 𝑣 )
+
+reaches node 𝑐 , then every eligible outgoing edge (𝑐, 𝑧 ) with 𝑧 ∈
+
+Γ𝑣 (𝑐 ) carries the fraction 
+
+𝑝 (𝑐,𝑧 ) (𝐹 ) = 𝜙 (𝑐 )|Γ𝑣 (𝑐 )| . (5) The splitting is thus uniform locally at each switch. This does not imply that all complete shortest paths from 𝑢 to 𝑣 are selected with equal probability, nor that all physical links lying on shortest paths carry equal fractions; both are, in general, consequences of the local rule rather than assumptions. 
+
+Computing the induced fractions. For each directed logical flow 
+
+𝐹 = (𝑢, 𝑣 ), the fractions 𝑝 𝑒 (𝐹 ) are obtained by propagating flow mass through the shortest-path DAG toward 𝑣 . Initialize 𝜙 (𝑢 ) = 1and 𝜙 (𝑐 ) = 0 for every other node 𝑐 , and process the nodes in a topological order of the shortest-path DAG from 𝑢 toward 𝑣 . For every processed node 𝑐 and every eligible outgoing edge 𝑒 = (𝑐, 𝑧 )
+
+with 𝑧 ∈ Γ𝑣 (𝑐 ), set 
+
+𝑝 𝑒 (𝐹 ) = 𝜙 (𝑐 )|Γ𝑣 (𝑐 )| , 𝜙 (𝑧 ) + = 𝑝 𝑒 (𝐹 ).
+
+When several upstream branches reach the same node, their contri-butions are accumulated through 𝜙 (𝑧 ). This propagation exactly captures the long-run traffic fractions induced by independent uni-form next-hop choices at the switches. It is worth distinguishing the two roles that shortest paths play in the two models. In the scheduler-routed model of Section 4, the scheduler itself selects a minimum-dual-cost physical path for each logical edge, using the current prices 𝑦 𝑒 ; the prices determine the route. In the packet-spraying model, by contrast, the physical routing protocol fixes the shortest-path DAG according to its own routing metric, independently of the dual prices. The prices 𝑦 𝑒 do not determine which links are eligible to carry a flow; they are used only to evaluate the cost of the fixed packet-spraying fractions 
+
+𝑝 𝑒 (𝐹 ) induced by that routing structure. 
+
+# 5.2 The Packet-Sprayed Formulation 
+
+By Lemmas 3.4 and 3.5, a bandwidth-optimal AllReduce schedule under packet spraying decomposes into shards, each with a single root 𝑟 , a reduce in-tree 𝑅 directed toward 𝑟 , and a broadcast out-tree 
+
+𝐷 directed away from 𝑟 , with 𝑅 and 𝐷 not necessarily equal. They cannot be assumed equal because reversing a logical edge no longer mirrors its load onto the opposite directed edges: the fractions 
+
+𝑝 𝑒 (𝐹 ) of a flow 𝐹 = (𝑢, 𝑣 ) are determined by the shortest-path DAG toward 𝑣 and the branching degrees along it, while the DAG toward 
+
+𝑢 may branch differently, so in general 𝑝 ¯𝑒 
+
+ (𝑣, 𝑢 ) ≠ 𝑝 𝑒 
+
+ (𝑢, 𝑣 ) and the reversal step in the proof of Lemma 3.6 does not apply. We therefore take a packing variable to be such a pair .Let P be the set of all pairs 𝑃 = (𝑅, 𝐷 ) in which 𝑅 is a spanning in-arborescence and 𝐷 a spanning out-arborescence over the par-ticipating ranks, both rooted at a common rank, together with the packet-sprayed routing of their logical edges. A pair running at 
+
+> 9Namir Ballan and Reuven Cohen
+
+rate 𝜆 𝑃 loads directed physical edge 𝑒 by 
+
+𝐴 𝑒,𝑃 =∑︁  
+
+> 𝐹 ∈𝑅
+
+𝑝 𝑒 (𝐹 ) + ∑︁  
+
+> 𝐹 ∈𝐷
+
+𝑝 𝑒 (𝐹 ),
+
+the reduce and broadcast phases contributing separately because they are routed independently. The fractional packing problem is then max 
+
+> 𝜆 ≥0
+
+∑︁ 𝑃 ∈ P 
+
+𝜆 𝑃 subject to ∑︁  
+
+> 𝑃 ∈ P
+
+𝐴 𝑒,𝑃 𝜆 𝑃 ≤ 𝐶 𝑒 ∀𝑒 ∈ 𝐸, (6) which is a fractional packing LP of the same form as the tree LP of Section 2, with tree pairs instead of trees as its columns. 
+
+The minimum-cost pair oracle. Given dual prices 𝑦 , the oracle must return 𝑃 ★ ∈ arg min 𝑃 ∈ P 
+
+Í𝑒 𝐴 𝑒,𝑃 𝑦 𝑒 . Because the two phases of a pair are routed independently, the cost separates: cost 𝑦 (𝑅, 𝐷 ) =∑︁ 
+
+> (𝑢,𝑣 ) ∈ 𝑅
+
+𝑊 𝑢,𝑣 +∑︁ 
+
+> (𝑢,𝑣 ) ∈ 𝐷
+
+𝑊 𝑢,𝑣 ,
+
+where 𝑊 𝑢,𝑣 = Í𝑒 𝑝 𝑒 (𝑢, 𝑣 )𝑦 𝑒 is the directed projected weight of the logical flow (𝑢, 𝑣 ), computed as in Section 5.3. Note that the projected graph is now directed: unlike the scheduler-routed case, where the two directions of a logical tree edge were summed into a single undirected weight 𝑊 {𝑢,𝑣 } , here the reduce and broadcast trees use different logical edges and each direction must be priced separately. The separation makes the oracle easy. For a fixed root 𝑟 , the cheapest reduce tree and the cheapest broadcast tree may be chosen independently, so the minimum-cost pair rooted at 𝑟 is obtained by computing a minimum-weight spanning in-arborescence rooted at 
+
+𝑟 and a minimum-weight spanning out-arborescence rooted at 𝑟 
+
+on the directed projected graph. Minimizing over the 𝑛 choices of root gives 𝑃 ★.Theorem 5.1 (Pair-oracle correctness). Under local equal next-hop packet spraying and route separability, the procedure above returns a minimum-cost pair. 
+
+Proof of Theorem 5.1. Fix a root 𝑟 . By route separability the physical routing of each logical edge may be chosen independently of the others, so the minimum dual cost of a pair rooted at 𝑟 is the sum of its logical edges’ projected weights. The costs of the reduce in-tree and the broadcast out-tree add, so the pair cost is minimized by minimizing each separately; a minimum-weight spanning in-arborescence and a minimum-weight spanning out-arborescence rooted at 𝑟 achieve these two minima. Hence the procedure returns the cheapest pair rooted at 𝑟 , and taking the best over all 𝑛 roots returns the cheapest pair overall. 
+
+□
+
+Here Algorithm 1 is applied to the new packing LP over tree pairs, Equation (6), rather than to the tree LP of Section 2; only its columns and its oracle change. Since the oracle is exact, the algorithm retains its guarantee: the packing it returns is within (1−𝜖 )2 of the optimum of Equation (6), which by Lemmas 3.4 and 3.5 is the bandwidth-optimal AllReduce throughput under packet spraying. 
+
+# 5.3 Efficient Computation of Projection Weights 
+
+In the scheduler-routed model, the projection weight 𝑊 {𝑢,𝑣 } =
+
+𝑑 𝑦 (𝑢, 𝑣 ) + 𝑑 𝑦 (𝑣, 𝑢 ) of Section 4.2 is built from shortest-path distances under the dual weights 𝑦 𝑒 , computed by running Dijkstra from every rank in 𝑂 (𝑛 (| 𝐸 | + 𝑁 ) log 𝑁 ) total. This subsection treats the packet-spraying (PS) model of Section 5.1, where a logical flow is instead spread fractionally across the shortest paths. For a logical flow 𝐹 = (𝑢, 𝑣 ), the projection weight is the split-weighted sum of dual weights, 
+
+𝑊 𝑢,𝑣 =∑︁  
+
+> 𝑒 ∈𝐸
+
+𝑝 𝑒 (𝐹 ) 𝑦 𝑒 , (7) where 𝑝 𝑒 (𝐹 ) is the long-run fraction of 𝐹 routed over link 𝑒 .Equation (7) is the expected dual cost paid by a packet of 𝐹 , the expectation being over the independent uniform next-hop choices made at the switches. This observation yields a direct recurrence that avoids materializing the fractions 𝑝 𝑒 (𝐹 ) at all. 
+
+A destination-rooted dynamic program. Fix a destination 𝑣 and recall from Section 5.1 that Γ𝑣 (𝑐 ) denotes the set of outgoing neigh-bors of a physical node 𝑐 that continue along a shortest path from 𝑐 
+
+to 𝑣 . Define 𝐷 𝑣 (𝑐 ) to be the expected dual cost incurred by a packet that is currently at 𝑐 and is forwarded under local equal next-hop spraying until it reaches 𝑣 . Then 𝐷 𝑣 (𝑣 ) = 0 and, for every other node 𝑐 ,
+
+𝐷 𝑣 (𝑐 ) = 1
+
+|Γ𝑣 (𝑐 )| ∑︁ 𝑧 ∈Γ𝑣 (𝑐 )
+
+ 𝑦 (𝑐,𝑧 ) + 𝐷 𝑣 (𝑧 ). (8) Each eligible next hop is taken with probability 1 /| Γ𝑣 (𝑐 )| , and taking it costs 𝑦 (𝑐,𝑧 ) immediately plus the expected cost 𝐷 𝑣 (𝑧 ) from 𝑧 
+
+onward, so Equation (8) is exactly the expected-cost recurrence of the forwarding rule. Consequently, for every source 𝑢 ,
+
+𝑊 𝑢,𝑣 = 𝐷 𝑣 (𝑢 ).
+
+The recurrence is well founded: every 𝑧 ∈ Γ𝑣 (𝑐 ) is strictly closer to 𝑣 than 𝑐 is, so evaluating the nodes in increasing distance to 
+
+𝑣 —equivalently, in reverse topological order of the shortest-path DAG into 𝑣 —computes every 𝐷 𝑣 (𝑐 ) from values already known. When shortest paths are defined by hop count, that ordering is produced by a single backward breadth-first search from 𝑣 .
+
+Cost. For a fixed destination 𝑣 , one traversal builds the shortest-path DAG into 𝑣 and evaluates Equation (8) at every node, touch-ing each physical edge a constant number of times, so it costs 
+
+𝑂 (𝑁 + | 𝐸 |) . Running it once per destination rank yields all 𝑛 2 di-rected projection weights 𝑊 𝑢,𝑣 , since the sweep for 𝑣 produces 
+
+𝐷 𝑣 (𝑢 ) for every 𝑢 simultaneously. The total projection cost per oracle iteration is therefore 
+
+𝑇 PS proj = 𝑂  𝑛  𝑁 + | 𝐸 | . (9) Unlike a precomputation of the fractions 𝑝 𝑒 (𝐹 ), this must be re-peated each iteration, because the dual weights 𝑦 𝑒 change between iterations; the shortest-path DAGs themselves, however, depend only on the topology and may be built once and reused. 
+
+# 5.4 Max-Min Fair Realization 
+
+We now turn to how bandwidth is allocated once trees are in-stantiated. In the packet-sprayed formulation, we treat each re-duce/broadcast tree pair as one collective object whose constituent 
+
+> 10 DualColl: Throughput-Optimal Bandwidth-Bound Collective Communications via Fractional Tree Packing
+
+flows share a common rate; all definitions below apply to such pairs by summing the loads of both phases. We first define tree-coupled max-min fairness for single-path routing, and then generalize it to packet-sprayed flows. In ordinary flow-level max-min fairness, each flow is treated independently. A collective tree is different: it is not a single physical flow, but a collection of physical flows corresponding to the logical edges of the tree. Moreover, the tree can only make progress at the rate of its slowest flow. If one edge of the tree is bottlenecked, the whole tree pipeline slows down to that rate. We therefore use a tree-coupled max-min fairness model. Each tree 𝑇 𝑖 consists of a set of physical flows induced by routing its logical edges over the physical topology. The bandwidth 𝐵 (𝑇 𝑖 ) of the tree is the common rate at which all of its flows operate. If any flow of 𝑇 𝑖 becomes bottlenecked, then all other flows of 𝑇 𝑖 are clamped to the same rate. This captures the synchronous nature of a tree-based collective: a tree cannot complete its assigned data chunk faster than its slowest required communication path. Assume first that every logical edge is routed over a unique phys-ical path. The tree-coupled max-min allocation can be described by the following iterative procedure. It is important to note that this procedure describes how the resulting allocation is calculated , not a computation that the net-work carries out. The bandwidth given to each tree is determined by the network itself, dynamically, according to its transport and congestion-control protocol. The network does not run this algo-rithm; rather, the algorithm is our model for predicting the rates that the network’s max-min fair sharing will produce, so that the scheduler can reason about them when choosing which trees to instantiate. Tree-coupled max-min fairness is thus an idealized an-alytical model of protocol-determined bandwidth allocation. We do not claim that any particular congestion-control protocol realizes exact max-min fairness; rather, max-min fairness is a standard and analytically tractable approximation of the rates that such protocols tend to produce, and we use it to reason about the effect of tree duplication. 
+
+Bottleneck selection. For every physical link 𝑒 , compute the ratio between its remaining capacity and the number of active tree flows that traverse it. Let 
+
+𝐵 ∗ = min  
+
+> 𝑒 ∈𝐸
+
+𝐶 rem 
+
+> 𝑒
+
+𝑛 𝑒 
+
+, (10) where 𝐶 rem  
+
+> 𝑒
+
+is the remaining capacity on link 𝑒 , initially equal to 
+
+𝐶 𝑒 , and 𝑛 𝑒 is the number of active tree flows using 𝑒 .
+
+Tree clamping. Let 𝑒 ∗ be a link attaining the minimum in Equa-tion (10). Every active tree that uses 𝑒 ∗ is assigned bandwidth 𝐵 ∗.Once a tree is assigned this bandwidth, all of its flows, on all physical links, are clamped to rate 𝐵 ∗.
+
+Capacity update. For every newly clamped tree, subtract its band-width consumption from every physical link used by that tree. Re-move the clamped trees from the active set, and repeat the procedure until all trees have been assigned bandwidths. This procedure differs from ordinary flow-level max-min fairness only in the clamping step. In ordinary fairness, a bottlenecked flow is fixed but unrelated flows remain independent. In tree-coupled 0 1 23 4 5                                      
+
+> (a) Tree 1.
+> 012345
+> (b) Tree 2.
+> 012345
+> (c) Tree 3.
+> 012345
+> 6/3=26/2=39/3=36/2=36/2=36/2=36/2=3
+> (d) Bandwidth-to-flow ratios before allocation.
+> 012345
+> 0254444
+> (e) Remaining bandwidth after fixing Trees 1 and 2.
+
+Figure 1: Tree-coupled max-min fairness on a 2 × 3 partial-mesh topology. Three logical trees, shown in (a), (b), and (c), are mapped to a physical topology in which all physical links have capacity 6, except link (0, 3), which has capacity 9. In (d), each physical link is labeled by the ratio between its capacity and the number of active tree flows that traverse it. The minimum ratio is 2, attained by link (0, 1), and therefore Trees 1 and 2 are bottlenecked at bandwidth 2. In (e), the remaining capacity is shown after fixing Trees 1 and 2. Tree 3 is then assigned bandwidth 4. 
+
+fairness, once one flow of a tree is bottlenecked, the entire tree is fixed to the same rate. A basic property of this procedure, which we use later when an-alyzing tree duplication, is that the rate at which trees are clamped never decreases as the algorithm proceeds. We state and prove this monotonicity, in a general form that also covers packet spraying, in Lemma 5.4 at the end of this subsection. Figure 1 illustrates the procedure on a 2 × 3 partial mesh with six nodes, in which all physical links have capacity 6, except link 
+
+(0, 3), which has capacity 9. The schedule contains three logical trees. After mapping logical edges to physical shortest paths, we compute for each physical link the ratio between its capacity and the number of active tree flows that traverse it. The minimum ratio is 2, attained by link (0, 1). Therefore, all trees that use this link are bottlenecked; in the example, these are Trees 1 and 2. Both are assigned bandwidth 2, and all of their flows are clamped to rate 2. After subtracting their bandwidth consumption from the network, Tree 3 remains. Its minimum residual capacity is 4, and hence it is assigned bandwidth 4. 
+
+Generalization to packet spraying. The bottleneck computation above assumes each logical edge is routed over a single physical path. Under the packet-spraying model of Section 5.1, a logical flow 𝐹 instead loads each physical link 𝑒 fractionally by 𝑝 𝑒 (𝐹 ). The bottleneck computation from Equation (10) generalizes by replacing the number of active flows on a link with the total fractional load induced by active flows: 
+
+𝐵 ∗ = min  
+
+> 𝑒 ∈𝐸
+
+𝐶 rem 
+
+> 𝑒
+
+Í𝐹 ∈ F active 𝑝 𝑒 (𝐹 ) . (11) 
+
+> 11 Namir Ballan and Reuven Cohen
+
+Algorithm 2 Tree-coupled max-min fair allocation under packet spraying 
+
+Require: Trees {𝑇 1, . . . ,𝑇 𝑘 } with constituent flows and split coeffi-cients 𝑝 𝑒 (𝐹 ) for every flow 𝐹 and link 𝑒 ; link capacities {𝐶 𝑒 }𝑒 ∈𝐸 
+
+Ensure: Per-tree bandwidths {𝐵 (𝑇 𝑖 )} 𝑘 𝑖 =1 
+
+> 1:
+
+A ← { 𝑇 1, . . . ,𝑇 𝑘 } ⊲ active (unclamped) trees  
+
+> 2:
+
+𝐶 rem  
+
+> 𝑒
+
+← 𝐶 𝑒 for every 𝑒 ∈ 𝐸 ⊲ residual capacities  
+
+> 3:
+
+while A ≠ ∅ do  
+
+> 4:
+
+Factive ← { 𝐹 : 𝐹 is a flow of some 𝑇 ∈ A }  
+
+> 5:
+
+for all 𝑒 ∈ 𝐸 with Í𝐹 ∈ F active 𝑝 𝑒 (𝐹 ) > 0 do  
+
+> 6:
+
+𝑟 𝑒 ← 𝐶 rem 
+
+> 𝑒
+
+Í𝐹 ∈ F active 𝑝 𝑒 (𝐹 ) ⊲ fair-share ratio of link 𝑒  
+
+> 7:
+
+end for  
+
+> 8:
+
+𝐵 ★ ← min 𝑒 𝑟 𝑒  
+
+> 9:
+
+𝑒 ★ ← arg min 𝑒 𝑟 𝑒 ⊲ bottleneck link  
+
+> 10:
+
+C ← { 𝑇 ∈ A : ∃ flow 𝐹 of 𝑇 with 𝑝 𝑒 ★ (𝐹 ) > 0 } 
+
+> 11:
+
+for all 𝑇 ∈ C do  
+
+> 12:
+
+𝐵 (𝑇 ) ← 𝐵 ★ ⊲ clamp the whole tree  
+
+> 13:
+
+end for  
+
+> 14:
+
+for all 𝑒 ∈ 𝐸 do  
+
+> 15:
+
+𝐶 rem  
+
+> 𝑒
+
+← 𝐶 rem  
+
+> 𝑒
+
+− 𝐵 ★ Í𝐹 a flow of some 𝑇 ∈ C 𝑝 𝑒 (𝐹 ) 
+
+> 16:
+
+end for  
+
+> 17:
+
+A ← A \ C ⊲ deactivate clamped trees  
+
+> 18:
+
+end while  
+
+> 19:
+
+return {𝐵 (𝑇 𝑖 )} 𝑘 𝑖 =1
+
+Here, Factive is the set of constituent logical flows belonging to trees that have not yet been clamped. Suppose link 𝑒 ∗ attains the minimum in Equation (11). Any active tree with a constituent flow 𝐹 such that 𝑝 𝑒 ∗ (𝐹 ) > 0 is bottlenecked at bandwidth 𝐵 ∗. The amount of physical bandwidth consumed by this flow on link 𝑒 ∗ is then 𝑝 𝑒 ∗ (𝐹 )𝐵 ∗, and the total rate of the parent logical flow is 𝐵 ∗. Thus, the same tree-coupled clamping rule estab-lished for single-path routing applies: once a tree is bottlenecked on any fraction of any constituent flow, the entire tree is assigned the bottleneck rate 𝐵 ∗. In particular, all trees sharing the bottlenecked link 𝑒 ∗ are clamped to the same tree-level rate 𝐵 ∗, even though their individual sub-flows on 𝑒 ∗ may consume different physical amounts 𝑝 𝑒 ∗ (𝐹 )𝐵 ∗; the equal-rate property holds at the level of the original trees, as shown for the single-path case. The full procedure, including both the single-path and packet-spraying cases, is summarized in Algorithm 2. Figure 2 gives an example on a 2 × 2 mesh. Tree 2 contains a logical edge from node 0 to node 3. Since there is no direct physical link between them, packet spraying splits this logical flow equally between the two shortest paths, 0–1–3 and 0–2–3. Therefore, this logical flow contributes 1 /2 unit of load to each physical link on these two paths. After summing the fractional contributions of all active tree flows, the minimum fair-share ratio is attained by link 
+
+(0, 2) and equals 2. Since both trees use this link, either fully or fractionally, both trees are clamped to bandwidth 2. 
+
+Correctness under fractional loads. The clamping procedure above is an instance of the water-filling algorithm: it repeatedly raises a common rate on all unclamped trees until a link saturates, then freezes the trees on that link and continues. The following theorem 0 12 3                       
+
+> 3310 10
+> (a) 2×2mesh topol-ogy.
+> 0123
+> (b) Tree 1.
+> 0123
+> (c) Tree 2.
+> 0123
+> 0.5 1.5 2.5 2.5
+> (d) Sum of physical flow percent-ages.
+> 0123
+> 3/0.5=63/1.5=210 /2.5=410 /2.5=4
+> (e) Fair-share ratios.
+
+Figure 2: Tree-coupled max-min fairness under packet spray-ing. (a) A 2 × 2 physical mesh with non-uniform link capac-ities. (b) Tree 1 is routed using explicit physical paths. (c) Tree 2 contains the logical edge (0, 3), which is split by packet spraying across the two shortest physical paths from node 0 to node 3. (d) The resulting sum of physical flow fractions after accounting for the packet-spraying split. (e) The fair-share ratio, computed as capacity divided by accumulated flow fraction, identifies link (0, 2) as the global bottleneck. 
+
+states that this procedure is correct even when the per-link loads 
+
+𝑝 𝑒 (𝐹 ) are fractional, so that the rates it computes are exactly the tree-coupled max-min fair ones. Theorem 5.2 (The computed allocation is max-min fair). 
+
+For arbitrary non-negative per-link loads 𝑝 𝑒 (𝐹 ), the tree bandwidths 
+
+{𝐵 (𝑇 𝑖 )} produced by Algorithm 2 are the tree-coupled max-min fair allocation over the feasible set of tree-rate vectors. 
+
+The proof rests on a structural property of the feasible set. Water-filling computes the max-min fair allocation on any feasible set with the free-disposal property [9, Theorems 2 and 3]. Writing ®𝑒 𝑖 for the unit vector along coordinate 𝑖 , a set X ⊆ R𝑁 has this property if there is a lower-bound vector ®𝑚 with ®𝑥 ≥ ® 𝑚 for all ®𝑥 ∈ X , and for every ®𝑥 ∈ X , every coordinate 𝑖 , and every 𝛼 ≥ 0 with ®𝑥 − 𝛼 ®𝑒 𝑖 ≥ ® 𝑚 ,the decreased vector ®𝑥 −𝛼 ®𝑒 𝑖 is also in X. In words, lowering a single coordinate, as long as it stays above its lower bound, never leaves the set. Lemma 5.3 (The tree polytope is free-disposal). Let 𝑇 1, . . . ,𝑇 𝑁 
+
+be trees, and let 𝑞 𝑒,𝑖 ≥ 0 be the load that tree 𝑇 𝑖 places on directed edge 𝑒 per unit of rate. Then the polytope of feasible tree-rate vectors 
+
+B =
+
+n
+
+𝐵 ≥ 0 : Í𝑖 𝑞 𝑒,𝑖 𝐵 𝑖 ≤ 𝐶 𝑒 ∀𝑒 ∈ 𝐸 
+
+o
+
+,
+
+in which each coordinate 𝐵 𝑖 is the rate of tree 𝑇 𝑖 , has the free-disposal property. 
+
+> 12 DualColl: Throughput-Optimal Bandwidth-Bound Collective Communications via Fractional Tree Packing
+
+Proof. Each coordinate 𝐵 𝑖 is bounded below by 0, so the re-quired lower bound holds with 𝑚 = 0. Let 𝐵 ∈ B , fix a tree index 𝑖 0,and let 𝐵 ′ = 𝐵 − 𝛼 ®𝑒 𝑖 0 for some 𝛼 ≥ 0 with 𝐵 ′ ≥ 0; that is, 𝐵 ′ lowers the rate of the single tree 𝑇 𝑖 0 while keeping it non-negative. For every link 𝑒 ,∑︁ 
+
+> 𝑖
+
+𝑞 𝑒,𝑖 𝐵 ′ 
+
+> 𝑖
+
+=∑︁ 
+
+> 𝑖
+
+𝑞 𝑒,𝑖 𝐵 𝑖 − 𝛼 𝑞 𝑒,𝑖 0 ≤∑︁ 
+
+> 𝑖
+
+𝑞 𝑒,𝑖 𝐵 𝑖 ≤ 𝐶 𝑒 ,
+
+where the first inequality uses 𝛼 ≥ 0 and 𝑞 𝑒,𝑖 0 ≥ 0. Hence every capacity constraint remains satisfied and 𝐵 ′ ∈ B . Since this holds for any tree coordinate and any admissible 𝛼 , the set B has the free-disposal property. The argument uses only 𝑞 𝑒,𝑖 ≥ 0, and is therefore unaffected by whether the underlying loads are integer or fractional. □
+
+Proof of Theorem 5.2. We express the capacity constraints in tree-rate coordinates. Define the aggregate load coefficient of tree 𝑇 𝑖 
+
+on link 𝑒 as the total load its flows place on 𝑒 per unit of tree rate, 
+
+𝑞 𝑒,𝑖 =∑︁  
+
+> 𝐹 ∈𝑇 𝑖
+
+𝑝 𝑒 (𝐹 ) ≥ 0,
+
+so that a tree running at rate 𝐵 𝑖 consumes 𝑞 𝑒,𝑖 𝐵 𝑖 on link 𝑒 (for a reduce/broadcast tree pair, the sum runs over the flows of both phases), and the feasible set of tree-rate vectors is the polytope B
+
+of Lemma 5.3. By that lemma B is free-disposal, and water-filling computes the max-min fair allocation on any free-disposal set [9, Theorems 2 and 3]. Since Algorithm 2 is water-filling on B, the rates it computes are the max-min fair allocation. □
+
+We also record two properties of the tree-coupled max-min pro-cedure. The first is the monotonicity announced above; the second is used in Section 5.5 to analyze tree duplication. Lemma 5.4 (Monotonicity of the clamp rate). Let 𝐵 ∗
+
+> 1
+
+, 𝐵 ∗
+
+> 2
+
+, . . . 
+
+be the sequence of bottleneck values 𝐵 ∗ computed in successive itera-tions of the tree-coupled max-min procedure. Then this sequence is non-decreasing: 𝐵 ∗ 
+
+> 𝑡
+
+≤ 𝐵 ∗ 
+
+> 𝑡 +1
+
+for every iteration 𝑡 .
+
+Proof. Under packet spraying, a link 𝑒 carries a fractional load 
+
+ℓ𝑒 = Í𝐹 𝑝 𝑒 (𝐹 ), summed over the flows of active trees, and its fair-share ratio is 𝐶 rem  
+
+> 𝑒
+
+/ℓ𝑒 . Single-path routing is the special case in which every 𝑝 𝑒 (𝐹 ) ∈ { 0, 1}, so that ℓ𝑒 = 𝑛 𝑒 is an integer; it therefore suffices to prove the claim for the fractional case. We caution that the rate at which individual sub-flows are clamped need not be monotonic, since removing a clamped tree subtracts fractional loads that differ across links; the quantity shown to be monotonic is the tree-level bottleneck value 𝐵 ∗, taken as the global minimum over all links in each iteration. Consider two consecutive iterations 𝑡 and 𝑡 + 1, with bottleneck value 𝐵 ∗ 
+
+> 𝑡
+
+attained at some link at iteration 𝑡 . Let 𝑒 be any link that still has active flows at iteration 𝑡 + 1. Between the two iterations, the capacity-update step removed the trees clamped at iteration 
+
+𝑡 , each of which had been assigned rate exactly 𝐵 ∗ 
+
+> 𝑡
+
+. Let 𝛿 𝑒 ≥ 0 be the total fractional load these clamped trees contributed on link 𝑒 .Removing them subtracts 𝛿 𝑒 𝐵 ∗ 
+
+> 𝑡
+
+from the remaining capacity of 𝑒 
+
+(the physical bandwidth they consumed) and 𝛿 𝑒 from its fractional load. Writing the iteration-𝑡 ratio of 𝑒 as 𝐶 /ℓ, the iteration-(𝑡 + 1)
+
+ratio is 𝐶 − 𝛿 𝑒 𝐵 ∗
+
+> 𝑡
+
+ℓ − 𝛿 𝑒 
+
+.
+
+Since 𝐵 ∗ 
+
+> 𝑡
+
+is the global minimum fair-share ratio over all links at iter-ation 𝑡 , every link—including 𝑒 —satisfies 𝐶 /ℓ ≥ 𝐵 ∗ 
+
+> 𝑡
+
+at that iteration, i.e., 𝐶 ≥ ℓ𝐵 ∗ 
+
+> 𝑡
+
+. Substituting, 
+
+𝐶 − 𝛿 𝑒 𝐵 ∗
+
+> 𝑡
+
+ℓ − 𝛿 𝑒 
+
+≥ ℓ𝐵 ∗ 
+
+> 𝑡
+
+− 𝛿 𝑒 𝐵 ∗
+
+> 𝑡
+
+ℓ − 𝛿 𝑒 
+
+= 𝐵 ∗ 
+
+> 𝑡
+
+.
+
+Thus every link that still has active flows on it at iteration 𝑡 + 1has fair-share ratio at least 𝐵 ∗ 
+
+> 𝑡
+
+. Since 𝐵 ∗ 
+
+> 𝑡 +1
+
+is the minimum of these ratios, 𝐵 ∗ 
+
+> 𝑡 +1
+
+≥ 𝐵 ∗ 
+
+> 𝑡
+
+. □
+
+Lemma 5.5 (Max-min lower bound). Consider a set of active tree copies under tree-coupled max-min fairness. If there exists a feasible allocation in which every copy receives rate at least 𝑋 , then the tree-coupled max-min fair allocation assigns every copy rate at least 𝑋 .
+
+Proof. Assume for contradiction that some tree copy receives a rate below 𝑋 under tree-coupled max-min fairness. Consider the first iteration of the tree-coupled procedure at which a copy is clamped to a rate below 𝑋 , and let this rate be 𝐵 ∗ < 𝑋 , attained at bottleneck link 𝑒 . Because this is the first such iteration, every copy clamped at an earlier iteration received a rate at least 𝑋 > 𝐵 ∗. By the monotonicity of the clamp rate (Lemma 5.4), the clamp rates are non-decreasing, so no earlier copy could have been clamped at a rate exceeding 𝐵 ∗; combined with the previous sentence, this means this is the first iteration of the algorithm, and every copy using 𝑒 is still active and about to be clamped at 𝐵 ∗.At this iteration, the fair-share ratio of 𝑒 is 
+
+𝐵 ∗ = 𝐶 rem 
+
+> 𝑒
+
+Í𝐹 𝑝 𝑒 (𝐹 ) < 𝑋, 
+
+where the sum is over the constituent flows of the copies still active on 𝑒 , and 𝐶 rem  
+
+> 𝑒
+
+= 𝐶 𝑒 since no copy has yet been clamped and had its consumption removed. Rearranging, Í𝐹 𝑝 𝑒 (𝐹 ) 𝑋 > 𝐶 𝑒 . But this states exactly that if every active copy on 𝑒 were assigned rate 
+
+𝑋 , the total physical load on 𝑒 would exceed its capacity 𝐶 𝑒 . This contradicts the assumed existence of a feasible allocation in which every copy receives rate at least 𝑋 , since that allocation would also violate the capacity of 𝑒 . Hence no copy is clamped below 𝑋 ,and tree-coupled max-min fairness assigns every copy rate at least 
+
+𝑋 . □
+
+# 5.5 Emulating Explicit Bandwidths 
+
+We now show how to emulate an explicit bandwidth allocation using only max-min fair sharing. The key idea is tree duplication. If one tree should receive twice as much bandwidth as another, we instantiate two identical copies of the first tree and one copy of the second. Under max-min fairness, identical competing copies receive equal rates; the total bandwidth assigned to the original tree is the sum of the rates of its copies. For example, suppose the explicit allocation assigns bandwidth 100 to Tree A and bandwidth 50 to Tree B. If only these two trees are instantiated, a max-min fair protocol may not produce the desired ratio. Instead, we instantiate two copies of Tree A and one copy of Tree B. If the three instantiated trees receive equal bandwidth 50, then the two copies of Tree A together achieve bandwidth 50 + 50 = 100, while Tree B receives bandwidth 50. 
+
+> 13 Namir Ballan and Reuven Cohen
+
+We now formalize this idea. Let the explicit fractional solution contain 𝑘 trees of positive bandwidth, 
+
+𝑎 1, . . . , 𝑎 𝑘 > 0,
+
+where 𝑘 counts only trees with 𝑎 𝑖 > 0; trees assigned zero band-width by the fractional packing carry no data and are simply omit-ted. Fix an integer scale factor 𝑦 ≥ 1. Our goal is to create roughly 
+
+𝑦𝑘 tree copies, each of which should receive a common bandwidth 
+
+𝑋 . For a candidate value 𝑋 , define 
+
+𝑚 𝑖 (𝑋 ) =
+
+j 𝑎 𝑖 
+
+𝑋 
+
+k
+
+.
+
+We create 𝑚 𝑖 (𝑋 ) copies of tree 𝑇 𝑖 . Since 
+
+𝑚 𝑖 (𝑋 )𝑋 ≤ 𝑎 𝑖 
+
+for every 𝑖 , the duplicated schedule with per-copy bandwidth 𝑋 
+
+does not consume more capacity than the original explicit solution. Therefore, if the explicit allocation is feasible, then the duplicated allocation is also feasible. We choose the largest value 𝑋 ∗ such that the number of gener-ated tree copies is at least 𝑦𝑘 :
+
+> 𝑘
+
+∑︁ 
+
+> 𝑖 =1
+
+j 𝑎 𝑖 
+
+𝑋 ∗
+
+k
+
+≥ 𝑦𝑘. (12) The choice of the largest such 𝑋 ∗ deserves explanation, since it balances two competing pressures. The per-copy rate 𝑋 controls the granularity of the approximation: each tree 𝑇 𝑖 is approximated by ⌊𝑎 𝑖 /𝑋 ⌋ copies, so the emulated bandwidth ⌊𝑎 𝑖 /𝑋 ⌋𝑋 falls short of the target 𝑎 𝑖 by the rounding remainder, which is at most 𝑋 . A smaller 𝑋 makes this remainder smaller and the approximation finer, but it also increases the number of copies Í𝑖 ⌊𝑎 𝑖 /𝑋 ⌋, and instantiating too many tree copies is itself costly. Conversely, a larger 𝑋 uses fewer copies but coarsens the approximation and risks under-approximating each 𝑎 𝑖 by a larger margin. Requiring at least 𝑦𝑘 copies fixes a target granularity, and among all rates achieving that granularity we take the largest 𝑋 ∗, which uses the fewest copies consistent with it. As the theorem below shows, this choice makes the total emulated bandwidth 𝑦𝑘𝑋 ∗ approach the explicit optimum Í𝑖 𝑎 𝑖 as the scale factor 𝑦 grows, so increasing 𝑦 
+
+trades more copies for a provably better approximation. Rather than searching over all real values of 𝑋 , we compute 𝑋 ∗
+
+directly by sweeping the breakpoints at which copies are added. Observe that Í𝑖 ⌊𝑎 𝑖 /𝑋 ⌋ is a step function of 𝑋 that only changes at values of the form 𝑎 𝑖 /𝑏 for integers 𝑏 ≥ 1: as 𝑋 decreases, tree 
+
+𝑇 𝑖 gains its 𝑏 -th copy exactly when 𝑋 reaches 𝑎 𝑖 /𝑏 . Algorithm 3 exploits this. Every tree starts with no copies, and its first breakpoint 
+
+𝑎 𝑖 is placed in a max-heap; the sweep then repeatedly lowers 𝑋 to the next-largest breakpoint still in the heap. At each such breakpoint every tree whose breakpoint equals that value gains a copy, so the total copy count increases by at least one per step, and ties among equal breakpoints are handled automatically. The sweep stops as soon as the total first reaches or exceeds 𝑦𝑘 , at which point the current breakpoint is the largest 𝑋 satisfying Equation (12), namely 
+
+𝑋 ∗. Maintaining the candidate breakpoints in a max-heap, each copy addition costs 𝑂 (log 𝑘 ), and since at most 𝑦𝑘 + 𝑘 − 1 copies are ever created, the total cost is 𝑂 (𝑦𝑘 log 𝑘 ).Assigning bandwidth 𝑋 ∗ to every duplicated copy is a feasible allocation, since by construction the copies at per-copy rate 𝑋 ∗
+
+Algorithm 3 Compute the duplication rate 𝑋 ∗
+
+Require: Tree bandwidths 𝑎 1, . . . , 𝑎 𝑘 > 0; scale factor 𝑦 ≥ 1
+
+Ensure: Rate 𝑋 ∗ and per-tree copy counts 𝑏 1, . . . , 𝑏 𝑘  
+
+> 1:
+
+𝑏 𝑖 ← 0 for all 𝑖 ; total ← 0 
+
+> 2:
+
+init max-heap 𝐻 with keys 𝑡 𝑖 ← 𝑎 𝑖 for all 𝑖 ⊲ first breakpoint of each tree  
+
+> 3:
+
+while total < 𝑦𝑘 do  
+
+> 4:
+
+𝑋 ∗ ← maximum key in 𝐻 ⊲ next breakpoint  
+
+> 5:
+
+for all 𝑖 with 𝑡 𝑖 = 𝑋 ∗ do  
+
+> 6:
+
+𝑏 𝑖 ← 𝑏 𝑖 + 1; total ← total + 1 
+
+> 7:
+
+update key of 𝑖 in 𝐻 to 𝑡 𝑖 ← 𝑎 𝑖 /( 𝑏 𝑖 + 1) 
+
+> 8:
+
+end for  
+
+> 9:
+
+end while  
+
+> 10:
+
+return 𝑋 ∗, (𝑏 1, . . . , 𝑏 𝑘 )
+
+consume no more capacity than the original explicit solution; it therefore serves as a feasible lower-bound allocation. By Lemma 5.5, tree-coupled max-min fairness then assigns every copy a rate at least 𝑋 ∗, so the aggregate bandwidth delivered is at least the guaran-teed value 𝑦𝑘𝑋 ∗. We stress the distinction between this guaranteed 
+
+bandwidth 𝑦𝑘𝑋 ∗, which the approximation theorem below uses, and the possibly larger bandwidth that max-min fairness actually delivers: because max-min fairness raises unbottlenecked copies above 𝑋 ∗ whenever spare capacity remains, the realized aggregate may exceed 𝑦𝑘𝑋 ∗. The following theorem bounds the loss of the guaranteed value relative to the original explicit allocation. Theorem 5.6 (Approximation by tree duplication). Let 
+
+𝑎 1, . . . , 𝑎 𝑘 be the tree bandwidths in a feasible explicit allocation, and let 𝑋 ∗ be the largest value satisfying Equation (12) . Then the number of instantiated tree copies satisfies 
+
+𝑦𝑘 ≤
+
+> 𝑘
+
+∑︁ 
+
+> 𝑖 =1
+
+j 𝑎 𝑖 
+
+𝑋 ∗
+
+k
+
+≤ 𝑦𝑘 + 𝑘 − 1 < (𝑦 + 1)𝑘, (13) 
+
+and the guaranteed aggregate bandwidth 𝑦𝑘𝑋 ∗ satisfies 
+
+Í𝑘 𝑖 =1 𝑎 𝑖 
+
+𝑦𝑘𝑋 ∗ ≤ 𝑦𝑘 + 𝑘 − 1
+
+𝑦𝑘 = 1 + 𝑘 − 1
+
+𝑦𝑘 . (14) Proof of Theorem 5.6. Let 
+
+𝑚 𝑖 =
+
+j 𝑎 𝑖 
+
+𝑋 ∗
+
+k
+
+.
+
+Since 𝑋 ∗ is the largest value satisfying Equation (12), increasing 𝑋 ∗
+
+by an arbitrarily small amount must make the constraint fail. That is, for every sufficiently small 𝜂 > 0, 
+
+> 𝑘
+
+∑︁ 
+
+> 𝑖 =1
+
+ 𝑎 𝑖 
+
+𝑋 ∗ + 𝜂 
+
+
+
+≤ 𝑦𝑘 − 1.
+
+Let 𝑐 be the number of indices 𝑖 for which 𝑎 𝑖 /𝑋 ∗ is an integer. These are exactly the terms whose floor value decreases under an infinitesimal increase of 𝑋 ∗. Therefore, 
+
+> 𝑘
+
+∑︁ 
+
+> 𝑖 =1
+
+𝑚 𝑖 − 𝑐 ≤ 𝑦𝑘 − 1,
+
+and hence 𝑘 ∑︁ 
+
+> 𝑖 =1
+
+𝑚 𝑖 ≤ 𝑦𝑘 + 𝑐 − 1. (15) 
+
+> 14 DualColl: Throughput-Optimal Bandwidth-Bound Collective Communications via Fractional Tree Packing
+
+Since 𝑐 ≤ 𝑘 , this gives the upper bound Í𝑖 𝑚 𝑖 ≤ 𝑦𝑘 +𝑘 −1 < (𝑦 +1)𝑘 
+
+on the number of instantiated copies; the matching lower bound 
+
+Í𝑖 𝑚 𝑖 ≥ 𝑦𝑘 is Equation (12) itself. This establishes Equation (13). Intuitively, if the scheme used (𝑦 + 1)𝑘 or more copies, then some larger value of 𝑋 would already yield at least 𝑦𝑘 copies, contradict-ing the maximality of 𝑋 ∗.We now upper-bound the explicit bandwidth. For the 𝑐 indices that lie exactly on an integer boundary, we have 𝑎 𝑖 = 𝑚 𝑖 𝑋 ∗. For the remaining 𝑘 − 𝑐 indices, we have 𝑎 𝑖 < (𝑚 𝑖 + 1)𝑋 ∗. Therefore, 
+
+> 𝑘
+
+∑︁ 
+
+> 𝑖 =1
+
+𝑎 𝑖 ≤ 𝑋 ∗
+
+> 𝑘
+
+∑︁ 
+
+> 𝑖 =1
+
+𝑚 𝑖 + 𝑋 ∗ (𝑘 − 𝑐 ).
+
+Using Equation (15), 
+
+> 𝑘
+
+∑︁ 
+
+> 𝑖 =1
+
+𝑎 𝑖 ≤ 𝑋 ∗ (𝑦𝑘 + 𝑐 − 1) + 𝑋 ∗ (𝑘 − 𝑐 )
+
+= 𝑋 ∗ (𝑦𝑘 + 𝑘 − 1).
+
+Dividing by 𝑦𝑘𝑋 ∗ gives 
+
+Í𝑘 𝑖 =1 𝑎 𝑖 
+
+𝑦𝑘𝑋 ∗ ≤ 𝑦𝑘 + 𝑘 − 1
+
+𝑦𝑘 .
+
+This proves the claimed bound. □
+
+Consequently, the scheme uses at most (𝑦 + 1)𝑘 tree copies, and as 𝑦 grows the guaranteed aggregate bandwidth approaches the explicit fractional bandwidth. The approximation factor in Theorem 5.6 is 
+
+𝑦𝑘 + 𝑘 − 1
+
+𝑦𝑘 = 1 + 𝑘 − 1
+
+𝑦𝑘 .
+
+Thus, increasing the duplication scale 𝑦 makes the protocol-level schedule arbitrarily close to the explicit fractional allocation. Equiv-alently, for any desired accuracy parameter 𝜇 > 0, choosing 
+
+𝑦 ≥ max 
+
+
+
+1,
+
+𝑘 − 1
+
+𝑘𝜇 
+
+ 
+
+≈ 1/𝜇 
+
+gives an approximation factor at most 1 + 𝜇 .
+
+# 5.6 Approximation and Time Complexity 
+
+We now compose the DualColl guarantee from Section 4 with the tree-duplication guarantee to obtain the bandwidth actually delivered under protocol-determined max-min sharing and packet spraying, together with the total running time. Theorem 5.7 (End-to-end DualColl guarantee under packet spraying). Fix 0 < 𝜖 < 1 and run DualColl under packet spraying with accuracy 𝜖 , obtaining 𝑘 positive-rate tree pairs. Then apply tree duplication, duplicating each pair as a unit, with the choice 
+
+𝑦 = max 
+
+
+
+1,
+
+𝑘 − 1
+
+𝑘𝜖 
+
+ 
+
+,
+
+i.e. setting the duplication accuracy parameter 𝜇 = 𝜖 . Then the guar-anteed aggregate bandwidth 𝑦𝑘𝑋 ∗ is at least 
+
+(1 − 𝜖 )3 OPT ,
+
+and the total running time is 
+
+𝑇 = 𝑂 
+
+ |𝐸 | log |𝐸 |
+
+𝜖 2
+
+ 𝑛  𝑁 + | 𝐸 | + 𝑛 3  + |𝐸 | log |𝐸 | log (| 𝐸 |/ 𝜖 )
+
+𝜖 3
+
+
+
+.
+
+(16) Proof of Theorem 5.7. By Theorem 4.2 applied with the packet-spraying oracle, DualColl returns a feasible explicit fractional packing 𝑎 1, . . . , 𝑎 𝑘 (the tree pairs of positive band-width) with Í𝑖 𝑎 𝑖 ≥ (1 − 𝜖 )2 OPT. Tree duplication with 
+
+𝑦 = max {1, ⌈( 𝑘 − 1)/( 𝑘𝜖 )⌉} sets the duplication accuracy to 𝜇 = 𝜖 ,so by Theorem 5.6 the guaranteed aggregate bandwidth satisfies 
+
+𝑦𝑘𝑋 ∗ ≥
+
+Í𝑖 𝑎 𝑖 
+
+1 + 𝜖 ≥ ( 1 − 𝜖 )∑︁ 
+
+> 𝑖
+
+𝑎 𝑖 
+
+≥ ( 1 − 𝜖 ) ( 1 − 𝜖 )2 OPT = (1 − 𝜖 )3 OPT ,
+
+where the first inequality is Equation (14) with 𝜇 = 𝜖 and the second uses 1 /( 1 +𝜖 ) ≥ 1 −𝜖 . By Lemma 5.5, tree-coupled max-min fairness delivers at least this guaranteed value, establishing the 
+
+(1 − 𝜖 )3 bound. For the running time we first bound the DualColl solve under packet spraying. By Section 5.2 the packet-sprayed oracle computes, on the directed projected graph, one minimum-weight spanning in-arborescence and one minimum-weight spanning out-arborescence per candidate root. That graph has 𝑛 vertices and 
+
+Θ(𝑛 2) arcs, and on such a dense graph Tarjan’s implementation of the Chu–Liu/Edmonds algorithm computes a minimum spanning arborescence in 𝑂 (𝑛 2) time [12], so the 2 𝑛 arborescence compu-tations cost 𝑂  𝑛 3 . Adding the projection cost 𝑂  𝑛  𝑁 + | 𝐸 | of Equation (9), one oracle invocation costs 
+
+𝑇 PS oracle = 𝑂  𝑛  𝑁 + | 𝐸 | + 𝑛 3  , (17) and since the Garg–Könemann scheme performs 𝑁 iter =
+
+𝑂 
+
+ |𝐸 | log |𝐸 |
+
+> 𝜖 2
+
+
+
+iterations, each invoking the oracle once, the solve costs 
+
+𝑇 PS DualColl = 𝑂 
+
+ |𝐸 | log |𝐸 |
+
+𝜖 2
+
+ 𝑛  𝑁 + | 𝐸 | + 𝑛 3  
+
+. (18) Computing 𝑋 ∗ and instantiating the copies via Algorithm 3 costs 
+
+𝑂 (𝑦𝑘 log 𝑘 ). With 𝑦 = max {1, ⌈( 𝑘 −1)/( 𝑘𝜖 )⌉} we have 𝑦𝑘 = 𝑂 (𝑘 /𝜖 ),so the duplication step costs 𝑂 (( 𝑘 /𝜖 ) log 𝑘 ). The number of distinct tree pairs returned by the packing algorithm is at most the number of iterations, 𝑘 = 𝑂 (𝑁 iter ) = 𝑂 (| 𝐸 | log |𝐸 |/ 𝜖 2); substituting this bound and using log 𝑘 = 𝑂 (log (| 𝐸 |/ 𝜖 )) gives a duplication cost of 
+
+𝑂  |𝐸 | log |𝐸 | log (| 𝐸 |/ 𝜖 )/ 𝜖 3 . The total is the sum of the DualColl solve and this duplication cost, which is Equation (16). □
+
+The two terms in Equation (16) do not dominate one another in general: the DualColl solve scales as 1 /𝜖 2 while the duplication term scales as 1 /𝜖 3. For fixed network size and 𝜖 → 0 the duplication term eventually dominates, while for moderate 𝜖 or large networks the DualColl solve dominates; the total is therefore stated as their sum. 
+
+# 6 Extensions to Other Collective Operations 
+
+This section extends DualColl beyond a single AllReduce: to All-Gather, to ReduceScatter, and to multiple concurrent AllReduce groups. In each case only the packing variable and the oracle 
+
+> 15 Namir Ballan and Reuven Cohen
+
+change; the multiplicative-weights framework of Section 4 is used unchanged. 
+
+# 6.1 The AllGather Operation 
+
+The AllGather and ReduceScatter constructions below, and the bottleneck objective for multiple concurrent AllReduce groups in Section 6.3, all rest on the same reduction from a max-min objective to a tuple packing. We first motivate it with AllGather and then state it once, in general form. In the AllGather operation, every node starts with a unique data buffer and must broadcast it to all other nodes in the network. For each node 𝑣 𝑗 , there exists at least one distinct tree rooted at 𝑣 𝑗 
+
+that spans all other nodes to broadcast its data. Let T𝑗 represent the set of all trees rooted at node 𝑣 𝑗 . The logical structure for a specific root must strictly be a tree (containing no cycles) to avoid redundant data transmission. Each directed logical edge maps to a single unidirectional flow in the physical topology. Every node must broadcast its full data buffer of size 𝑋 to ev-ery other node. Write 𝐵 𝑖 for the bandwidth of tree 𝑇 𝑖 . The total bandwidth actively broadcasting node 𝑣 𝑗 ’s data is the sum of the bandwidths of the trees rooted at 𝑣 𝑗 , denoted as Λ𝑗 = Í𝑇 𝑖 ∈ T 𝑗 𝐵 𝑖 .The time for node 𝑣 𝑗 to finish its broadcast is 𝑋 /Λ𝑗 . The comple-tion time is determined by the root with the smallest aggregate broadcast rate: Total Time = max 
+
+> 𝑗
+
+𝑋 
+
+Λ𝑗 
+
+= 𝑋 
+
+min 𝑗 Λ𝑗 
+
+(19) Hence the objective is to maximize the minimum aggregate broad-cast rate across roots, max min 𝑗 Λ𝑗 .
+
+From a max-min objective to a tuple packing. Suppose the trees of interest are partitioned into 𝑘 classes T1, . . . , T𝑘 , all drawing on the same physical-link capacities. Tree 𝑇 𝑖 has bandwidth 𝐵 𝑖 , and the aggregate bandwidth of class 𝑗 is Λ𝑗 = Í𝑇 𝑖 ∈ T 𝑗 𝐵 𝑖 . A bandwidth vector 𝐵 is feasible if Í𝑖 𝐴 𝑒,𝑇 𝑖 𝐵 𝑖 ≤ 𝐶 𝑒 for every directed edge 𝑒 , and the objective is to maximize min 𝑗 Λ𝑗 . The following lemma says that this max-min problem has the same optimum as an ordinary fractional packing LP whose columns are tuples containing one tree from each class, all trees of a tuple sharing a single common rate. Lemma 6.1 (Tuple packing for max-min objectives). Let C be the set of tuples 𝑐 = (𝑇 (1) , . . . ,𝑇 (𝑘 ) ) with 𝑇 ( 𝑗 ) ∈ T 𝑗 , and for a tuple 
+
+𝑐 let 𝐴 𝑒,𝑐 = Í𝑗 𝐴 𝑒,𝑇 ( 𝑗 ) be its total load on directed edge 𝑒 . Then the optimum of the max-min problem 
+
+max 
+
+n
+
+min  
+
+> 𝑗
+
+Λ𝑗 : 𝐵 feasible 
+
+o
+
+equals the optimum of the tuple-packing LP 
+
+max 
+
+nÍ𝑐 ∈ C 𝜆 𝑐 : Í𝑐 𝐴 𝑒,𝑐 𝜆 𝑐 ≤ 𝐶 𝑒 ∀𝑒, 𝜆 ≥ 0
+
+o
+
+.
+
+Proof. We show each side is at least the other. 
+
+Tuple packing ≤ max-min. Let 𝜆 be a feasible tuple packing of value 𝑧 = Í𝑐 𝜆 𝑐 . Assign every tree appearing in tuple 𝑐 the rate 
+
+𝜆 𝑐 , summing over tuples when a tree occurs in several. Each class then receives aggregate bandwidth exactly Λ𝑗 = Í𝑐 𝜆 𝑐 = 𝑧 , because every tuple contributes one tree to every class. The induced per-edge load is Í𝑐 𝜆 𝑐 𝐴 𝑒,𝑐 = Í𝑐 𝜆 𝑐 
+
+Í𝑗 𝐴 𝑒,𝑇 ( 𝑗 ) , which is exactly the load of the tuple packing and hence at most 𝐶 𝑒 . So this is a feasible solution of the max-min problem with min 𝑗 Λ𝑗 = 𝑧 .
+
+Max-min ≤ tuple packing. Let 𝐵 be feasible with 𝑧 = min 𝑗 Λ𝑗 . We start by lowering the rates of the trees of any class whose aggregate exceeds 𝑧 until every class has aggregate exactly 𝑧 , and the result will still be feasible. Now build tuples greedily. While some tree has positive rate, let 𝛿 be the smallest positive rate among all trees of all classes, attained by a tree 𝑇 𝑖 ★ ; pick any positive-rate tree from each class, including 𝑇 𝑖 ★ from its own, and form the tuple 𝑐 of these trees with rate 𝜆 𝑐 = 𝛿 . Subtract 𝛿 from the rate of each chosen tree; by the choice of 𝛿 no rate becomes negative. Each step removes exactly 
+
+𝛿 from every class, so all classes always have the same remaining aggregate. Consequently, as long as some class still has a tree of positive rate, every class does: we never reach a situation in which one class has no tree left while another still has one, and each tuple can always be completed. The tree 𝑇 𝑖 ★ now has rate zero, so the number of positive-rate trees strictly decreases and the process terminates, with all classes reaching zero together. The tuple rates sum to 𝑧 , and every tree’s rate is fully distributed among the tuples containing it, so the per-edge load of the resulting tuple packing equals that of 𝐵 and is at most 𝐶 𝑒 . Its value is therefore 𝑧 . □
+
+Lemma 6.1 is applied with one class per AllGather root below, with one class per ReduceScatter root in Section 6.2, and with one class per concurrent AllReduce group in Section 6.3. 
+
+Our Solution. By Lemma 6.1, applied with one class per root, the max-min objective above has the same optimum as a fractional packing whose columns are 𝑛 -tuples of trees, one rooted at each compute node, with all trees of a tuple sharing a common rate. We therefore take a packing variable to be such an 𝑛 -tuple, and the oracle must return the minimum-cost one under the current dual prices. Since the cost of a tuple is the sum of the costs of its 𝑛 trees and the trees are chosen independently, the cheapest tuple consists of the cheapest tree rooted at each node, so the oracle computes, for every root, a minimum-weight spanning out-arborescence on the projected graph. 
+
+Complexity of one oracle call. The projected graph 𝐺 𝑅 has 𝑛 ver-tices, one per participating rank, and is complete and directed, so it contains Θ(𝑛 2) arcs. On such a dense graph Tarjan’s implemen-tation of the Chu–Liu/Edmonds algorithm computes a minimum spanning arborescence in 𝑂 (𝑛 2) time [12]. The oracle requires one such arborescence for each of the 𝑛 roots, giving a total arbores-cence cost of 𝑂 (𝑛 3).The projected graph itself is constructed once per oracle call. Un-der scheduler-routed single-path routing, its directed edge weights are shortest-path distances under the current dual prices. Running Dijkstra’s algorithm from every participating rank with a binary heap requires 
+
+𝑂 (𝑛 (𝑁 + | 𝐸 |) log 𝑁 )
+
+time. Under local equal-next-hop packet spraying, the directed pro-jection weights are the expected dual costs described in Section 5.3; one destination-rooted sweep per participating rank computes all such weights in 
+
+𝑂 (𝑛 (𝑁 + | 𝐸 |)) 
+
+time. 
+
+> 16 DualColl: Throughput-Optimal Bandwidth-Bound Collective Communications via Fractional Tree Packing
+
+Hence, under scheduler-routed routing, one AllGather oracle call takes 
+
+𝑇 AG ,SP oracle = 𝑂  𝑛 (𝑁 + | 𝐸 |) log 𝑁 + 𝑛 3  ,
+
+whereas under packet spraying it takes 
+
+𝑇 AG ,PS oracle = 𝑂  𝑛 (𝑁 + | 𝐸 |) + 𝑛 3  .
+
+Total complexity. The Garg–Könemann framework performs 
+
+𝑂 
+
+ |𝐸 | log |𝐸 |
+
+𝜖 2
+
+
+
+oracle iterations. Therefore, the total running time for AllGather under scheduler-routed routing is 
+
+𝑇 AG ,SP = 𝑂 
+
+ |𝐸 | log |𝐸 |
+
+𝜖 2
+
+𝑛 (𝑁 + | 𝐸 |) log 𝑁 + 𝑛 3  
+
+,
+
+and under packet spraying it is 
+
+𝑇 AG ,PS = 𝑂 
+
+ |𝐸 | log |𝐸 |
+
+𝜖 2
+
+𝑛 (𝑁 + | 𝐸 |) + 𝑛 3  
+
+.
+
+In common fabrics where 𝑁 = 𝑂 (𝑛 ) and hence |𝐸 | = 𝑂 (𝑛 2),the 𝑂 (𝑛 3) arborescence term is of the same order as, or may domi-nate, the projection term depending on the physical topology. We therefore retain both terms in the general bounds above. 
+
+# 6.2 The ReduceScatter Operation 
+
+In the ReduceScatter operation, every node starts with a full input vector and ends with a specific reduced block of the data. As in AllGather, there is a set of trees T𝑗 associated with each node 𝑣 𝑗 ;here, however, the edges in each tree are directed towards the root 
+
+𝑣 𝑗 , representing the flow of partial results being aggregated from the leaves to the root. The completion time is again governed by the node whose aggregation is slowest, so the objective is the same max-min objective as in AllGather, max min 𝑗 Λ𝑗 with Λ𝑗 = Í𝑇 𝑖 ∈ T 𝑗 𝐵 𝑖 .
+
+Why we do not obtain ReduceScatter by reversal. ReduceScatter is commonly treated as the directional dual of AllGather and obtained by reversing every logical edge of an AllGather solution; this is what ForestColl does, and under scheduler-routed single-path rout-ing it is sound. When every logical edge is mapped to one physical path, reversing that path preserves feasibility whenever the two directions of each physical link have equal capacity, since the re-versed flow consumes on ¯ 𝑒 exactly what the original consumed on 
+
+𝑒 .Under local equal next-hop packet spraying this argument no longer applies. The fractions 𝑝 𝑒 (𝐹 ) induced by a flow 𝐹 = (𝑢, 𝑣 )
+
+are determined by the shortest-path DAG toward 𝑣 and by the branching degrees |Γ𝑣 (𝑐 )| along it. The reversed flow (𝑣, 𝑢 ) is routed on the shortest-path DAG toward 𝑢 , whose branching structure may differ, so in general 
+
+𝑝 ¯𝑒 
+
+ (𝑣, 𝑢 ) ≠ 𝑝 𝑒 
+
+ (𝑢, 𝑣 ),
+
+even on a symmetric full-duplex topology. Reversal therefore need not preserve the induced routing fractions, and hence need not preserve feasibility or per-tree bandwidth. We consequently do not derive ReduceScatter from AllGather by reversal, and instead solve it directly. 
+
+Our Solution. By Lemma 6.1, applied with one class per root, this max-min objective again has the same optimum as a fractional packing over 𝑛 -tuples of trees. Solving ReduceScatter directly there-fore requires only one change to the AllGather oracle of Section 6.1. There, a packing variable is an 𝑛 -tuple of trees, one rooted at each node, and the oracle returns for each root a minimum-weight out -arborescence, whose edges are directed away from the root, match-ing the outward flow of a broadcast. For ReduceScatter the data flows inward instead, so the oracle returns for each root a minimum-weight in -arborescence, whose edges are directed toward the root; equivalently, one runs the same minimum-arborescence compu-tation on the projected graph with its edge orientations reversed. Everything else is unchanged: the projected weights are computed from the current dual prices exactly as before, each tuple receives a common bandwidth, and the surrounding multiplicative-weights framework, its stopping rule and its scaling step are untouched. Because the two oracles differ only in the orientation of the arbores-cences they compute, and an in-arborescence on 𝑛 nodes costs the same as an out-arborescence, ReduceScatter inherits the AllGather running time and approximation guarantee, and the argument is valid under packet-sprayed routing as well as under single-path routing. 
+
+# 6.3 Multiple Concurrent AllReduce-Sets 
+
+In complex distributed systems, an AllReduce-set is a specific sub-set of compute nodes participating in an independent AllReduce operation. We consider two distinct optimization objectives for this scenario: maximizing the total aggregate bandwidth across all con-current sets, or maximizing the bottleneck (slowest) AllReduce-set. 
+
+Our Solution. An important assumption required for optimality in this context is that compute nodes only participate in the routing and computation of their own AllReduce-sets. Therefore, a spanning tree for a given set contains only and all the nodes belonging to that specific set. To maximize the total aggregate bandwidth across all sets, we utilize the original fractional packing algorithm (Section 4). During each oracle iteration, the oracle computes the MST for each active AllReduce-set independently, and strictly returns the single tree (from any set) with the absolute minimum weight. Alternatively, to maximize the slowest AllReduce-set, we apply Lemma 6.1 with one class per concurrent set: the bottleneck objective then has the same optimum as a fractional packing whose columns are 𝑘 -tuples of trees, one spanning each AllReduce-set, all sharing a common rate. To solve this, we structure our oracle to compute independent spanning trees per set during each iteration (utilizing only the compute nodes relevant to that specific set). The single column vector returned to the solver is exactly the union of these independently optimal spanning trees. This increases the oracle complexity by a factor of 𝑘 , giving 
+
+𝑂 
+
+ |𝐸 | log |𝐸 |
+
+> 𝜖 2
+
+𝑛 (| 𝐸 | + 𝑁 ) log 𝑁 + 𝑘 · 𝑛 2  
+
+, and makes the framework directly applicable to multi-tenant environments. Under packet spraying, each tree above becomes a reduce/broadcast tree pair, and each minimum spanning tree computation is replaced by the pair oracle of Section 5.2. 
+
+> 17 Namir Ballan and Reuven Cohen
+
+# 7 Related Work 
+
+Collective communication libraries and algorithms. High-performance distributed systems have long relied on optimized collective-communication algorithms. Classical MPI work de-veloped bandwidth-efficient algorithms for operations such as AllReduce and ReduceScatter [7, 8, 13], while modern distributed-training systems commonly use GPU-oriented libraries such as NVIDIA NCCL [6] and frameworks such as Horovod [10]. Blue-Connect adapts AllReduce to heterogeneous network hierarchies by decomposing it into parallel ReduceScatter and AllGather oper-ations that can be mapped to different network fabrics [2]. More recent systems provide increasingly programmable communication layers; for example, MSCCLang provides a language for writing custom GPU collective algorithms together with an optimizing compiler [3], while MSCCL++ provides low-level communication primitives and a DSL for constructing high-performance GPU communication kernels [5]. DualColl is complementary to these systems: our focus is the algorithmic construction of provably high-throughput schedules for a given heterogeneous network fabric. 
+
+Topology-aware synthesis and tree packing. Several systems auto-matically construct collective algorithms for a given topology. SCCL formulates collective synthesis as an SMT problem and searches for algorithms along the latency–bandwidth tradeoff [1], while TACCL uses user-provided communication sketches to guide synthesis on larger heterogeneous topologies [11]. Blink [15] is particularly re-lated to DualColl: it applies a multiplicative-weight approximation algorithm to pack spanning trees on heterogeneous GPU topologies and uses the resulting structures to implement collectives including AllReduce. DualColl differs in the optimization problem and guar-antees considered here: we formulate bandwidth-bound AllReduce directly, prove that the tree-based restriction loses no through-put under our full-duplex model, and obtain a polynomial-time 
+
+(1 − 𝜖 )2 approximation guarantee for the resulting AllReduce prob-lem. Blink’s tree-packing formulation does not directly support switched topologies. 
+
+ForestColl. The work most closely related to ours is Forest-Coll [16], which constructs throughput-optimal collective schedules on heterogeneous network fabrics by packing broadcast or aggregation spanning trees. Its optimality characterization is based on the network bottleneck cut and also enables switch nodes to be eliminated while preserving the relevant cut capacities. ForestColl’s polynomial construction is developed for AllGather and ReduceScatter, with AllReduce obtained by composing the two. We show that this composition can be strictly suboptimal for AllReduce (Appendix A) and instead optimize AllReduce directly. Our treatment of switches also differs: rather than eliminating them using a cut transformation, DualColl projects physical-link dual prices onto a logical graph over participating ranks; switch links remain fully represented through the projected edge costs and capacity constraints. Finally, whereas ForestColl considers scheduler-routed single-path routing and a single collective group, DualColl additionally addresses packet-sprayed routing, tree-coupled max-min bandwidth allocation, and multiple concurrent collective groups. 
+
+# 8 Conclusion 
+
+We formulated the scheduling of bandwidth-bound collective operations as a fractional tree-packing LP under an explicit bandwidth-allocation model. By combining the Garg–Könemann algorithm with an exact dual-cost projection oracle, we obtain a fully polynomial-time approximation scheme (FPTAS) that computes a solution arbitrarily close to the optimal fractional tree-packing value on any static datacenter topology satisfying our network model. To the best of our knowledge, DualColl is the first polynomial-time algorithm with a provable near-optimality guarantee for bandwidth-bound AllReduce on switched topologies. We further extend the framework beyond the scheduler-routed setting: to local equal next-hop packet spraying , where the reduce and broadcast trees must be packed as pairs; to networks without explicit per-tree bandwidth control, where tree duplication realizes a fractional allocation under tree-coupled max-min fairness; and to the other collective operations and to multiple concurrent collective groups. 
+
+# Acknowledgments 
+
+Use of Generative AI. Generative AI tools (Claude, Anthropic; and ChatGPT, OpenAI) were used during the preparation of this paper for language editing and technical review. All research ideas, mod-els, algorithms, theorem statements, proofs, and technical claims were determined by the authors, who take full responsibility for the content. 
+
+# References                                     
+
+> [1] Zixian Cai, Zhengyang Liu, Saeed Maleki, Madanlal Musuvathi, Todd Mytkowicz, Jacob Nelson, and Olli Saarikivi. 2021. Synthesizing Optimal Collective Algo-rithms. In Proceedings of the 26th ACM SIGPLAN Symposium on Principles and Practice of Parallel Programming (PPoPP ’21) .[2] Minsik Cho, Ulrich Finkler, David Kung, and Hillery Hunter. 2019. BlueCon-nect: Decomposing All-Reduce for Deep Learning on Heterogeneous Network Hierarchy. In Proceedings of Machine Learning and Systems , Vol. 1. 241–251. [3] Meghan Cowan, Saeed Maleki, Madan Musuvathi, Olli Saarikivi, and Yifan Xiong. 2023. MSCCLang: Microsoft Collective Communication Language. In
+> Proceedings of the 28th ACM International Conference on Architectural Support for Programming Languages and Operating Systems, Volume 2 . 502–514. [4] Naveen Garg and Jochen Könemann. 2007. Faster and Simpler Algorithms for Multicommodity Flow and Other Fractional Packing Problems. SIAM J. Comput.
+> 37, 2 (2007), 630–652. [5] Changho Hwang, Peng Cheng, Roshan Dathathri, Abhinav Jangda, Saeed Maleki, Madan Musuvathi, Olli Saarikivi, Aashaka Shah, Ziyue Yang, Binyang Li, Caio Rocha, Qinghua Zhou, Mahdieh Ghazimirsaeed, Sreevatsa Anantharamu, and Jithin Jose. 2026. MSCCL++: Rethinking GPU Communication Abstractions for AI Inference. In Proceedings of the 31st ACM International Conference on Architectural Support for Programming Languages and Operating Systems .[6] Sylvain Jeaugey. 2017. NCCL: Optimized Primitives for Collective Multi-GPU Communication. GPU Technology Conference (GTC). NVIDIA Collective Communications Library. [7] Pitch Patarasuk and Xin Yuan. 2009. Bandwidth Optimal All-Reduce Algorithms for Clusters of Workstations. J. Parallel and Distrib. Comput. 69, 2 (2009), 117–124. [8] Rolf Rabenseifner. 2004. Optimization of Collective Reduction Operations. In
+> Computational Science – ICCS 2004 (Lecture Notes in Computer Science, Vol. 3036) .Springer, 1–9. [9] Božidar Radunović and Jean-Yves Le Boudec. 2007. A Unified Framework for Max-Min and Min-Max Fairness with Applications. IEEE/ACM Transactions on Networking 15, 5 (2007), 1073–1083. [10] Alexander Sergeev and Mike Del Balso. 2018. Horovod: Fast and Easy Distributed Deep Learning in TensorFlow. arXiv preprint arXiv:1802.05799 (2018). [11] Aashaka Shah, Vijay Chidambaram, Meghan Cowan, Saeed Maleki, Madan Musu-vathi, Todd Mytkowicz, Jacob Nelson, Olli Saarikivi, and Rachee Singh. 2023. TACCL: Guiding Collective Algorithm Synthesis using Communication Sketches. In 20th USENIX Symposium on Networked Systems Design and Implementation (NSDI 23) .18 DualColl: Throughput-Optimal Bandwidth-Bound Collective Communications via Fractional Tree Packing
+> [12] Robert Endre Tarjan. 1977. Finding Optimum Branchings. Networks 7, 1 (1977), 25–35. [13] Rajeev Thakur, Rolf Rabenseifner, and William Gropp. 2005. Optimization of Collective Communication Operations in MPICH. International Journal of High Performance Computing Applications 19, 1 (2005), 49–66. [14] Ultra Ethernet Consortium. 2026. Ultra Ethernet Specification, Version 1.0.3. https://ultraethernet.org/. [15] Guanhua Wang, Shivaram Venkataraman, Amar Phanishayee, Jorgen Thelin, Nikhil Devanur, and Ion Stoica. 2020. Blink: Fast and Generic Collectives for Distributed ML. In Proceedings of Machine Learning and Systems , Vol. 2. 172–186. [16] Liangyu Zhao, Saeed Maleki, Yuanhong Wang, Zezhou Wang, Ziyue Yang, Hos-sein Pourreza, and Arvind Krishnamurthy. 2026. ForestColl: Throughput-Optimal Collective Communications on Heterogeneous Network Fabrics. In 23rd USENIX Symposium on Networked Systems Design and Implementation (NSDI 26) .
+
+# A Sub-Optimality of ReduceScatter+AllGather 
+
+This appendix exhibits an instance on which an AllGather-optimal set of trees, composed into an AllReduce in the usual way, is strictly worse than the optimal AllReduce. It shows that optimality of the AllGather phase does not certify optimality of the composed AllRe-duce. 
+
+The instance. Consider five ranks 0 , 1, 2, 3, 4 connected in a path, with links {0, 1}, {1, 2}, {2, 3}, {3, 4}, each of capacity 4 in each di-rection (Figure 3a). 
+
+An optimal AllGather solution. For AllGather, rank 4 must receive the data of all four other ranks, and every such stream crosses the directed edge 3 → 4. If all trees are run at a common bandwidth 
+
+𝛽 , this forces 4 𝛽 ≤ 4, so 𝛽 ≤ 1; a solution with 𝛽 = 1 is therefore AllGather-optimal. Consider the following set of broadcast trees, one rooted at each rank, all run at 𝛽 = 1: 
+
+𝑇 0 : 0 → 2, 2 → 1, 2 → 3, 3 → 4,𝑇 1 : 1 → 0, 1 → 2, 2 → 3, 3 → 4,𝑇 2 : 2 → 1, 1 → 0, 2 → 3, 3 → 4,𝑇 3 : 3 → 2, 2 → 1, 1 → 0, 3 → 4,𝑇 4 : 4 → 3, 3 → 2, 2 → 1, 1 → 0.
+
+All trees except 𝑇 0 simply spread outward along the path. The tree 
+
+𝑇 0 is the twist: instead of handing its data to rank 1 first, rank 0 sends a single logical flow to rank 2, routed over the physical path 0–1–2, and rank 2 then serves ranks 1 and 3 (Figure 3b). Counting, for each directed physical edge, the routed logical tree edges that traverse it gives the loads 0 → 1 : 1 , 1 → 0 : 4 , 1 → 2 : 2 , 2 → 1 : 4 ,
+
+2 → 3 : 3 , 3 → 2 : 2 , 3 → 4 : 4 , 4 → 3 : 1 .
+
+Every load is at most the capacity 4, so this tree set is feasible, and since 𝛽 = 1 it is AllGather-optimal. 
+
+The composed AllReduce. An AllReduce built from this solution runs a ReduceScatter phase that is the reversal of the AllGather phase, so in steady state each tree uses both directions of the links it occupies: the load it places on a directed edge 𝑒 is its AllGather load on 𝑒 plus its AllGather load on the reverse edge ¯ 𝑒 . Adding the table above to its own reversal gives, per unit of common tree bandwidth, 0 → 1 : 5 , 1 → 0 : 5 , 1 → 2 : 6 , 2 → 1 : 6 ,
+
+2 → 3 : 5 , 3 → 2 : 5 , 3 → 4 : 5 , 4 → 3 : 5 .
+
+The link {1, 2} now carries 6 units of load per unit of bandwidth in both directions. The reason is that the directed edge 1 → 2 already carried 2 units in the AllGather phase: one from 𝑇 1, whose logical edge 1 → 2 uses it directly, and one from the twisted tree 𝑇 0, whose logical edge 0 → 2 is routed over the physical path 0–1–2 and therefore traverses 1 → 2 as well. The opposite direction 2 → 1carried 4 units, one from each of 𝑇 0,𝑇 2,𝑇 3,𝑇 4. Reversing the trees for the ReduceScatter phase superimposes these two figures on each direction, giving 2 + 4 = 6. Feasibility therefore requires 6 𝛽 ≤ 4, that is 𝛽 ≤ 2/3, and the aggregate AllReduce bandwidth of the five trees is at most 5 · 23 = 10 3 ≈ 3.33 .
+
+A better direct AllReduce. Now take the single tree consisting of the path itself, reducing toward a root and broadcasting back along the same edges (Figure 3d). Each directed physical edge car-ries exactly one logical tree edge, so its load is 1 per unit of tree bandwidth, and the tree may be run at bandwidth 4. The aggregate AllReduce bandwidth is therefore 4 > 10 /3. 
+
+Conclusion. The tree set above is optimal for AllGather, yet the AllReduce composed from it attains at most 10 /3, while a direct AllReduce schedule on the same network attains 4. The composed AllReduce is therefore suboptimal. 
+
+# B Comparison with ForestColl’s Complexity 
+
+The authors of ForestColl did not solve AllReduce directly using their main polynomial algorithm; instead, they solved AllGather and used a combination of AllGather and ReduceScatter to emulate the AllReduce operation. While they do supply a linear program for solving AllReduce directly, it is unscalable. For their polynomial AllGather-based AllReduce algorithm, they establish an asymptotic time complexity of 𝑂  𝑛 8 . ForestColl op-erates under the same scheduler-routed model that we present as our primary model, and supports only a single collective group. We therefore compare against our direct Section 4 algorithm: solving AllReduce directly via the Garg–Könemann framework, our oracle runs Dijkstra from every rank and one MST per iteration, giving an overall time complexity of 𝑂 
+
+ |𝐸 | log |𝐸 |
+
+> 𝜖 2
+
+𝑛 (| 𝐸 | + 𝑁 ) log 𝑁 + 𝑛 2  
+
+.Since the number of physical links |𝐸 | is at most 𝑂 (𝑁 2), our algo-rithm offers a significantly tighter and more scalable polynomial bound, making it substantially more practical for large-scale data-center networks. The comparison is not limited to AllReduce. Our framework also solves AllGather, the operation for which ForestColl does establish optimality, and does so with a better bound. Replacing the minimum spanning tree in our oracle by a minimum spanning arborescence rooted at each compute node (Section 6.1) yields an AllGather sched-ule in time 𝑂 
+
+ |𝐸 | log |𝐸 |
+
+> 𝜖 2
+
+ 𝑛  𝑁 + | 𝐸 | log 𝑁 + 𝑛 3  
+
+, against the 𝑂  𝑛 8 
+
+of ForestColl . When 𝑁 = 𝑂 (𝑛 ), so that |𝐸 | = 𝑂 (𝑛 2), our AllGather bound is 𝑂 (𝑛 5/𝜖 2) up to logarithmic factors, a polynomial factor of roughly 𝑛 3 below theirs. Thus DualColl improves on ForestColl both where ForestColl is provably optimal, by computing an AllGather schedule faster, and where it is not, by giving AllReduce a guarantee that the composed construction does not provide.        
+
+> 19 Namir Ballan and Reuven Cohen
+> 01234
+> 4444
+
+(a) Topology: five ranks on a path, every link of capacity 4 in each direction.     
+
+> 01234
+
+(b) The AllGather tree 𝑇 0: the logical edge 0 → 2 is routed over 
+
+0–1–2, then 2 → 1, 2 → 3, 3 → 4.    
+
+> 01234
+
+(c) A typical AllGather tree, here 𝑇 3: data spreads outward from the root along the path.     
+
+> 01234
+
+(d) The single AllReduce tree: the path itself, reducing toward a root and broadcasting back along the same edges. It attains band-width 4. 
+
+Figure 3: A five-rank path on which an AllGather-optimal tree set composes into a strictly suboptimal AllReduce. The AllGather trees of Figures 3b and 3c all run at bandwidth 1, which is AllGather-optimal, but converting them into AllReduce trees overloads the link 1–2 and caps the aggregate at 10 /3. The single tree of Figure 3d achieves 4.

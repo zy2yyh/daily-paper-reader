@@ -1,0 +1,786 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-10-20T11:23:20.549474+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 17,
+    "deep_cap": 6,
+    "deep_selected": 12,
+    "quick_candidates": 7,
+    "quick_skim_target": 11,
+    "quick_selected": 7
+  },
+  "deep_dive": [
+    {
+      "id": "2610.07516v1",
+      "source": "arxiv",
+      "title": "NCCL M2N: A Layout- and Topology-Aware Collective for Distributed Tensor Resharding",
+      "abstract": "Distributed training and rollout generation often use different tensor layouts, requiring model weights to be resharded across distinct process groups. This M-to-N redistribution is not directly expressed by standard collectives. Flat direct sends duplicate traffic across destination replicas, while gather-then-broadcast concentrates network injection at one root and transfers data that destinations do not need. For DeepSeek-V3 on 256 GPUs, legacy all-gather plus broadcast accounts for 29.4% of the reported reinforcement-learning step time. We present NCCL M2N, a layout- and topology-aware collective primitive for distributed tensor resharding. Given source and destination meshes and placements, it derives the required transfer regions and a global communication schedule. Its hierarchical route balances source contributions across eligible destination ranks, forwards one copy between destination NVLink domains, and completes local replication over NVLink. Network transfer and local replication overlap, avoiding replica-multiplied source egress. An aggregate data-movement model captures the limits of both stages. We evaluate NCCL M2N on up to 256 GB200 GPUs in an NVL72 cluster with NDR InfiniBand. A single FFN-MoE layer transfer achieves up to 7.9x speedup over flat direct sends (9.8 ms versus 77.3 ms). In a separate 256-GPU DeepSeek-V3 NeMo-RL experiment, NCCL M2N reduces reported weight-sync time from 5.78 s to 2.77 s, a 2.09x speedup over legacy all-gather plus broadcast, and reduces step time by 12.7%.",
+      "authors": [
+        "Kaushik Kandadi",
+        "Youngeun Kwon",
+        "Sreeram Potluri",
+        "Ching-Hsiang Chu",
+        "Ke Wen",
+        "Pouya Kousha",
+        "Sangkug Lym",
+        "Nitin Nitin",
+        "Manjunath Gorentla Venkata"
+      ],
+      "primary_category": "cs.DC",
+      "categories": [
+        "cs.DC"
+      ],
+      "published": "2026-10-05T23:27:52+00:00",
+      "link": "https://arxiv.org/pdf/2610.07516v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 10.0,
+      "llm_evidence_en": "layout- and topology-aware collective primitive for tensor resharding",
+      "llm_evidence_cn": "布局与拓扑感知的张量重分片集合通信原语",
+      "llm_evidence": "布局与拓扑感知的张量重分片集合通信原语",
+      "canonical_evidence": "布局与拓扑感知的张量重分片集合通信原语",
+      "llm_tldr_en": "NCCL M2N is a layout- and topology-aware collective primitive that expresses M-to-N tensor resharding, avoiding duplicated traffic and reducing the 29.4% RL step time overhead on 256 GPUs.",
+      "llm_tldr_cn": "分布式训练与推演常使用不同张量布局，需要在进程组间重分片权重，而标准集合通信无法直接表达这种M-to-N重分布，平铺发送会复制流量、gather再broadcast会造成单点注入。论文提出NCCL M2N，一个布局与拓扑感知的集合通信原语，依据源与目的网格推导所需传输区域并生成高效调度。在256 GPU的DeepSeek-V3场景中，传统all-gather加broadcast占强化学习步骤时间29.4%，该方法显著降低该开销。工作把张量重分片确立为一等集合通信原语。",
+      "llm_tldr": "分布式训练与推演常使用不同张量布局，需要在进程组间重分片权重，而标准集合通信无法直接表达这种M-to-N重分布，平铺发送会复制流量、gather再broadcast会造成单点注入。论文提出NCCL M2N，一个布局与拓扑感知的集合通信原语，依据源与目的网格推导所需传输区域并生成高效调度。在256 GPU的DeepSeek-V3场景中，传统all-gather加broadcast占强化学习步骤时间29.4%，该方法显著降低该开销。工作把张量重分片确立为一等集合通信原语。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "collective communication protocols and primitives for distributed systems",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2610.15704v1",
+      "source": "arxiv",
+      "title": "DualColl: Throughput-Optimal Bandwidth-Bound Collective Communications via Fractional Tree Packing",
+      "abstract": "Large-scale distributed training increasingly makes collective communication bandwidth-bound. In modern GPU clusters, communication libraries such as NCCL implement collectives including AllReduce over heterogeneous interconnects such as NVLink, InfiniBand, and Ethernet, making efficient use of available network bandwidth a central systems challenge.   ForestColl showed that collective communication on such fabrics can be formulated using fractional tree packing; its scalable polynomial-time construction is developed for AllGather, with AllReduce obtained by composing AllGather and ReduceScatter. We present DualColl, which targets bandwidth-bound AllReduce directly. Under the tree-based AllReduce model, DualColl applies a Garg--Könemann-style multiplicative-weights algorithm and, for any $0<ε<1$, computes a feasible schedule whose throughput is at least $(1-ε)^2$ of the optimal AllReduce throughput. Its key component is an exact minimum-cost collective-tree oracle that projects physical-link dual prices onto a logical graph of participating ranks, reducing each iteration to shortest-path computations followed by a minimum spanning tree.   We further extend the framework to local equal-next-hop packet-sprayed routing and to networks without explicit per-tree bandwidth control. For the latter, we introduce a tree-coupled max-min bandwidth-sharing model and show that tree duplication approximates an explicit fractional allocation with a provable accuracy-complexity tradeoff. Finally, we extend the fractional-packing framework to additional collective operations and multiple concurrent collective groups.",
+      "authors": [
+        "Namir Ballan",
+        "Reuven Cohen"
+      ],
+      "primary_category": "cs.DC",
+      "categories": [
+        "cs.DC",
+        "cs.DS",
+        "cs.NI"
+      ],
+      "published": "2026-10-11T15:39:10+00:00",
+      "link": "https://arxiv.org/pdf/2610.15704v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 10.0,
+      "llm_evidence_en": "Throughput-optimal AllReduce collective algorithm via fractional tree packing for GPU clusters",
+      "llm_evidence_cn": "面向GPU集群、基于分数树打包的吞吐最优AllReduce集合通信算法",
+      "llm_evidence": "面向GPU集群、基于分数树打包的吞吐最优AllReduce集合通信算法",
+      "canonical_evidence": "面向GPU集群、基于分数树打包的吞吐最优AllReduce集合通信算法",
+      "llm_tldr_en": "DualColl targets bandwidth-bound AllReduce directly with fractional tree packing instead of composing AllGather and ReduceScatter, achieving throughput-optimal collectives across heterogeneous NVLink, InfiniBand and Ethernet GPU clusters.",
+      "llm_tldr_cn": "大规模分布式训练中集合通信日益受带宽限制，而现有分数树打包方法只针对AllGather，AllReduce需由其组合得到。DualColl直接在树形AllReduce模型下应用分数树打包，构造带宽受限场景下吞吐最优的AllReduce方案。该方法面向NVLink、InfiniBand与以太网等异构互连的GPU集群，充分利用可用网络带宽。其贡献在于为集合通信库提供可证明吞吐最优的构造算法。",
+      "llm_tldr": "大规模分布式训练中集合通信日益受带宽限制，而现有分数树打包方法只针对AllGather，AllReduce需由其组合得到。DualColl直接在树形AllReduce模型下应用分数树打包，构造带宽受限场景下吞吐最优的AllReduce方案。该方法面向NVLink、InfiniBand与以太网等异构互连的GPU集群，充分利用可用网络带宽。其贡献在于为集合通信库提供可证明吞吐最优的构造算法。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "algorithms for efficient collective communication operations in distributed environments",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2610.16387v1",
+      "source": "arxiv",
+      "title": "SP-Allreduce: Symmetric Tree Schedules for Tori and Beyond",
+      "abstract": "Allreduce is a fundamental communication primitive in large-scale distributed training, and torus interconnects remain widely deployed in high-performance systems. We introduce SP-allreduce, a new allreduce algorithm for $d$-dimensional tori that exploits the symmetry of the topology and routes only along shortest paths.   We call an allreduce algorithm \\emph{fully bandwidth-optimal} if it incurs no bandwidth overhead, no multihop-induced traffic inflation, and achieves perfect per-round load balance. SP-allreduce is based on a family of carefully symmetrized shortest-path trees that guarantees full bandwidth optimality in the $α$--$β$ model. We prove that it uses the minimum possible number of rounds among all fully bandwidth-optimal allreduce algorithms on $d$-dimensional tori, and therefore the minimum running time in this class. In this sense, SP-allreduce refines Bucket allreduce: it preserves Bucket's key strengths while reducing the number of rounds by a factor of two.   We further extend our approach to broader symmetric topologies and to communication trees of prescribed depths. Experimentally, the resulting algorithms improve over the best compared state-of-the-art algorithms for tori by up to $1.19\\times$ on square tori and $1.65\\times$ on rectangular tori across the tested configurations. On HyperX and spine-leaf networks, we demonstrate gains of up to $14.82\\times$ and $1.72\\times$, respectively, over the best evaluated baselines.",
+      "authors": [
+        "Mikhail Cherniavskii",
+        "Andrey Kupavskii",
+        "Georgy Mironov",
+        "Stanislav Moiseev"
+      ],
+      "primary_category": "cs.DC",
+      "categories": [
+        "cs.DC"
+      ],
+      "published": "2026-10-12T08:36:57+00:00",
+      "link": "https://arxiv.org/pdf/2610.16387v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 10.0,
+      "llm_evidence_en": "new allreduce algorithm with symmetric shortest-path tree schedules for torus topologies",
+      "llm_evidence_cn": "面向环面拓扑的对称最短路径树allreduce新算法",
+      "llm_evidence": "面向环面拓扑的对称最短路径树allreduce新算法",
+      "canonical_evidence": "面向环面拓扑的对称最短路径树allreduce新算法",
+      "llm_tldr_en": "SP-Allreduce exploits torus symmetry with carefully symmetrized shortest-path trees, achieving full bandwidth optimality and the minimum round count among bandwidth-optimal allreduce algorithms.",
+      "llm_tldr_cn": "针对环面互连上现有allreduce算法存在带宽开销与多跳流量膨胀的问题，本文提出SP-allreduce算法，利用拓扑对称性构造一族对称化最短路径树，只沿最短路径路由。作者证明该算法在α-β模型下达到全带宽最优，即在无带宽开销、无流量膨胀且每轮负载完全均衡的同时使用最少的通信轮数。该结果为大规模分布式训练提供了拓扑感知且带宽最优的集合通信算法设计范式。",
+      "llm_tldr": "针对环面互连上现有allreduce算法存在带宽开销与多跳流量膨胀的问题，本文提出SP-allreduce算法，利用拓扑对称性构造一族对称化最短路径树，只沿最短路径路由。作者证明该算法在α-β模型下达到全带宽最优，即在无带宽开销、无流量膨胀且每轮负载完全均衡的同时使用最少的通信轮数。该结果为大规模分布式训练提供了拓扑感知且带宽最优的集合通信算法设计范式。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "algorithms for efficient collective communication operations in distributed environments",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2609.34334v1",
+      "source": "arxiv",
+      "title": "HOCCL: Offloading Collective Communication from GPU Cores to Accelerate Distributed Training",
+      "abstract": "Large language model training involves massive computation on GPU streaming multiprocessors (SMs), the primary compute units of GPUs. Since SMs host specialized accelerators such as Tensor Cores, their efficient utilization is critical to training efficiency. Unfortunately, existing collective communication systems compete with computation for SMs, as they consume SMs for communication-related data movement and synchronization operations.   We observe that communication can, in principle, be driven by DMA engines, thereby eliminating SM involvement in communication. Based on this insight, we propose HOCCL, a zero-SM collective communication framework consisting of three components: a stream manager, a point-to-point (P2P) executor, and a collective scheduler. The stream manager preserves operator-level temporal ordering with other GPU kernels. The P2P executor enables zero-SM point-to-point communication, while the collective scheduler orchestrates P2P transfers to maximize bandwidth. Experiments show that HOCCL preserves near-peak communication performance, achieving within 3% of the state of the art on average, while eliminating communication occupancy on nearly 10% of total GPU SMs. By freeing SM resources for computation, HOCCL improves end-to-end training throughput by up to 5%.",
+      "authors": [
+        "Yao Fei",
+        "Gongming Zhao",
+        "Hongli Xu",
+        "Jin Fang",
+        "Jiacheng Zhu",
+        "Shuo Xu",
+        "Kun Huang",
+        "Zhuolong Yu"
+      ],
+      "primary_category": "cs.NI",
+      "categories": [
+        "cs.NI"
+      ],
+      "published": "2026-09-28T05:10:42+00:00",
+      "link": "https://arxiv.org/pdf/2609.34334v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "offloading collective communication from GPU SMs to DMA engines for distributed training",
+      "llm_evidence_cn": "将集合通信从GPU流多处理器卸载到DMA引擎以加速分布式训练",
+      "llm_evidence": "将集合通信从GPU流多处理器卸载到DMA引擎以加速分布式训练",
+      "canonical_evidence": "将集合通信从GPU流多处理器卸载到DMA引擎以加速分布式训练",
+      "llm_tldr_en": "Collective communication competes with computation for GPU SMs. HOCCL is a zero-SM framework using DMA engines, a stream manager and a P2P executor, freeing SM cycles and accelerating distributed training.",
+      "llm_tldr_cn": "大模型训练中集合通信需要占用GPU流多处理器进行数据搬运与同步，挤占了张量核心等关键计算资源。HOCCL提出零SM的集合通信框架，认为通信可由DMA引擎驱动，并设计流管理器与点对点执行器等组件完成通信调度。该方案将通信从计算单元卸载，释放SM算力用于计算，从而提升分布式训练的整体吞吐。",
+      "llm_tldr": "大模型训练中集合通信需要占用GPU流多处理器进行数据搬运与同步，挤占了张量核心等关键计算资源。HOCCL提出零SM的集合通信框架，认为通信可由DMA引擎驱动，并设计流管理器与点对点执行器等组件完成通信调度。该方案将通信从计算单元卸载，释放SM算力用于计算，从而提升分布式训练的整体吞吐。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "communication optimization for distributed training workloads in data center networks",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2609.34340v1",
+      "source": "arxiv",
+      "title": "VarioPath: Workload-Aware All-to-All Communication for PCIe GPU Clusters",
+      "abstract": "AlltoAllv communication is a critical primitive in distributed large-model inference, particularly for mixture-of-experts (MoE) models. The growing adoption of PCIe GPU systems for cost-efficient inference makes AlltoAllv performance on these systems increasingly important. Without a dedicated scale-up interconnect (e.g., NVLink or Infinity Fabric), PCIe GPU systems carry both intra-node and inter-node traffic through the PCIe hierarchy, where concurrent transfers can contend for PCIe link bandwidth. This link contention, compounded by skewed traffic distributions and dynamic traffic demand, makes efficient AlltoAllv scheduling challenging. Existing approaches are either poorly suited to PCIe GPU systems or incur substantial schedule synthesis overhead that reduces their practicality in real-world deployments.   We present VarioPath, an efficient AlltoAllv scheduling framework for PCIe GPU systems. It combines an offline topology-aware analyzer with an online demand-aware scheduler. The analyzer records contention-free transfer patterns as AlltoAllv channels and exploits topology symmetry to build a compact catalog for efficient search. The online scheduler decomposes each AlltoAllv invocation's demand across a sequence of channels, adapting to rapidly changing and skewed traffic while incurring low planning overhead. Evaluation on four platforms (up to 256 GPUs) shows average AlltoAllv speedups of 5.88x over FAST and 1.72x over DeepEP. End-to-end experiments show that VarioPath reduces Qwen3 inference latency by up to 27.2% and Wan2.1 generation latency by 6.1%.",
+      "authors": [
+        "Yao Fei",
+        "Jin Fang",
+        "Size Zheng",
+        "Gongming Zhao",
+        "Hongli Xu",
+        "Jiacheng Zhu",
+        "Zhijing Xin"
+      ],
+      "primary_category": "cs.DC",
+      "categories": [
+        "cs.DC",
+        "cs.NI"
+      ],
+      "published": "2026-09-28T05:17:42+00:00",
+      "link": "https://arxiv.org/pdf/2609.34340v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "workload-aware AlltoAllv scheduling for PCIe GPU clusters",
+      "llm_evidence_cn": "面向PCIe GPU集群的负载感知AlltoAllv调度",
+      "llm_evidence": "面向PCIe GPU集群的负载感知AlltoAllv调度",
+      "canonical_evidence": "面向PCIe GPU集群的负载感知AlltoAllv调度",
+      "llm_tldr_en": "AlltoAllv on PCIe GPU clusters suffers from link contention, skewed traffic and dynamic demand. VarioPath introduces workload-aware scheduling and path selection, cutting communication time and schedule synthesis overhead.",
+      "llm_tldr_cn": "混合专家推理中的AlltoAllv是关键通信原语，但PCIe GPU系统缺少专用scale-up互连，节点内与节点间流量共享PCIe层级链路，链路争用、流量倾斜与动态需求使调度十分困难。VarioPath提出负载感知的AlltoAllv通信方案，针对PCIe链路争用进行路径选择与传输调度，并降低调度合成开销。结果表明其在不同负载下均能缩短通信时间，提升这类低成本集群上的集合通信效率。",
+      "llm_tldr": "混合专家推理中的AlltoAllv是关键通信原语，但PCIe GPU系统缺少专用scale-up互连，节点内与节点间流量共享PCIe层级链路，链路争用、流量倾斜与动态需求使调度十分困难。VarioPath提出负载感知的AlltoAllv通信方案，针对PCIe链路争用进行路径选择与传输调度，并降低调度合成开销。结果表明其在不同负载下均能缩短通信时间，提升这类低成本集群上的集合通信效率。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "How to design collective communication algorithms for data center networks",
+      "matched_requirement_id": "req-7",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2609.36954v1",
+      "source": "arxiv",
+      "title": "Purlin: Separating Orchestration from the Datapath of Collectives",
+      "abstract": "Distributed inference depends on GPU collective communication that must keep pace with evolving hardware and specialized workloads. However, existing collective implementations often couple semantics, orchestration (where and when data moves), and the datapath (how data moves). This coupling makes it costly to adopt new hardware mechanisms and customize communication for applications. We present Purlin, a scale-up communication framework that separates these concerns. At the top of Purlin, we specify collectives as a naming of an input and output layout and a copy or reduction operation. In the middle, we introduce a shared orchestration protocol, Stage, Notify, And Consume (SNAC), which derives coordination from these specifications. Below SNAC sits a hardware-specific datapath we call Atom, which implements two key data movement primitives for collectives: copy and reduce. This separation lets us customize collectives and adopt new hardware mechanisms while reusing orchestration via SNAC. We evaluate Purlin on A100, H200, and B200 GPUs. Across seven collectives, Purlin achieves latency speedups of up to 5.14x and bandwidth improvements of up to 4.50x over baselines. Integrated into SGLang, Purlin improves offline LLM serving throughput and interactivity by 1.13x on average and up to 1.37x over baselines. For online LLM inference, Purlin improves interactivity by 1.26x on average and up to 2.85x, with the largest gain occurring under overload. For diffusion image generation, Purlin reduces end-to-end latency by up to 1.13x.",
+      "authors": [
+        "Osayamen Jonathan Aimuyo",
+        "Swapnil Gandhi",
+        "Christos Kozyrakis"
+      ],
+      "primary_category": "cs.DC",
+      "categories": [
+        "cs.DC",
+        "cs.AI"
+      ],
+      "published": "2026-09-29T07:57:27+00:00",
+      "link": "https://arxiv.org/pdf/2609.36954v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "Collective communication framework separating orchestration protocol from data path for GPU collectives",
+      "llm_evidence_cn": "将集合通信编排协议与数据通路分离的GPU集合通信框架",
+      "llm_evidence": "将集合通信编排协议与数据通路分离的GPU集合通信框架",
+      "canonical_evidence": "将集合通信编排协议与数据通路分离的GPU集合通信框架",
+      "llm_tldr_en": "Purlin decouples collective semantics, orchestration and datapath, specifying collectives as layout plus copy or reduce and deriving coordination through the SNAC protocol so new hardware mechanisms can be adopted cheaply.",
+      "llm_tldr_cn": "分布式推理依赖GPU集合通信，但现有实现把语义、编排与数据通路耦合在一起，导致采用新硬件机制和定制通信代价高昂。Purlin将三者分离：用输入输出布局与拷贝或归约操作描述集合通信，并以Stage、Notify、Consume协议从规格推导协调过程。该框架使编排逻辑与底层数据通路解耦，便于替换硬件机制。其意义在于为可扩展、可定制的集合通信提供模块化设计范式。",
+      "llm_tldr": "分布式推理依赖GPU集合通信，但现有实现把语义、编排与数据通路耦合在一起，导致采用新硬件机制和定制通信代价高昂。Purlin将三者分离：用输入输出布局与拷贝或归约操作描述集合通信，并以Stage、Notify、Consume协议从规格推导协调过程。该框架使编排逻辑与底层数据通路解耦，便于替换硬件机制。其意义在于为可扩展、可定制的集合通信提供模块化设计范式。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "collective communication protocols and primitives for distributed systems",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2609.37828v1",
+      "source": "arxiv",
+      "title": "Joint Effects of GPU Server Topology, Parallelism, and Congestion Control on MoE Inference: A Controlled Simulation Study",
+      "abstract": "Mixture-of-experts (MoE) models expand capacity via sparse activation, but inference across GPUs introduces tensor-parallel (TP) collectives and expert-parallel (EP) dispatch and combine operations. Completion time depends not just on communication volume but on how logical groups map onto intra-server interconnects, GPU--NIC connections, and the inter-node network. Using ASTRA-sim with the NS-3 discrete-event backend, we build a controlled matrix of 32 GPU ranks with data and pipeline parallelism fixed at one. Workloads are fixed-length 4096-token prefill-like synthetic Chakra traces from four MoE configurations. Experiments cover six server topologies, four TP/EP partitions, two TP collective algorithms, and four network/congestion-control modes, yielding 768 deterministic simulations. In the 144-configuration feedback-enabled subset per model, exposed communication accounts for 89.9%--95.8% of mean completion time. TP16EP2 requires 3.68--4.35x the mean completion time of TP2EP16. With fixed rank mapping, ASTRA-sim Double Binary Tree (DBT) incurs 28.3%--83.2% more time than Ring. InfiniBand-like High Precision Congestion Control (HPCC) is ~0.9% lower than HPCC over RDMA over Converged Ethernet (RoCE), whereas RoCE with Data Center Quantized Congestion Notification (DCQCN) is 23.8%--35.7% slower than RoCE HPCC. Topology effects are conditional: Topology~6 leads at low TP degrees but loses its advantage at high TP degrees, and additional GPUs or NICs help only when rank mapping balances traffic across injection paths. Under uniform 32-way sharding, the largest checkpoint-weight shard is ~48.75 GB per rank, so all configurations meet a 64 GB per-accelerator weight-residency criterion. Within the evaluated workload and simulator semantics, server topology, parallelism, collective implementation, and congestion control jointly determine exposed communication and completion time.",
+      "authors": [
+        "Kaikai Yuan",
+        "Rui Xi",
+        "Yu Liu"
+      ],
+      "primary_category": "cs.DC",
+      "categories": [
+        "cs.DC"
+      ],
+      "published": "2026-09-29T15:34:39+00:00",
+      "link": "https://arxiv.org/pdf/2609.37828v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "effects of server topology, TP/EP partitions and congestion control on collective-based MoE inference time",
+      "llm_evidence_cn": "服务器拓扑、TP/EP划分与拥塞控制对基于集合通信的MoE推理时间的影响",
+      "llm_evidence": "服务器拓扑、TP/EP划分与拥塞控制对基于集合通信的MoE推理时间的影响",
+      "canonical_evidence": "服务器拓扑、TP/EP划分与拥塞控制对基于集合通信的MoE推理时间的影响",
+      "llm_tldr_en": "A controlled ASTRA-sim/NS-3 study of 32 GPUs shows how server topology, TP/EP partitioning, collective algorithms and congestion control jointly determine MoE inference completion time.",
+      "llm_tldr_cn": "MoE推理跨GPU执行时会产生张量并行集合通信与专家并行派发与合并，其完成时间不仅取决于通信量，还取决于逻辑分组如何映射到服务器内互连、GPU-NIC连接与节点间网络。论文基于ASTRA-sim与NS-3构建32个GPU秩的受控实验矩阵，覆盖六种服务器拓扑、四种TP/EP划分与两种集合通信算法，并考察拥塞控制的影响。结果系统揭示了拓扑、并行策略与拥塞控制的联合效应，为数据中心集合通信性能调优提供评估依据。",
+      "llm_tldr": "MoE推理跨GPU执行时会产生张量并行集合通信与专家并行派发与合并，其完成时间不仅取决于通信量，还取决于逻辑分组如何映射到服务器内互连、GPU-NIC连接与节点间网络。论文基于ASTRA-sim与NS-3构建32个GPU秩的受控实验矩阵，覆盖六种服务器拓扑、四种TP/EP划分与两种集合通信算法，并考察拥塞控制的影响。结果系统揭示了拓扑、并行策略与拥塞控制的联合效应，为数据中心集合通信性能调优提供评估依据。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "What network scheduling and congestion control techniques improve collective communication performance",
+      "matched_requirement_id": "req-8",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2610.07098v1",
+      "source": "arxiv",
+      "title": "T-CCL: Resource Efficient and Performant Collective Communication using Tensor Memory Accelerator",
+      "abstract": "Large transformer-based models increasingly depend on multi-GPU execution, which requires frequent collective communication among GPUs. Existing communication libraries often rely on many GPU threads to achieve high bandwidth or low latency, resulting in a large streaming multiprocessor (SM)-side resource footprint. This footprint can limit the resources available to other GPU work, particularly when communication and computation execute concurrently. Thus, efficient collective communication should not only achieve high collective performance but also reduce its SM-side resource usage. This paper presents T-CCL, a resource-efficient collective communication library based on the Tensor Memory Accelerator (TMA) for intra-node communication. T-CCL offloads both data movement and reduction operations to TMA and executes each collective as a pipelined series of asynchronous TMA operations, reducing the SM resources required for collective communication while maintaining high bandwidth. Evaluated across AllReduce, AllGather, and ReduceScatter collectives, T-CCL outperforms NCCL by up to 2.4x with unrestricted communication resources and up to 3.42x under restricted resource budgets, remains competitive with NCCL's recent symmetric-memory kernels, and occupies the same or fewer SMs in profiled cases. In a GEMM-collective overlap case study, switching the communication backend from NCCL to T-CCL raises the average operator-level speedup over a sequential baseline from 1.12x to 1.25x on two GPUs and from 1.04x to 1.14x on four GPUs, as T-CCL uses fewer SMs for communication, leaving more SMs available to the overlapped GEMM. Integrated into vLLM as a communication backend, T-CCL improves end-to-end inference throughput over vLLM's automatic backend dispatch by up to 1.31x, outperforming it at every evaluated batch size on both the conversation and decode-heavy workloads.",
+      "authors": [
+        "Keyvan Dadashzadeh",
+        "Yuehong Zhou",
+        "Minyu Cui",
+        "Miquel Pericas"
+      ],
+      "primary_category": "cs.DC",
+      "categories": [
+        "cs.DC",
+        "cs.AI"
+      ],
+      "published": "2026-10-05T14:19:11+00:00",
+      "link": "https://arxiv.org/pdf/2610.07098v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "collective communication library for multi-GPU training using tensor memory accelerator",
+      "llm_evidence_cn": "基于张量内存加速器的多GPU集合通信库",
+      "llm_evidence": "基于张量内存加速器的多GPU集合通信库",
+      "canonical_evidence": "基于张量内存加速器的多GPU集合通信库",
+      "llm_tldr_en": "T-CCL is a resource-efficient collective communication library built on the Tensor Memory Accelerator for intra-node GPU communication, achieving high bandwidth and low latency while greatly reducing streaming-multiprocessor resource footprint.",
+      "llm_tldr_cn": "大模型多GPU训练依赖频繁的集合通信，而现有通信库往往需要大量GPU线程才能达到高带宽或低延迟，占用大量流多处理器资源，影响通信与计算并发。本文提出T-CCL，一个基于张量内存加速器TMA的资源高效节点内集合通信库。实验表明其在保持集合通信性能的同时显著降低SM侧资源占用。该工作为并发场景下的高效集合通信提供了新方案。",
+      "llm_tldr": "大模型多GPU训练依赖频繁的集合通信，而现有通信库往往需要大量GPU线程才能达到高带宽或低延迟，占用大量流多处理器资源，影响通信与计算并发。本文提出T-CCL，一个基于张量内存加速器TMA的资源高效节点内集合通信库。实验表明其在保持集合通信性能的同时显著降低SM侧资源占用。该工作为并发场景下的高效集合通信提供了新方案。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "collective communication protocols and primitives for distributed systems",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2610.07230v1",
+      "source": "arxiv",
+      "title": "Ofan: Optimal Load Balancing for AI Training",
+      "abstract": "The extreme collective completion time (CCT) demands of AI workloads challenge existing packet spraying algorithms, which can have trouble efficiently load-balancing workloads that are sent at full line rates.   We trace this to a structural cause: on a fat tree, once a packet picks its upward path, the downward path to its destination is unique, so destination-oblivious schemes cannot undo the imbalance it creates. We prove that such schemes can suffer from $Θ(\\sqrt{m})$ queueing for messages of size $m$, thus eventually triggering rate reductions by the congestion control. Instead, we suggest Ofan, a switch-based destination-aware LB scheme that can reach $O(1)$ queueing. We also present its pOfan variant that fits the pipe-based architecture of current switches. Our P4 implementation shows that it consumes modest resources. An end-to-end FSDP2 evaluation with Llama-3 405B-parameter models shows that Ofan cuts CCT inflation by $16$--$39\\times$ when compared to existing algorithms.",
+      "authors": [
+        "Sarah McClure",
+        "Evyatar Cohen",
+        "Jakob Krebs",
+        "Alexander Shpiner",
+        "Mark Silberstein",
+        "Scott Shenker",
+        "Sylvia Ratnasamy",
+        "Isaac Keslassy"
+      ],
+      "primary_category": "cs.NI",
+      "categories": [
+        "cs.NI",
+        "cs.DC",
+        "cs.PF"
+      ],
+      "published": "2026-10-05T18:36:50+00:00",
+      "link": "https://arxiv.org/pdf/2610.07230v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "Switch-based destination-aware load balancing reducing queueing for AI training collective completion time",
+      "llm_evidence_cn": "面向AI训练集合完成时间的交换机端目的感知负载均衡与排队优化",
+      "llm_evidence": "面向AI训练集合完成时间的交换机端目的感知负载均衡与排队优化",
+      "canonical_evidence": "面向AI训练集合完成时间的交换机端目的感知负载均衡与排队优化",
+      "llm_tldr_en": "Ofan shows destination-oblivious packet spraying on fat trees suffers queueing that scales with message size, and proposes a switch-based destination-aware load balancing scheme with an O(1) queueing bound plus a P4 pipeline-friendly variant.",
+      "llm_tldr_cn": "AI训练对集合通信完成时间要求极高，但现有包喷洒负载均衡在满线速发送时难以均衡，且胖树中上行路径一旦确定下行路径便唯一，目的无关方案无法纠正失衡。Ofan从结构上分析该问题，证明此类方案会产生随消息大小增长的排队，并提出交换机端目的感知的负载均衡方案及适配流水线交换机的pOfan。结果显示可将排队降至常数级，并给出P4实现。该工作为AI训练集合通信提供了可部署的负载均衡机制。",
+      "llm_tldr": "AI训练对集合通信完成时间要求极高，但现有包喷洒负载均衡在满线速发送时难以均衡，且胖树中上行路径一旦确定下行路径便唯一，目的无关方案无法纠正失衡。Ofan从结构上分析该问题，证明此类方案会产生随消息大小增长的排队，并提出交换机端目的感知的负载均衡方案及适配流水线交换机的pOfan。结果显示可将排队降至常数级，并给出P4实现。该工作为AI训练集合通信提供了可部署的负载均衡机制。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "What network scheduling and congestion control techniques improve collective communication performance",
+      "matched_requirement_id": "req-8",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2610.12815v2",
+      "source": "arxiv",
+      "title": "Deploying RDMA for Distributed Inference and Training At Scale",
+      "abstract": "RDMA can reduce communication overhead in distributed machine learning systems, but realizing these benefits in production requires more than replacing TCP. Variable-size messages, concurrent connections, bursty incasts, and service failures introduce challenges that hardware offload alone cannot address. This paper reports our experience deploying ByteExpress, a software communication layer over hardware RDMA, in ByteDance's parameter-server-based inference and training systems. We present three lessons from the deployment: efficient RDMA requires buffer management across application and transport layers; scalable communication requires coordinated management of connections, receive capacity, and outstanding data; and service availability requires recovery above the transport layer. ByteExpress combines an RDMA-aware allocator, zero-copy transfers, QP multiplexing, receive-credit flow control, a software send window, and RPC-assisted recovery. In production inference, ByteExpress reduces mean and P99 model parameter fetch latency by 35.7% and 43.7%, respectively, and total CPU usage by 10.69% compared with kernel TCP. In training, ByteExpress reduces P99 model parameter push latency by up to 74.0% compared with TCP, with no PFC pauses observed at runtime.",
+      "authors": [
+        "Yibo Huang",
+        "Yi Cui",
+        "Yukai Huang",
+        "Huaping Zhou",
+        "Jiancong Tong",
+        "Zhaoyu Wu",
+        "Gen Miao",
+        "Haoran Wei",
+        "Boyan Ding",
+        "Zhuo Jiang",
+        "Jianxi Ye",
+        "Yibo Zhu",
+        "Chuanxiong Guo",
+        "Yang Xu",
+        "Jie Wu"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.DC",
+        "cs.NI",
+        "eess.SY"
+      ],
+      "published": "2026-10-08T23:57:00+00:00",
+      "link": "https://arxiv.org/pdf/2610.12815v2",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "deploying RDMA transport layer for low-latency communication in distributed training and inference",
+      "llm_evidence_cn": "为分布式训练与推理部署低延迟RDMA传输层",
+      "llm_evidence": "为分布式训练与推理部署低延迟RDMA传输层",
+      "canonical_evidence": "为分布式训练与推理部署低延迟RDMA传输层",
+      "llm_tldr_en": "This paper reports production lessons from deploying ByteExpress, a software RDMA communication layer, in ByteDance's inference and training systems, covering buffer management, connection scaling and failure recovery.",
+      "llm_tldr_cn": "RDMA能降低分布式机器学习系统的通信开销，但在生产环境落地远不止替换TCP，还需应对变长消息、并发连接、突发incast与服务故障等挑战。本文报告在字节跳动参数服务器推理与训练系统中部署ByteExpress软件RDMA通信层的经验，总结出三条经验：跨应用与传输层的缓冲管理、连接与接收容量及在途数据的协同管理、以及服务可用性的恢复机制。这些经验为大规模RDMA通信层的工程化部署提供了可复用参考。",
+      "llm_tldr": "RDMA能降低分布式机器学习系统的通信开销，但在生产环境落地远不止替换TCP，还需应对变长消息、并发连接、突发incast与服务故障等挑战。本文报告在字节跳动参数服务器推理与训练系统中部署ByteExpress软件RDMA通信层的经验，总结出三条经验：跨应用与传输层的缓冲管理、连接与接收容量及在途数据的协同管理、以及服务可用性的恢复机制。这些经验为大规模RDMA通信层的工程化部署提供了可复用参考。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "remote direct memory access transport for low-latency data center communication",
+      "matched_requirement_id": "req-4",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2610.13130v1",
+      "source": "arxiv",
+      "title": "PCM: Programmable Congestion Management for Terabit RDMA NICs",
+      "abstract": "Datacenter congestion control (CC) and load balancing (LB) evolve rapidly as workload demands change, but deployment depends on RDMA hardware and transport interfaces. Emerging programmable RDMA engines tie policy code to vendor APIs. Operators must therefore port each policy for every platform they deploy. We address this with PCM, a programming model that separates portable congestion management from platform integration on datacenter NICs. Developers write event-driven handlers that they can debug in simulation and reuse on real hardware. PCM exposes flow telemetry as signals and uses triggers to support per-event reactions and coarser responses to accumulated feedback. Vendors provide optimized backends that map signals and output controls to native NIC mechanisms with defined feedback and control semantics. We demonstrate PCM's expressivity by implementing eleven well-known datacenter CC and LB algorithms. We deploy PCM across four distinct datapaths: an Ultra Ethernet simulator, CPU-based UCCL, and on-NIC offloads on NVIDIA ConnectX-8 and Microsoft 1P. On CX-8, PCM-Swift achieves processing capacity equivalent to one reaction per three 4 KiB packets at 800 Gbit/s, using one-fifth of the NIC's hardware threads. In UCCL, it matches native Swift's 1.56 Tbit/s goodput with 64 KiB chunk-level control. PCM's design informed ongoing Ultra Ethernet work toward a portable congestion management interface.",
+      "authors": [
+        "Mikhail Khalilov",
+        "Timo Schneider",
+        "Tommaso Bonato",
+        "Siyuan Shen",
+        "Marcin Chrapek",
+        "Yehor Kozyr",
+        "Alberto Merino",
+        "Rip Sohan",
+        "Surendra Anubolu",
+        "Mohan Kalkunte",
+        "Ahmad Ghalayini",
+        "Abdul Kabbani",
+        "Torsten Hoefler"
+      ],
+      "primary_category": "cs.NI",
+      "categories": [
+        "cs.NI"
+      ],
+      "published": "2026-10-09T07:22:39+00:00",
+      "link": "https://arxiv.org/pdf/2610.13130v1",
+      "tags": [
+        "keyword:dcn-comm"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "Programmable congestion control and load balancing for datacenter RDMA NICs",
+      "llm_evidence_cn": "面向数据中心RDMA网卡的可编程拥塞控制与负载均衡",
+      "llm_evidence": "面向数据中心RDMA网卡的可编程拥塞控制与负载均衡",
+      "canonical_evidence": "面向数据中心RDMA网卡的可编程拥塞控制与负载均衡",
+      "llm_tldr_en": "PCM separates portable congestion-management policy from vendor-specific RDMA NIC backends, letting operators write event-driven handlers over flow telemetry and triggers that run in simulation and on real terabit NICs.",
+      "llm_tldr_cn": "数据中心拥塞控制与负载均衡策略快速演进，但部署受制于RDMA网卡与厂商专用接口，每换平台就要重写策略。PCM提出可编程模型，将可移植的拥塞管理逻辑与平台集成分离，开发者编写事件驱动处理器并在仿真与真实网卡上复用。模型以流遥测信号和触发器表达反馈，由厂商后端映射到原生机制。该模型显著降低了跨平台部署拥塞管理策略的移植成本。",
+      "llm_tldr": "数据中心拥塞控制与负载均衡策略快速演进，但部署受制于RDMA网卡与厂商专用接口，每换平台就要重写策略。PCM提出可编程模型，将可移植的拥塞管理逻辑与平台集成分离，开发者编写事件驱动处理器并在仿真与真实网卡上复用。模型以流遥测信号和触发器表达反馈，由厂商后端映射到原生机制。该模型显著降低了跨平台部署拥塞管理策略的移植成本。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "What network scheduling and congestion control techniques improve collective communication performance",
+      "matched_requirement_id": "req-8",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "id": "2610.17091v1",
+      "source": "arxiv",
+      "title": "MCCL: Measurement-based Collective Communication Library",
+      "abstract": "Collective communication is a critical performance bottleneck in large-scale distributed training. Existing libraries and synthesis frameworks compute open-loop schedules once, assuming a static topology and peak link capacities. In production, however, persistent gray failures can silently degrade link throughput and latency for hours, causing pre-computed schedules to lose much of their efficiency during execution. In this paper, we present Measurement-based Collective Communication Library (MCCL), a collective communication library that closes the loop between runtime network measurement and dynamic schedule synthesis. MCCL passively measures GPU-to-GPU throughput, detects persistent degradation, re-synthesizes the affected communication-intensive schedules with warm-started synthesizers, and hot-swaps them without interrupting training. We validate the complete loop on a multi-node hardware prototype and use simulations to evaluate cluster-scale scenarios. In our experiments, MCCL incurs negligible overhead (<2%) while maintaining high measurement accuracy (<1.2% error) and low schedule hot-swap time (about 12 ms). Notably, under gray failures, MCCL reduces training time by up to 4.99x over static schedules on simulated training workloads for state-of-the-art LLMs such as Llama and DeepSeek.",
+      "authors": [
+        "Michele Ferrero",
+        "Gabriele Castellano",
+        "Paolo Medagliani",
+        "Sebastien Martin",
+        "Roberto Morabito",
+        "Massimo Gallo"
+      ],
+      "primary_category": "cs.NI",
+      "categories": [
+        "cs.NI",
+        "cs.DC"
+      ],
+      "published": "2026-10-12T16:50:16+00:00",
+      "link": "https://arxiv.org/pdf/2610.17091v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 9.0,
+      "llm_evidence_en": "measurement-based collective communication library with dynamic schedule synthesis",
+      "llm_evidence_cn": "基于测量并动态合成调度的集合通信库",
+      "llm_evidence": "基于测量并动态合成调度的集合通信库",
+      "canonical_evidence": "基于测量并动态合成调度的集合通信库",
+      "llm_tldr_en": "MCCL targets collective communication bottlenecks in large-scale distributed training by passively measuring GPU-to-GPU throughput and re-synthesizing schedules when persistent link degradation is detected, closing the loop between runtime measurement and collective scheduling.",
+      "llm_tldr_cn": "针对现有集合通信库按静态拓扑和峰值链路容量一次性生成调度、难以应对生产环境持久性灰度故障的问题，MCCL被动测量GPU间吞吐并检测持续性能退化，动态重综合受影响的通信密集调度。该闭环方法可在链路降级时恢复集合通信效率，提升大规模分布式训练在真实数据中心网络中的鲁棒性。",
+      "llm_tldr": "针对现有集合通信库按静态拓扑和峰值链路容量一次性生成调度、难以应对生产环境持久性灰度故障的问题，MCCL被动测量GPU间吞吐并检测持续性能退化，动态重综合受影响的通信密集调度。该闭环方法可在链路降级时恢复集合通信效率，提升大规模分布式训练在真实数据中心网络中的鲁棒性。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "How to design collective communication algorithms for data center networks",
+      "matched_requirement_id": "req-7",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "quick_skim": [
+    {
+      "id": "2609.26829v1",
+      "source": "arxiv",
+      "title": "Balancing Generality and Specialization: A Survey on AI Datacenter Hardware Architecture",
+      "abstract": "Rapidly growing AI workloads are driving large investments in AI datacenters. This survey classifies industrial AI accelerators into four architectural categories and compares their compute and memory organizations. It examines how node-, rack-, and pod-scale interconnects support collective communication, and traces architectural evolution across accelerator generations. The analysis connects advances in arithmetic throughput with changes in precision, data delivery, execution coordination, communication, power delivery, and cooling. It also discusses future design challenges arising from workload diversity, data movement, infrastructure constraints, and model evolution, showing how the trade-off between generality and specialization extends from individual accelerators to datacenter-scale systems. GitHub: github.com/Yufeng98/AI-datacenter",
+      "authors": [
+        "Yufeng Gu",
+        "Jiazhen Wang",
+        "Reetuparna Das"
+      ],
+      "primary_category": "cs.AR",
+      "categories": [
+        "cs.AR"
+      ],
+      "published": "2026-09-21T05:07:14+00:00",
+      "link": "https://arxiv.org/pdf/2609.26829v1",
+      "tags": [
+        "keyword:dcn-comm"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "AI datacenter interconnects supporting collective communication",
+      "llm_evidence_cn": "支撑集合通信的AI数据中心互连架构",
+      "llm_evidence": "支撑集合通信的AI数据中心互连架构",
+      "canonical_evidence": "支撑集合通信的AI数据中心互连架构",
+      "llm_tldr_en": "A survey of AI datacenter hardware architecture classifying accelerators into four categories and analyzing node-, rack-, and pod-scale interconnects that support collective communication.",
+      "llm_tldr_cn": "AI工作负载的快速增长推动数据中心大规模投资，亟需系统梳理加速器与互连架构的演进与权衡。该综述把工业界AI加速器划分为四类架构，比较其计算与存储组织，并分析节点、机架与集群级互连如何支撑集合通信。文章还追踪跨代演进中精度、数据交付、执行协同、通信、供电与散热的变化。最后指出工作负载多样性与数据移动带来的设计挑战，强调通用性与专用化之间的平衡。",
+      "llm_tldr": "AI工作负载的快速增长推动数据中心大规模投资，亟需系统梳理加速器与互连架构的演进与权衡。该综述把工业界AI加速器划分为四类架构，比较其计算与存储组织，并分析节点、机架与集群级互连如何支撑集合通信。文章还追踪跨代演进中精度、数据交付、执行协同、通信、供电与散热的变化。最后指出工作负载多样性与数据移动带来的设计挑战，强调通用性与专用化之间的平衡。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "data center network architectures and communication mechanisms for large-scale clusters",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2609.35481v1",
+      "source": "arxiv",
+      "title": "TopoEP: Topology-Aware Load Balancing for Expert-Parallel MoE Training",
+      "abstract": "Dynamic routing creates severe load imbalance in large-scale expert-parallel Mixture-of-Experts (MoE) training, turning GPUs that host hot experts into stragglers. As each MoE layer waits for its slowest rank, these stragglers prolong the expert-parallel stage and reduce overall training efficiency. Existing expert-parallelism load-balancing (EPLB) systems commonly compute load-balancing plans on the CPU, incurring device--host data transfers and cross-rank synchronization that make scheduling at every layer and microbatch expensive. Their planning formulations also overlook the hierarchical communication costs of modern scale-up and scale-out GPU clusters.   We present \\textit{TopoEP}, a GPU-native, topology-aware load-balancing system for large-scale MoE training. At each MoE layer and training microbatch, \\textit{TopoEP} converts the current routing result into hot-expert replication and token-rerouting decisions and executes the resulting plan without data-dependent host synchronization, reducing critical-path overhead. To generate these decisions, \\textit{TopoEP} uses a deterministic GPU solver that performs inter-node placement followed by intra-node refinement, allowing all ranks to independently produce bitwise-identical plans. On a 32-GPU NVIDIA H800 cluster, integrating \\textit{TopoEP} with Megatron-LM improves end-to-end training throughput by 6.2\\%--11.4\\% across three representative MoE models.",
+      "authors": [
+        "Jiacheng Zhu",
+        "Xie Zhao",
+        "Gongming Zhao",
+        "Hongli Xu",
+        "Yao Fei",
+        "Jin Fang"
+      ],
+      "primary_category": "cs.DC",
+      "categories": [
+        "cs.DC",
+        "cs.LG"
+      ],
+      "published": "2026-09-28T15:57:31+00:00",
+      "link": "https://arxiv.org/pdf/2609.35481v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "topology-aware load balancing accounting for hierarchical cluster communication costs",
+      "llm_evidence_cn": "考虑分层集群通信代价的拓扑感知负载均衡",
+      "llm_evidence": "考虑分层集群通信代价的拓扑感知负载均衡",
+      "canonical_evidence": "考虑分层集群通信代价的拓扑感知负载均衡",
+      "llm_tldr_en": "TopoEP is a GPU-native, topology-aware load-balancing system for expert-parallel MoE training that models hierarchical scale-up/scale-out communication costs to reduce stragglers and training slowdown.",
+      "llm_tldr_cn": "大规模专家并行MoE训练中动态路由导致严重负载不均，热门专家所在GPU成为拖慢整层的长尾节点。现有负载均衡方案多在CPU上规划，带来设备与主机间传输及跨rank同步开销，且忽略现代GPU集群的分层通信代价。本文提出TopoEP，一种GPU原生的拓扑感知负载均衡系统，将分层通信成本纳入规划以快速生成调度方案。结果表明其能有效降低长尾并提升大规模MoE训练效率。",
+      "llm_tldr": "大规模专家并行MoE训练中动态路由导致严重负载不均，热门专家所在GPU成为拖慢整层的长尾节点。现有负载均衡方案多在CPU上规划，带来设备与主机间传输及跨rank同步开销，且忽略现代GPU集群的分层通信代价。本文提出TopoEP，一种GPU原生的拓扑感知负载均衡系统，将分层通信成本纳入规划以快速生成调度方案。结果表明其能有效降低长尾并提升大规模MoE训练效率。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "topology-aware routing algorithms for data center network efficiency",
+      "matched_requirement_id": "req-5",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2609.36662v1",
+      "source": "arxiv",
+      "title": "AutoLoCo: Communication Efficient Distributed LLM Training via Adaptive Synchronization",
+      "abstract": "The pre-training of Large Language Models (LLMs) is increasingly conducted across multiple data centers. As training scales to a larger number of accelerators, the fraction of time spent on computation decreases, while the fraction spent on communication increases. Therefore, frequent synchronization becomes a growing bottleneck. Local update methods reduce this cost by allowing workers to perform several optimizer steps between synchronizations. Most local update methods set the number of local optimizer steps between synchronizations before training and keep this interval fixed throughout the run. However, the best interval can change during the entire train process. If the interval and optimizer are adapted to the current training state, the communication frequency is reduced while maintaining the training performance. In this work, we introduce AutoLoCo, an adaptive training framework to reduce communication in LLM training. It adapts the local interval using scalar training statistics and corrects each outer update. Our method is motivated by two observations: 1) the appropriate local interval varies across training stages, and 2) changing the number of inner steps per interval creates a mismatch with an unchanged outer optimizer, requiring a correction to the outer update. We optimize this mismatch by correction of the outer optimizer for the momentum and the learning rate using the accumulated inner learning rate. Our experiments under communication constraints demonstrate that AutoLoCo reduces communication frequency by 27% relative to DiLoCo while maintaining training performance.",
+      "authors": [
+        "Pengyu He",
+        "Yan Zhang",
+        "Ruien Li",
+        "Guangwen Yang"
+      ],
+      "primary_category": "cs.LG",
+      "categories": [
+        "cs.LG",
+        "cs.AI"
+      ],
+      "published": "2026-09-29T04:05:08+00:00",
+      "link": "https://arxiv.org/pdf/2609.36662v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "communication efficient distributed LLM training via adaptive synchronization across data centers",
+      "llm_evidence_cn": "面向跨数据中心大模型训练的通信高效自适应同步",
+      "llm_evidence": "面向跨数据中心大模型训练的通信高效自适应同步",
+      "canonical_evidence": "面向跨数据中心大模型训练的通信高效自适应同步",
+      "llm_tldr_en": "Cross-datacenter LLM pretraining is dominated by synchronization cost; AutoLoCo adapts the local-update interval and optimizer online instead of fixing them before training, cutting communication while preserving convergence.",
+      "llm_tldr_cn": "大模型跨数据中心预训练中，加速器规模扩大使通信与同步成为主要瓶颈，而现有本地更新方法在训练前固定同步间隔，难以适应训练过程中的变化。本文提出AutoLoCo，在训练过程中自适应调整本地优化步数与优化器状态，以动态平衡计算与通信。实验表明该方法在保持模型精度的同时显著降低同步开销、加快训练收敛，为跨数据中心的大规模分布式训练提供了更高效的通信优化方案。",
+      "llm_tldr": "大模型跨数据中心预训练中，加速器规模扩大使通信与同步成为主要瓶颈，而现有本地更新方法在训练前固定同步间隔，难以适应训练过程中的变化。本文提出AutoLoCo，在训练过程中自适应调整本地优化步数与优化器状态，以动态平衡计算与通信。实验表明该方法在保持模型精度的同时显著降低同步开销、加快训练收敛，为跨数据中心的大规模分布式训练提供了更高效的通信优化方案。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "communication optimization for distributed training workloads in data center networks",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2610.11158v2",
+      "source": "arxiv",
+      "title": "Zepp: Accelerating Distributed MoE Serving under Relaxed Balance Constraints",
+      "abstract": "As Mixture-of-Experts (MoE) models continue to scale, serving them increasingly relies on expert parallelism (EP) across a growing number of devices. Yet skewed expert workloads create imbalance across computation, communication, and memory, making load balancing a central optimization objective in distributed MoE serving. We observe that balance is not free: operations introduced to balance one dimension can themselves be expensive or imbalanced. This motivates us to rethink balance as a constraint rather than an optimization objective. We present Zepp, which directly optimizes the bottleneck communication in distributed MoE serving subject to simplified balance constraints on physical resources, i.e., GPUs and NICs. Zepp progressively optimizes inter-node communication across placement, routing, and execution. It first places expert replicas to reduce token communication under GPU constraints, then reshapes communication flows through split and merge primitives under NIC constraints, and finally partitions and schedules ex- pert computation to overlap the resulting communication. To adapt to dynamic workloads, Zepp jointly coordinates computation, token communication, and expert-weight movement at each iteration. Together, these designs allow Zepp to pursue the most efficient execution rather than a single-dimension balanced one. We implement Zepp and evaluate it against 7 state-of-the-art MoE serving systems, achieving up to 6.68$\\times$ MoE layer speedup and a geometric mean speedup of 1.86$\\times$ over the fastest competing baseline.",
+      "authors": [
+        "Chang Chen",
+        "Andrew Yang",
+        "Tiancheng Chen",
+        "Jiangfei Duan",
+        "Xinwei Qiang",
+        "Zhongkai Yu",
+        "Xiang Fang",
+        "Yufei Ding"
+      ],
+      "primary_category": "cs.DC",
+      "categories": [
+        "cs.DC"
+      ],
+      "published": "2026-10-08T03:19:33+00:00",
+      "link": "https://arxiv.org/pdf/2610.11158v2",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "optimizing bottleneck communication in distributed MoE serving across GPUs and NICs",
+      "llm_evidence_cn": "面向GPU与网卡的分布式MoE服务瓶颈通信优化",
+      "llm_evidence": "面向GPU与网卡的分布式MoE服务瓶颈通信优化",
+      "canonical_evidence": "面向GPU与网卡的分布式MoE服务瓶颈通信优化",
+      "llm_tldr_en": "Zepp reframes balance as a constraint and directly optimizes bottleneck communication in distributed MoE serving under relaxed resource balance constraints on GPUs and NICs.",
+      "llm_tldr_cn": "随着MoE模型规模扩大，分布式服务依赖跨多设备的专家并行，而专家负载偏斜造成计算、通信与内存多维失衡。作者观察到为均衡某一维度引入的操作本身可能昂贵且不均衡，因而把均衡从优化目标改为约束。Zepp在GPU与网卡等物理资源的简化均衡约束下直接优化瓶颈通信，逐步提升服务吞吐。该工作表明以通信瓶颈为中心重新组织均衡策略可更有效提升MoE服务性能。",
+      "llm_tldr": "随着MoE模型规模扩大，分布式服务依赖跨多设备的专家并行，而专家负载偏斜造成计算、通信与内存多维失衡。作者观察到为均衡某一维度引入的操作本身可能昂贵且不均衡，因而把均衡从优化目标改为约束。Zepp在GPU与网卡等物理资源的简化均衡约束下直接优化瓶颈通信，逐步提升服务吞吐。该工作表明以通信瓶颈为中心重新组织均衡策略可更有效提升MoE服务性能。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "communication optimization for distributed training workloads in data center networks",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2610.07333v1",
+      "source": "arxiv",
+      "title": "Memory-Efficient Expert Routing for Distributed MoE Training",
+      "abstract": "As Mixture-of-Experts (MoE) models scale toward hundreds of experts and higher top-$k$ routing, memory efficiency in distributed training becomes a critical bottleneck. Peak memory is dominated by the MoE block, not attention: every intermediate buffer in the MoE dispatch pipeline is individually scaled by top-k routing. The standard all-to-all dispatcher sends all routed tokens in a single collective step, requiring the full top-$k$-expanded buffer to be constructed at once. In this work, we propose RelayMoE, a ring-based MoE execution model that computes locally as expert weights or tokens circulate, avoiding full top-$k$-expanded dispatch buffers. RelayMoE selects between expert and token routing according to communication volume and overlaps transfers with computation. The ring structure naturally supports memory-efficient MoE recomputation during backward: each hop reconstructs expert intermediates, uses them to compute gradients, and releases them before the next hop. The saved memory supports longer sequences and larger batches, or retains more attention activations to reduce attention recomputation and improve training throughput. We evaluate RelayMoE on 30B$-$57B production MoE models and varied expert configurations. In single-layer MoE experiments, RelayMoE achieves a $2\\times$ average speedup over Megatron-LM. In full-model training under the same GPU memory budget, it improves throughput by up to $2.02\\times$ and extends the largest tested trainable sequence length by up to $2.85\\times$.",
+      "authors": [
+        "Arnab Kanti Tarafder",
+        "Jaume Guasch-Martí",
+        "Gokcen Kestor",
+        "Jie Ren"
+      ],
+      "primary_category": "cs.DC",
+      "categories": [
+        "cs.DC",
+        "cs.AI",
+        "cs.NI"
+      ],
+      "published": "2026-10-05T20:07:27+00:00",
+      "link": "https://arxiv.org/pdf/2610.07333v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "ring-based execution replaces single-step all-to-all dispatch in distributed MoE training",
+      "llm_evidence_cn": "环形执行替代分布式MoE训练中的单步all-to-all派发",
+      "llm_evidence": "环形执行替代分布式MoE训练中的单步all-to-all派发",
+      "canonical_evidence": "环形执行替代分布式MoE训练中的单步all-to-all派发",
+      "llm_tldr_en": "RelayMoE replaces the single-step all-to-all MoE dispatch with a ring-based execution that circulates experts or tokens, avoiding the full top-k-expanded buffer and overlapping communication with compute.",
+      "llm_tldr_cn": "大规模MoE训练中标准all-to-all派发需一次性构造完整的top-k扩展缓冲区，显存峰值成为主要瓶颈。论文提出RelayMoE环形执行模型，让专家权重或令牌在设备间循环并在本地计算，并依据通信量在专家路由与令牌路由之间切换，同时将传输与计算重叠。该方法避免了完整扩展缓冲区，降低了峰值内存，为集合通信密集的分布式训练提供了内存高效的路由执行方案。",
+      "llm_tldr": "大规模MoE训练中标准all-to-all派发需一次性构造完整的top-k扩展缓冲区，显存峰值成为主要瓶颈。论文提出RelayMoE环形执行模型，让专家权重或令牌在设备间循环并在本地计算，并依据通信量在专家路由与令牌路由之间切换，同时将传输与计算重叠。该方法避免了完整扩展缓冲区，降低了峰值内存，为集合通信密集的分布式训练提供了内存高效的路由执行方案。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "communication optimization for distributed training workloads in data center networks",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2610.14798v1",
+      "source": "arxiv",
+      "title": "Accelerating MoE Training through Expert Placement and Replica Coordination",
+      "abstract": "Distributed training of sparsely activated mixture-of-experts (MoE) models is often bottlenecked by workload imbalance and all-to-all (A2A) communication induced by dynamic token routing. Existing token deduplication, expert placement, and replication techniques alleviate these bottlenecks but do not jointly capture their distinct load semantics. Under hierarchical token deduplication, communication counts each token once per destination group at each hierarchy level, whereas expert computation processes every token-expert assignment. With replication, both costs depend jointly on physical layout and token-to-copy mapping, making separate optimization suboptimal. We present PlaceMoE to address this coupling. First, we formulate the joint optimization of expert layout and source-aware token-to-copy mapping for E experts distributed across P devices, accounting for both hierarchical communication traffic and expert-compute load. Second, we develop a solver that combines co-selection-aware expert grouping, bounded dynamic programming for replica allocation, and alternating refinement of layout and mapping. Third, PlaceMoE overlaps replica-gradient synchronization with attention backward. We evaluate PlaceMoE on a 32-GPU cluster and a 64-NPU cluster using Qwen3-VL and DeepSeek-V3. Experimental results show that PlaceMoE achieves up to a 6.94x speedup in A2A communication and 1.74-2.33x speedups in end-to-end training over the state-of-the-art training framework VeOmni.",
+      "authors": [
+        "Zhiqiang Tan",
+        "Maoxin Wang",
+        "Wenxiang Lin",
+        "Sijie Wang",
+        "Qiang Wang",
+        "Shaohuai Shi",
+        "Bo Li"
+      ],
+      "primary_category": "cs.DC",
+      "categories": [
+        "cs.DC"
+      ],
+      "published": "2026-10-10T10:43:05+00:00",
+      "link": "https://arxiv.org/pdf/2610.14798v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "joint optimization of all-to-all communication and expert placement in MoE training",
+      "llm_evidence_cn": "MoE训练中全对全通信与专家放置的联合优化",
+      "llm_evidence": "MoE训练中全对全通信与专家放置的联合优化",
+      "canonical_evidence": "MoE训练中全对全通信与专家放置的联合优化",
+      "llm_tldr_en": "PlaceMoE jointly optimizes expert placement, replication and token deduplication to cut all-to-all communication and workload imbalance in distributed MoE training under hierarchical fabrics.",
+      "llm_tldr_cn": "分布式MoE训练常因动态token路由引发的负载不均与全对全通信而受限，现有去重、专家放置与复制技术各自为战，未能联合刻画其不同的负载语义。本文提出PlaceMoE，联合建模分层去重下按目的组计数的通信成本与按token-专家分配计数的计算成本，并统一优化物理布局与token到副本映射。该工作表明联合优化可同时缓解通信瓶颈与计算失衡，从而加速大规模MoE训练。",
+      "llm_tldr": "分布式MoE训练常因动态token路由引发的负载不均与全对全通信而受限，现有去重、专家放置与复制技术各自为战，未能联合刻画其不同的负载语义。本文提出PlaceMoE，联合建模分层去重下按目的组计数的通信成本与按token-专家分配计数的计算成本，并统一优化物理布局与token到副本映射。该工作表明联合优化可同时缓解通信瓶颈与计算失衡，从而加速大规模MoE训练。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "algorithms for efficient collective communication operations in distributed environments",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    },
+    {
+      "id": "2610.16190v1",
+      "source": "arxiv",
+      "title": "A New Lens on Multi-GPU Communication: API-Level Memory Models for Portable Optimization",
+      "abstract": "As network communication increasingly becomes a performance bottleneck for ML and HPC workloads, it is more important than ever to optimize multi-GPU data transfers. Recently, low-level device APIs have emerged that allow programmers to perform fine-grain optimizations via one-sided put/get operations triggered directly from the device. However, the communication libraries providing these device APIs (e.g., rocSHMEM, MSCCL++, and NCCL/RCCL GIN) currently lack a rigorous memory model defining how their primitives interact with the underlying memory systems. Without this, emerging HPC and ML workloads aggressively optimizing network communication via device APIs can be brittle, error-prone, and face compatibility and inter-operability challenges.   This paper proposes the use of API-level memory models for these emerging device communication APIs. An API-level memory model defines the memory semantics of communication API calls in a way that abstracts lower-level details from the API user and simplifies development. This work defines one such model for device-side communication (implemented in AMD's recently open sourced rocSHMEM library) and demonstrates how formal relaxations to such a model can enable low-level LLM performance optimizations while retaining a well-defined standardized interface. Specifically, we describe how updating the SHMEM API implemented by rocSHMEM can properly support cache bypassing for network data, improving performance of a collective communication workload by up to 2.48x, a fused compute+communication workload by up to 1.77x, and a state-of-the-art expert-parallel communication workload by up to 1.18x.",
+      "authors": [
+        "Johnathan Alsop",
+        "Bradford Beckmann",
+        "Brandon Potter",
+        "Jiakun Yan",
+        "Aurelien Bouteiller",
+        "Omri Mor",
+        "Tony Tye",
+        "Sameer Sahasrabuddhe"
+      ],
+      "primary_category": "cs.DC",
+      "categories": [
+        "cs.DC"
+      ],
+      "published": "2026-10-12T05:11:03+00:00",
+      "link": "https://arxiv.org/pdf/2610.16190v1",
+      "tags": [
+        "keyword:dcn-comm"
+      ],
+      "llm_score": 8.0,
+      "llm_evidence_en": "memory models for device-side put/get primitives in multi-GPU collective communication libraries",
+      "llm_evidence_cn": "多GPU集合通信库中设备端put/get原语的内存模型",
+      "llm_evidence": "多GPU集合通信库中设备端put/get原语的内存模型",
+      "canonical_evidence": "多GPU集合通信库中设备端put/get原语的内存模型",
+      "llm_tldr_en": "Device APIs in rocSHMEM, MSCCL++ and NCCL enable fine-grain one-sided communication but lack a formal memory model; the paper proposes API-level memory models to make such optimizations portable and correct.",
+      "llm_tldr_cn": "随着网络通信成为机器学习和高性能计算的主要瓶颈，rocSHMEM、MSCCL++与NCCL等库提供设备端单边put/get原语以便细粒度优化数据传输，但这些接口缺乏严格的内存模型定义，导致优化脆弱、易错且难以互操作。本文提出API级内存模型，形式化刻画这些通信原语与底层内存系统的交互语义。该工作为多GPU集合通信的可移植优化与跨库兼容奠定了基础。",
+      "llm_tldr": "随着网络通信成为机器学习和高性能计算的主要瓶颈，rocSHMEM、MSCCL++与NCCL等库提供设备端单边put/get原语以便细粒度优化数据传输，但这些接口缺乏严格的内存模型定义，导致优化脆弱、易错且难以互操作。本文提出API级内存模型，形式化刻画这些通信原语与底层内存系统的交互语义。该工作为多GPU集合通信的可移植优化与跨库兼容奠定了基础。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "collective communication protocols and primitives for distributed systems",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "8plus"
+    }
+  ]
+}
