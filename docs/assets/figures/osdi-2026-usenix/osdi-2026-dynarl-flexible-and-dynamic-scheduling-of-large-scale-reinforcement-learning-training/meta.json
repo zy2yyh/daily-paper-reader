@@ -1,0 +1,14 @@
+{
+  "version": 2,
+  "extractor": "pymupdf-images",
+  "figures": [
+    {
+      "url": "assets/figures/osdi-2026-usenix/osdi-2026-dynarl-flexible-and-dynamic-scheduling-of-large-scale-reinforcement-learning-training/fig-001.webp",
+      "caption": "",
+      "page": 6,
+      "index": 1,
+      "width": 640,
+      "height": 436
+    }
+  ]
+}

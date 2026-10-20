@@ -1,0 +1,2054 @@
+{
+  "top_k": 200,
+  "generated_at": "2026-10-20T12:51:00.419971+00:00",
+  "papers": [
+    {
+      "id": "osdi-2026-roce-balboa-service-enhanced-rdma-offload-engine-for-data-center-smartnics",
+      "source": "OSDI-2026-USENIX",
+      "title": "{RoCE} {BALBOA}: {Service-Enhanced} {RDMA} Offload Engine for Data Center {SmartNICs}",
+      "abstract": "Remote Direct Memory Access (RDMA) has become the de facto standard for high-performance data center networking. However, current deployments rely heavily on fixed-function, commercial NICs. These \"black box\" commercial hardware implementations prevent researchers and system architects from modifying the transport layer for specialized tasks. In parallel, research on NICs often lacks offloaded networking stacks or uses simplified protocol implementations, limiting insight into novel networking solutions in realistic settings. In this paper, we bridge this gap by introducing BALBOA, an open-source, 100 Gbps RDMA offload engine designed for research on networking and fully compatible with commercial RNICs. Unlike prior stack implementations which lack scalability and bandwidth, or struggle with data center interoperability and miss strict protocol compliance, BALBOA supports hundreds of Queue Pairs in switched network environments and allows for line-rate offloads, making it a viable platform for realistic data center research. We describe the system architecture, detailing how BALBOA overcomes FPGA memory and timing bottlenecks through a decoupled state architecture and streaming control-data separation. We evaluate BALBOA on a hardware cluster with FPGAs, RNICs, and switches, showing that it matches the performance of commercial ASICs while offering full customization. Finally, we showcase BALBOA’s potential through novel case studies: protocol enhancements for infrastructure purposes (encryption, deep packet inspection) and an offloaded preprocessing pipeline for deep learning recommender systems, which applies streaming transformations to the incoming data before feeding it directly to a GPU for model serving.",
+      "authors": [
+        "Maximilian Jakob Heer",
+        "Benjamin Ramhorst",
+        "Yu Zhu",
+        "Luhao Liu",
+        "Zhiyi Hu",
+        "Jonas Dann",
+        "Gustavo Alonso"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2026-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi26/presentation/heer",
+      "pdf_url": "https://www.usenix.org/system/files/osdi26-heer.pdf",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "sosp-2026-streamep-straggler-tolerant-moe-decoding-without-communication-barriers",
+      "source": "SOSP-2026-ACM",
+      "title": "StreamEP: Straggler-Tolerant MoE Decoding without Communication Barriers",
+      "abstract": "Mixture-of-Experts (MoE) models use expert parallelism (EP) to distribute experts across GPUs, relying on collective communication that synchronizes every device at every layer. To minimize communication latency, hyperscalers provision abundant network bandwidth in data centers and deploy MoE-optimized stacks that require Hopper-generation GPU features. But on commodity GPU clusters with shared and nonuniform interconnects, this communication barrier serializes execution behind the slowest transfer. We present stream expert parallelism (StreamEP), a paradigm that removes the collective communication barrier entirely: each GPU independently receives tokens, executes the appropriate layer, and forwards results as they become ready. We build StreamInfer, a serving system that realizes StreamEP on vanilla NCCL. StreamInfer introduces per-layer token queues for asynchronous token management, a defragmenting scheduler that consolidates partial batches while guaranteeing forward progress, and a two-phase communicator for asynchronous and variable-size GPU-to-GPU transfers. On 16×L40S and 16×A100 clusters with 200 Gbps inter-node networking, StreamInfer achieves up to 1.7× higher decoding throughput than traditional EP, demonstrating that efficient large-scale MoE serving is achievable on commodity hardware.",
+      "authors": [
+        "Shaoyu Wang",
+        "Jaeyong Song",
+        "Yanqi Zhou",
+        "Geon-Woo Kim",
+        "Seo Jin Park"
+      ],
+      "primary_category": "sosp",
+      "categories": [
+        "sosp",
+        "systems"
+      ],
+      "published": "2026-09-28T00:00:00+00:00",
+      "link": "https://dl.acm.org/doi/10.1145/3830418.3843869",
+      "pdf_url": "https://dl.acm.org/doi/pdf/10.1145/3830418.3843869",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training",
+      "source": "SOSP-2025-ACM",
+      "title": "Mycroft: Tracing Dependencies in Collective Communication Towards Reliable LLM Training",
+      "abstract": "Reliability is essential for ensuring efficiency in LLM training. However, many real-world reliability issues remain difficult to resolve, resulting in wasted resources and degraded model performance. Unfortunately, today's collective communication libraries operate as black boxes, hiding critical information needed for effective root cause analysis. We propose Mycroft, a lightweight distributed tracing and root cause analysis system designed to address previously hidden reliability issues in collective communication. Mycroft's key idea is to trace collective communication states and leverage internal control and data dependencies to resolve reliability problems in LLM training. Mycroft has been deployed at ByteDance for over six months to debug collective communication-related issues at runtime. It detected anomalies within 15 seconds in 90% of cases and identified the root cause within 20 seconds in 60% of cases. We also conducted extensive fault injection experiments to demonstrate Mycroft's capability and efficiency.",
+      "authors": [
+        "Yangtao Deng",
+        "Lei Zhang",
+        "Xiaoyun Zhi",
+        "Lei Wang",
+        "Gaohong Liu",
+        "Yang Bai",
+        "Wencong Xiao",
+        "Jianxi Ye",
+        "Minlan Yu",
+        "Hong Xu"
+      ],
+      "primary_category": "sosp",
+      "categories": [
+        "sosp",
+        "systems"
+      ],
+      "published": "2025-10-12T00:00:00+00:00",
+      "link": "https://dl.acm.org/doi/10.1145/3731569.3764848",
+      "pdf_url": "https://dl.acm.org/doi/pdf/10.1145/3731569.3764848",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "osdi-2026-uccl-tran-an-extensible-software-transport-layer-for-gpu-networking",
+      "source": "OSDI-2026-USENIX",
+      "title": "{UCCL-Tran}: An Extensible Software Transport Layer for {GPU} Networking",
+      "abstract": "Fast-evolving machine learning (ML) workloads have increasing requirements for networking. However, host network transport on RDMA NICs is hard to evolve, causing problems for ML workloads. For example, single-path RDMA traffic is prone to flow collisions that severely degrade collective communication performance. We present UCCL-Tran, an extensible software transport layer to evolve GPU networking. UCCL-Tran decouples the data path and control path of existing RDMA NICs and efficiently runs the control-path transport on host CPUs. This software extensibility brings in transport innovations that cannot be achieved in hardware for ML workloads, e.g., a multipath transport to resolve flow collisions. ML collectives atop UCCL-Tran achieve up to 4.5× higher performance compared to existing RDMA NICs.",
+      "authors": [
+        "Yang Zhou",
+        "Zhongjie Chen",
+        "Ziming Mao",
+        "ChonLam Lao",
+        "Shuo Yang",
+        "Pravein Govindan Kannan",
+        "Xizhi Zhang",
+        "Jiaqi Gao",
+        "Yilong Zhao",
+        "Yongji Wu",
+        "Kaichao You",
+        "Fengyuan Ren",
+        "Zhiying Xu",
+        "Costin Raiciu",
+        "Ion Stoica"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2026-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi26/presentation/zhou-yang",
+      "pdf_url": "https://www.usenix.org/system/files/osdi26-zhou-yang.pdf",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "sosp-2025-device-assisted-live-migration-of-rdma-devices",
+      "source": "SOSP-2025-ACM",
+      "title": "Device-Assisted Live Migration of RDMA Devices",
+      "abstract": "Recently, we have seen growing pressure to move highperformance workloads, such as HPC and AI, to cloud environments that offer more affordable and manageable infrastructure. These workloads require direct access to RDMA devices for high-performance communication. Device passthrough, however, violates the decoupling between the guest OS and the underlying hardware, making Live Migration (LM) extremely challenging [29, 38, 40, 42, 48]. This paper presents a method for migrating a collection of directly interacting hardware devices in a manner that is transparent to both the VM and its network peers. We propose a device-assisted solution that includes (a) a generic device-hypervisor interface, (b) the design and implementation of LM support for the NVIDIA ConnectX family of network adapters, and (c) a novel scheme to quiesce direct communication over the memory fabric (e.g., PCIe). We demonstrate transparent migration of HPC and AI workloads in accelerated virtual environments. Our approach incurs no runtime overhead or performance degradation after migration and achieves sub-second downtimes even for VMs with high RDMA resource utilization.",
+      "authors": [
+        "Liran Liss"
+      ],
+      "primary_category": "sosp",
+      "categories": [
+        "sosp",
+        "systems"
+      ],
+      "published": "2025-10-12T00:00:00+00:00",
+      "link": "https://dl.acm.org/doi/10.1145/3731569.3764795",
+      "pdf_url": "https://dl.acm.org/doi/pdf/10.1145/3731569.3764795",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "osdi-2026-hetu-v2-a-general-and-scalable-deep-learning-system-with-hierarchical-and-heterogeneous-single-program-multiple-data-ann",
+      "source": "OSDI-2026-USENIX",
+      "title": "Hetu v2: A General and Scalable Deep Learning System with Hierarchical and Heterogeneous Single Program Multiple Data Annotations",
+      "abstract": "The Single-Program Multiple-Data (SPMD) paradigm provides a unified abstraction to annotate various parallel dimensions in distributed deep learning (DL) training. With SPMD, users can write training programs from the viewpoint of a single device, and the system will automatically deduce the tensor sharding and communication patterns. However, with the recent development in large-scale DL models, distributed training exhibits spatial and temporal workload heterogeneity, arising from both device disparities (e.g., mixed hardware, failures) and data variations (e.g., uneven sequence lengths). Such heterogeneity violates SPMD’s assumption of symmetric workload partitioning, which restricts its ability to express and optimize heterogeneous parallel strategies effectively. To address this, we propose HSPMD within the Hetu v2 system to achieve general and scalable DL training. HSPMD extends SPMD’s declarative annotations to support asymmetric sharding and composes standard communication primitives for hierarchical communication, all while retaining the simplicity of a single-device programming model. HSPMD handles spatial heterogeneity through progressive graph specialization, enabling device-specific execution logic, and addresses temporal heterogeneity via dynamic graph switching. Evaluations on (a) heterogeneous devices, (b) unstable devices, and (c) mixed-length data scenarios show that HSPMD matches or outperforms specialized systems, providing a flexible and efficient solution for modern distributed DL training. Code is available: https://github.com/PKU-DAIR/Hetu .",
+      "authors": [
+        "Haoyang Li",
+        "Fangcheng Fu",
+        "Hao Ge",
+        "Sheng Lin",
+        "Xuanyu Wang",
+        "Jiawen Niu",
+        "Yuming Zhou",
+        "Xupeng Miao",
+        "Bin Cui"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2026-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi26/presentation/li-haoyang",
+      "pdf_url": "https://www.usenix.org/system/files/osdi26-li-haoyang.pdf",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "osdi-2026-dynarl-flexible-and-dynamic-scheduling-of-large-scale-reinforcement-learning-training",
+      "source": "OSDI-2026-USENIX",
+      "title": "{DynaRL}: Flexible and Dynamic Scheduling of {Large-Scale} Reinforcement Learning Training",
+      "abstract": "Modern reinforcement learning (RL) workloads, powering large language models, long‑horizon reasoning, and agentic systems, exhibit extreme dynamicity due to heavy‑tailed rollouts, irregular multi‑turn tool interactions, and time‑varying bottlenecks. Static resource allocations in today’s distributed RL systems leave large fractions of compute idle and prolong training. This paper presents DynaRL, the first RL system that dynamically reallocates computation, memory, and communication resources across heterogeneous RL components. DynaRL models the entire RL pipeline with a dynamic hypergraph that serves as a centralized, continuously-evolving control surface. Supported by a unified resource migration interface and context‑aware data routing, the scheduler reallocates GPUs from overprovisioned components to the current bottleneck via a combination of a multi-level scheduling algorithm and fine-grained resource migration. Comprehensive evaluation demonstrates that DynaRL improves end-to-end throughput on math-reasoning and agentic RL workloads by up to 1.98×, with negligible online scheduling overhead.",
+      "authors": [
+        "Yuanqing Wang",
+        "Hao Lin",
+        "Junhao Hu",
+        "Chunyang Zhu",
+        "Quanlu Zhang",
+        "Zhen Guo",
+        "Yuchen Zhang",
+        "Xu Fu",
+        "Si Xu",
+        "Bo Dai",
+        "Zixiao Huang",
+        "Chao Yu",
+        "Boxun Li",
+        "Guohao Dai",
+        "Zhi Yang",
+        "Yu Wang"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2026-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi26/presentation/wang-yuanqing",
+      "pdf_url": "https://www.usenix.org/system/files/osdi26-wang-yuanqing.pdf",
+      "tags": [
+        "keyword:dcn-comm"
+      ]
+    },
+    {
+      "id": "osdi-2026-sbb-eliminating-centralized-bottlenecks-in-userspace-network-runtime",
+      "source": "OSDI-2026-USENIX",
+      "title": "{SBB}: Eliminating Centralized Bottlenecks in Userspace Network Runtime",
+      "abstract": "To achieve high throughput, low latency, and high CPU efficiency, userspace network runtimes must perform three types of scheduling: 1) request preemption to minimize tail latency, 2) CPU allocation among services to avoid wasting CPU cycles when the load is low, and 3) request load balancing across worker cores to achieve work conservation. However, prior designs rely on centralized components, which inevitably become scalability bottlenecks as the number of CPU workers increases, limiting system performance scaling. This paper presents SBB, a purely decentralized userspace network runtime that simultaneously delivers high performance, high CPU efficiency, and high scalability by advancing in both system mechanism and scheduling policy. For system mechanism, SBB leverages the emerging User Interrupt mechanism in a novel way, delivering two types of device interrupts to the userspace runtime: 1) user-level timer interrupts for request preemption, and 2) user-level NIC interrupts for packet arrival to perform CPU allocation. For scheduling policy, SBB introduces a two-level algorithm, which marries flow migration (for persistent imbalance) with task stealing (for temporary imbalance), challenging the conventional wisdom that centralized load balancing outperforms decentralized approaches. Evaluation shows that SBB achieves 1.7× to 5.2× higher throughput when scaling to 48 cores, while meeting the same tail latency target.",
+      "authors": [
+        "Kang Hu",
+        "Shuqi Dong",
+        "Chuandong Li",
+        "Ran Yi",
+        "Zonghao Zhang",
+        "Yiming Yao",
+        "Bo An",
+        "Jie Zhang",
+        "Xiaolin Wang",
+        "Yingwei Luo",
+        "Zhenlin Wang",
+        "Diyu Zhou"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2026-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi26/presentation/hu-kang",
+      "pdf_url": "https://www.usenix.org/system/files/osdi26-hu-kang.pdf",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "osdi-2026-pluto-high-performance-memory-efficient-distributed-graph-analytics-through-advanced-mirroring",
+      "source": "OSDI-2026-USENIX",
+      "title": "Pluto: {High-Performance}, {Memory-Efficient} Distributed Graph Analytics through Advanced Mirroring",
+      "abstract": "Inter-host communication poses a significant performance bottleneck in distributed graph analytics due to synchronization overheads. To mitigate this, state-of-the-art systems typically employ the full mirroring technique to replicate all potentially needed remote data and adopt a bulk-synchronous parallel execution model for coarse-grained communication. While effective for reducing network traffic, these approaches substantially increase memory footprint and constrain system parallelism. This paper introduces Pluto, a memory-efficient distributed graph analytics system based on two advanced mirroring designs: static partial mirroring and a mirror-free architecture. Nonproductive data duplication is avoided to reduce memory usage, while the work migration mechanism allows communication-computation overlap for performance improvement. For homogeneous graphs, Pluto achieves up to 3.8× speedup (harmonic mean 1.75×) compared to a full mirroring baseline and delivers up to 12× speedup (harmonic mean 1.75×) over existing open-source systems. For labeled property graphs, Pluto achieves up to 2.6× speedup (harmonic mean 1.37×) and lowers the minimum host requirement to 50%–90% of the baseline.",
+      "authors": [
+        "Ying-Wei Wu",
+        "Christopher J. Rossbach",
+        "Mattan Erez"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2026-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi26/presentation/wu-ying-wei",
+      "pdf_url": "https://www.usenix.org/system/files/osdi26-wu-ying-wei.pdf",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "sosp-2025-oasis-pooling-pcie-devices-over-cxl-to-boost-utilization",
+      "source": "SOSP-2025-ACM",
+      "title": "Oasis: Pooling PCIe Devices Over CXL to Boost Utilization",
+      "abstract": "PCIe devices, such as NICs and SSDs, are frequently underutilized in cloud platforms. PCIe device pools, in which multiple hosts can share a set of PCIe devices, could increase PCIe device utilization and reduce their total cost of ownership. The main way to achieve PCIe device pools today is via PCIe switches, but they are expensive and inflexible. We design Oasis,1 a system that pools PCIe devices in software over CXL memory pools. CXL memory pools are already being deployed to boost datacenter memory utilization and reduce costs. Once CXL pools are in place, they can serve as an efficient data path between hosts and PCIe devices. Oasis provides a control plane and datapath over CXL pools, mapping and routing PCIe device traffic across host boundaries. PCIe devices with different functionalities can be supported by adding an Oasis engine for each device class. We implement an Oasis network engine to demonstrate NIC pooling. Our evaluation shows that Oasis improves the NIC utilization by 2× and handles NIC failover with only a 38 ms interruption.",
+      "authors": [
+        "Yuhong Zhong",
+        "Daniel S. Berger",
+        "Enrique Saurez",
+        "Dan R. K. Ports",
+        "Antonis Psistakis",
+        "Joshua Fried",
+        "Asaf Cidon"
+      ],
+      "primary_category": "sosp",
+      "categories": [
+        "sosp",
+        "systems"
+      ],
+      "published": "2025-10-12T00:00:00+00:00",
+      "link": "https://dl.acm.org/doi/10.1145/3731569.3764812",
+      "pdf_url": "https://dl.acm.org/doi/pdf/10.1145/3731569.3764812",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "osdi-2026-the-abstention-protocol-rca-for-clos-fabrics",
+      "source": "OSDI-2026-USENIX",
+      "title": "The Abstention Protocol: {RCA} for Clos Fabrics (Operational Systems)",
+      "abstract": "Root cause analysis (RCA) in large datacenter networks is challenging because telemetry is noisy, partial, and asynchronous. Score-based approaches degrade under these conditions, often yielding unstable or incorrect attributions. We present CoreSec , a production RCA system that replaces weighted fusion with a PAM-style abstention algebra. Telemetry agents are composed using control flags that yield deterministic decisions and explicit abstention when evidence is ambiguous. CoreSec combines this algebra with topology-aware configurations that capture failure surfaces across Clos fabrics and converge monotonically as evidence accumulates. Deployed at hyperscale, CoreSec provides stable and explainable RCA behavior across diverse environments without retuning. Our experience shows that structured composition with abstention forms a practical foundation for automated RCA in real-world cloud networks.",
+      "authors": [
+        "Madhava Gaikwad",
+        "Deepak Pandey"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2026-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi26/presentation/gaikwad",
+      "pdf_url": "https://www.usenix.org/system/files/osdi26-gaikwad.pdf",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "osdi-2026-efficient-llm-serving-on-commodity-gpu-clusters-with-data-reduced-cross-instance-orchestration",
+      "source": "OSDI-2026-USENIX",
+      "title": "Efficient {LLM} Serving on Commodity {GPU} Clusters with {Data-Reduced} {Cross-Instance} Orchestration",
+      "abstract": "Existing LLM serving strategies can be categorized by whether prefill and decode phases are disaggregated: non-disaggregated (NoDG) or fully disaggregated (FuDG). However, they neither fit commodity GPU clusters, which remain widely deployed as mainstream AI infrastructure. NoDG suffers from severe prefill–decode interference, while FuDG depends heavily on high-performance interconnects that such clusters lack. We present EcoServe, an LLM serving system tailored to commodity GPU clusters. It enables a data-reduced collaboration among inference instances to mitigate prefill-decode interference, termed the partially disaggregated (PaDG) strategy. Particularly, within a single instance, PaDG disaggregates the prefill and decode phases along the time dimension to mitigate interference and enhance throughput. Next, it coordinates multiple instances and cyclically activates them to ensure the continuous availability of prefill processing, thereby rescuing latency. Thus, EcoServe’s basic serving unit is the macro instance, within which multiple instances collaborate. It further incorporates an adaptive scheduling algorithm to route requests in a macro instance and a mitosis scaling approach for fine-grained capacity adjustments in online scenario. On a 32-GPU NVIDIA L20 cluster over Ethernet, EcoServe improves goodput by 1.96×, 1.99×, 2.51×, and 2.40× when serving 30B- and 70B-scale LLMs, compared to four representative NoDG and FuDG systems, vLLM, Sarathi, DistServe, and MoonCake. EcoServe remains competitive even on an NVIDIA H100 cluster with NVLink and InfiniBand. Our code is released at https://github.com/MLSysU/EcoServe .",
+      "authors": [
+        "Jiangsu Du",
+        "Hongbin Zhang",
+        "Taosheng Wei",
+        "Zhenyi Zheng",
+        "Jiazhi Jiang",
+        "Kaiyi Wu",
+        "Zhiguang Chen",
+        "Yutong Lu"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2026-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi26/presentation/du",
+      "pdf_url": "https://www.usenix.org/system/files/osdi26-du.pdf",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "osdi-2026-teaching-the-old-dog-new-tricks-building-efficient-data-pipelines-for-large-scale-llm-pre-training",
+      "source": "OSDI-2026-USENIX",
+      "title": "Teaching the Old Dog New Tricks: Building Efficient Data Pipelines for {Large-Scale} {LLM} {Pre-Training} (Operational Systems)",
+      "abstract": "Data pipelines play a critical role in the performance of large-scale pre-training jobs running on thousands of GPUs. In this work, we present a comprehensive quantitative analysis of data access patterns from production workloads and reveal three previously underreported bottlenecks. First, cross-datacenter traffic emerges as a major source of latency when evaluating in-training models using remote checkpoints. Second, checkpoint loading during startup phases frequently suffers from I/O contention that delays job initialization. Third, data transformation during loading becomes a significant and CPU-intensive bottleneck for multimodal models. Guided by these findings, we introduce three optimizations: global-namespace-based predictive checkpoint replication, proactive hot-file replication, and offloading data transformation to storage-tier CPU resources. Crucially, we demonstrate that these optimizations are not system-specific but address fundamental architectural mismatches in the LLM era. They are broadly applicable to both legacy and modern storage systems, offering a high-return path to upgrade infrastructure with minimal engineering intrusion. Together, these techniques reduce wasted GPU hours per evaluation from 16,800 to 4,000, shorten checkpoint loading time at each training start by 40.8%, and reduce training stalls caused by dataloading by 63.2%.",
+      "authors": [
+        "Luofan Chen",
+        "Chenhan Wang",
+        "Weidong Zhang",
+        "Jinxin Chi",
+        "Hequan Zhang",
+        "Zanbo Wang",
+        "Chenyuan Wang",
+        "Lishu Luo",
+        "Sijin Wu",
+        "Junqi Hu",
+        "Jun Wang",
+        "Cheng Chen",
+        "Lixin Huang",
+        "Liyang Zhao",
+        "Yong Tian",
+        "Jun Guo",
+        "Youhui Bai",
+        "Wencong Xiao",
+        "Kang Chen",
+        "Cheng Li"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2026-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi26/presentation/chen-luofan",
+      "pdf_url": "https://www.usenix.org/system/files/osdi26-chen-luofan.pdf",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "osdi-2026-rakaia-scalable-in-kernel-scheduling-for-tcp-based-rpcs",
+      "source": "OSDI-2026-USENIX",
+      "title": "Rakaia: Scalable {In-Kernel} Scheduling for {TCP-Based} {RPCs}",
+      "abstract": "Delivering RPCs with high throughput and low latency demands work-conserving scheduling across many CPU cores and eliminating head-of-line (HOL) blocking across all messages. By exposing per-connection byte streams rather than messages to userspace, the POSIX TCP API inherently induces HOL blocking both within and across connections. To mitigate HOL blocking, RPC frameworks such as gRPC must reconstruct message semantics in userspace through additional abstractions including dedicated I/O threads, work queues, and worker thread pools, introducing significant context switching and synchronization overheads. This paper presents Rakaia, a framework that hides all TCP-level abstractions from userspace and exposes a purely message-oriented API. By performing message parsing and work-conserving scheduling directly in the kernel’s TCP receive path, at the earliest possible point, Rakaia efficiently eliminates HOL blocking and avoids the heavy userspace machinery imposed by stream-based APIs. We implemented Rakaia as a Linux kernel module with support for kTLS. Rakaia is compatible with the kernel’s TCP stack and existing RPC protocols. We also adapted gRPC to use Rakaia’s API. Our evaluation shows Rakaia: (i) consistently eliminates HOL blocking across a wide range of connection counts; (ii) achieves up to 5× higher throughput-under-SLO than KCM, Linux’s current in-kernel message API over TCP; (iii) improves gRPC-Go’s throughput-under-SLO by up to 1.56×, and gRPC-C++’s by up to 2.69×; and (iv) improves the throughput-under-SLO for real-world applications including Silo running TPC-C and OpenTelemetry Collector by 1.39× and 1.42×, respectively.",
+      "authors": [
+        "Rui Yang",
+        "Konstantinos Prasopoulos",
+        "Edouard Bugnion"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2026-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi26/presentation/yang-rui",
+      "pdf_url": "https://www.usenix.org/system/files/osdi26-yang-rui.pdf",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "osdi-2026-syncopate-efficient-multi-gpu-ai-kernels-via-automatic-chunk-centric-compute-communication-overlap",
+      "source": "OSDI-2026-USENIX",
+      "title": "Syncopate: Efficient {Multi-GPU} {AI} Kernels via Automatic {Chunk-Centric} {Compute-Communication} Overlap",
+      "abstract": "Communication has become a first-order bottleneck in large-scale GPU workloads, and existing distributed compilers address it mainly by overlapping whole compute and communication kernels at the stream level. This coarse granularity incurs extra kernel launches, forces device-wide synchronizations at kernel boundaries, and leaves substantial slack when the slowest tile or kernel stretches the communication tail. We present Syncopate, a compiler and runtime that enable automatic fine-grained overlap around a single fused compute kernel. Syncopate introduces a communication chunk abstraction that decouples communication granularity from kernel structure and backend mechanisms, allowing chunk-level plans to be ported from existing distributed compilers, written directly by users, or instantiated from reusable templates. Given a local Triton kernel and a chunk schedule, Syncopate performs transformations to align computation with chunk availability. Implemented as a source-to-source compiler on Triton, Syncopate delivers an average end-to-end speedup of 1.3× and up to 4.7× on multi-GPU workloads. Our code is open-sourced at https://github.com/tie-pilot-qxw/syncopate .",
+      "authors": [
+        "Xinwei Qiang",
+        "Yue Guan",
+        "Zhengding Hu",
+        "Keren Zhou",
+        "Yufei Ding",
+        "Adnan Aziz"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2026-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi26/presentation/qiang",
+      "pdf_url": "https://www.usenix.org/system/files/osdi26-qiang.pdf",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "sosp-2025-sailor-automating-distributed-training-over-dynamic-heterogeneous-and-geo-distributed-clusters",
+      "source": "SOSP-2025-ACM",
+      "title": "Sailor: Automating Distributed Training over Dynamic, Heterogeneous, and Geo-distributed Clusters",
+      "abstract": "The high GPU demand of ML training makes it hard to allocate large homogeneous clusters of high-end GPUs in a single availability zone. Leveraging heterogeneous GPUs available within and across zones can improve throughput at a reasonable cost. However, training ML models on heterogeneous resources introduces significant challenges, such as stragglers and a large search space of possible job configurations. Current systems lack support for efficiently training models on heterogeneous resources. We present Sailor, a system that automates distributed training over heterogeneous, geo-distributed, and dynamically available resources. Sailor combines an efficient search space exploration algorithm, accurate runtime and memory footprint simulation, and a distributed training framework that supports different types of heterogeneity to optimize training throughput and cost.",
+      "authors": [
+        "George Manos",
+        "Ixeia Sánchez Périz",
+        "Qinghao Hu",
+        "Tiancheng Chen",
+        "Berk Buzcu",
+        "Song Han",
+        "Pamela Delgado",
+        "Ana Klimovic"
+      ],
+      "primary_category": "sosp",
+      "categories": [
+        "sosp",
+        "systems"
+      ],
+      "published": "2025-10-12T00:00:00+00:00",
+      "link": "https://dl.acm.org/doi/10.1145/3731569.3764839",
+      "pdf_url": "https://dl.acm.org/doi/pdf/10.1145/3731569.3764839",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "osdi-2026-trainmover-an-interruption-resilient-runtime-for-ml-training",
+      "source": "OSDI-2026-USENIX",
+      "title": "{TrainMover}: An {Interruption-Resilient} Runtime for {ML} Training",
+      "abstract": "Large-scale ML training jobs are frequently interrupted by hardware and software anomalies, failures, and management events. Existing solutions like checkpoint-restart or runtime reconfiguration suffer from long downtimes and degraded performance. We present TrainMover, a resilient LLM training runtime that leverages elastic and standby machines to handle interruptions with minimal downtime and zero memory overhead. To achieve these goals, TrainMover introduces three key techniques: two-phase, delta-based communication group setup; communication-free sandboxed warmup; and general standby design that enables failure recovery from any role. Our evaluation shows that TrainMover consistently achieves around 20 seconds of downtime when handling various interruptions at the 1024-GPU scale. TrainMover is projected to reduce wasted GPU hours by 55% compared to the best alternative, saving 1.4 million GPU-hours per week at the 64K-GPU scale.",
+      "authors": [
+        "ChonLam Lao",
+        "Jiaqi Gao",
+        "Jiamin Cao",
+        "Zhipeng Zhang",
+        "Pengcheng Zhang",
+        "Jiangfei Duan",
+        "Zhilong Zheng",
+        "Yu Guan",
+        "Yichi Xu",
+        "Yong Li",
+        "Zhengping Qian",
+        "Aditya Akella",
+        "Minlan Yu",
+        "Ennan Zhai",
+        "Dennis Cai",
+        "Jingren Zhou"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2026-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi26/presentation/lao",
+      "pdf_url": "https://www.usenix.org/system/files/osdi26-lao.pdf",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "sosp-2026-tensorhub-scalable-and-elastic-weight-transfer-for-llm-rl-training",
+      "source": "SOSP-2026-ACM",
+      "title": "TensorHub: Scalable and Elastic Weight Transfer for LLM RL Training",
+      "abstract": "Modern LLM reinforcement learning (RL) workloads require a high-performance weight transfer system to scale training across heterogeneous compute resources. However, efficiently transferring terabyte-scale model weights across thousands of GPUs remains challenging because the system must accommodate clusters that dynamically scale up and down while keeping coordination, data movement, and storage overhead low. We introduce Reference-Oriented Storage (ROS), a new storage abstraction for RL weight transfer that exploits highly replicated model weights in place. ROS presents the illusion that certain versions of the model weights are stored and can be fetched on demand. Underneath, ROS does not physically store any copies of the weights; instead, it tracks the workers that hold these weights on GPUs for inference. Upon request, ROS directly uses them to serve reads. We build TensorHub, a production-quality system that instantiates the ROS idea with topology-aware transfer, model-parallel consistency, and fault tolerance. Evaluation shows that TensorHub saturates RDMA bandwidth and adapts to three distinct rollout workloads with minimal engineering effort. Specifically, TensorHub reduces total GPU stall time by up to 6.7× for standalone rollouts, accelerates weight updates for elastic rollouts by up to 4.8×, and cuts cross-datacenter rollout stall time by up to 19×. TensorHub has been deployed in ByteDance production to support cutting-edge RL training.",
+      "authors": [
+        "Chenhao Ye",
+        "Wencong Xiao",
+        "Remzi Arpaci-Dusseau"
+      ],
+      "primary_category": "sosp",
+      "categories": [
+        "sosp",
+        "systems"
+      ],
+      "published": "2026-09-28T00:00:00+00:00",
+      "link": "https://dl.acm.org/doi/10.1145/3830418.3843859",
+      "pdf_url": "https://dl.acm.org/doi/pdf/10.1145/3830418.3843859",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "sosp-2025-dcp-addressing-input-dynamism-in-long-context-training-via-dynamic-context-parallelism",
+      "source": "SOSP-2025-ACM",
+      "title": "DCP: Addressing Input Dynamism In Long-Context Training via Dynamic Context Parallelism",
+      "abstract": "Context parallelism has emerged as a key technique to support long-context training, a growing trend in generative AI for modern large models. However, existing context parallel methods rely on static parallelization configurations that overlook the dynamic nature of training data, specifically, the variability in sequence lengths and token relationships (i.e., attention patterns) across samples. As a result, these methods often suffer from unnecessary communication overhead and imbalanced computation. In this paper, we present DCP, a dynamic context parallel training framework that introduces fine-grained blockwise partitioning of both data and computation. By enabling flexible mapping of data and computation blocks to devices, DCP can adapt to varying sequence characteristics, effectively reducing communication and improving memory and computation balance. Micro-benchmarks demonstrate that DCP accelerates attention by 1.19x~2.45x under causal masks and 2.15x~3.77x under sparse attention patterns. Additionally, we observe up to 0.94x~1.16x end-to-end training speed-up for causal masks, and 1.00x~1.46x for sparse masks.",
+      "authors": [
+        "Chenyu Jiang",
+        "Zhenkun Cai",
+        "Ye Tian",
+        "Yida Wang",
+        "Chuan Wu"
+      ],
+      "primary_category": "sosp",
+      "categories": [
+        "sosp",
+        "systems"
+      ],
+      "published": "2025-10-12T00:00:00+00:00",
+      "link": "https://dl.acm.org/doi/10.1145/3731569.3764849",
+      "pdf_url": "https://dl.acm.org/doi/pdf/10.1145/3731569.3764849",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "osdi-2026-tessera-a-holistic-pipeline-parallelism-framework-for-trillion-parameter-heterogeneous-moe-training",
+      "source": "OSDI-2026-USENIX",
+      "title": "Tessera: A Holistic Pipeline Parallelism Framework for {Trillion-Parameter} Heterogeneous {MoE} Training (Operational Systems)",
+      "abstract": "Training trillion-parameter models relies on pipeline parallelism to scale across thousands of accelerators. However, architectures exemplified by the Qwen family are evolving from uniform Transformer blocks into heterogeneous compositions that combine sparse Mixture-of-Experts (MoE) with different attention variants. This heterogeneity breaks the uniformity assumption behind existing pipeline systems: partitions chosen from serial layer costs become imbalanced after communication is overlapped with computation, because different layer combinations hide different fractions of their communication. Furthermore, at the scale of 10K+ GPUs, MoE routing variation adds a runtime source of stalls, creating transient idle slots that static plans cannot anticipate. We present Tessera, a framework that co-optimizes partitioning and overlap scheduling for heterogeneous pipeline training, and adapts to runtime dynamics. Tessera introduces: (1) an overlap scheduler that synthesizes fine-grained interleavings for each layer combination; (2) an overlap-aware partitioner that uses profiled post-overlap cost to select partitions balanced for parallel execution; and (3) a dynamic bubble optimizer that fills routing-induced idle slots with movable tasks at runtime. Deployed on production clusters for pre-training Qwen3 and Qwen3-Next, Tessera improves throughput by 20%–33% over our production baseline across five workloads at scales from 4,096 to 12,288 GPUs, reaching 39% MFU on a trillion-parameter model. In controlled experiments against Megatron-Core MoE with public recipes, Tessera achieves up to 1.24× higher MFU.",
+      "authors": [
+        "Weifang Hu",
+        "Langshi Chen",
+        "Man Yuan",
+        "Youyang Yao",
+        "Xiulong Yuan",
+        "Li Tian",
+        "Yong Li",
+        "Wei Lin",
+        "Xuanhua Shi",
+        "Zhengping Qian",
+        "Jingren Zhou"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2026-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi26/presentation/hu-weifang",
+      "pdf_url": "https://www.usenix.org/system/files/osdi26-hu-weifang.pdf",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "osdi-2026-rollart-disaggregated-multi-task-agentic-rl-training-at-scale",
+      "source": "OSDI-2026-USENIX",
+      "title": "{RollArt}: Disaggregated {Multi-Task} Agentic {RL} Training at Scale",
+      "abstract": "Agentic Reinforcement Learning (RL) trains LLMs through multi-turn interactions with environments, producing workloads that mix compute-bound prefill, bandwidth-bound decoding, CPU-heavy environment execution, and bursty reward evaluation. Existing systems either colocate all stages on a single GPU cluster or decouple them only at a coarse granularity, overlooking hardware heterogeneity and incurring substantial synchronization overhead across stages. We present ROLLART, a system for multi-task agentic RL on disaggregated infrastructure. ROLLART maps each pipeline stage to best-fit hardware, routing prefill-heavy tasks to compute-optimized GPUs, decode-heavy tasks to bandwidth-optimized GPUs, and environments to CPU clusters. It decouples rollout at the trajectory level, allowing generation, environment interaction, and reward scoring to proceed independently, so that slow or failed environments never block the others. ROLLART offloads stateless reward computation to serverless infrastructure and overlaps rollout with training via staleness-bounded asynchronous weight synchronization. Our results demonstrate that ROLLART effectively improves training throughput and achieves 1.31–2.05× training time reduction compared to various RL systems. We also evaluated ROLLART by training a hundreds-of-billions-parameter MoE model for Qoder product on an Alibaba cluster with above 3,000 GPUs, demonstrating its stability and scalability.",
+      "authors": [
+        "Wei Gao",
+        "Yuheng Zhao",
+        "Tianyuan Wu",
+        "Shaopan Xiong",
+        "Weixun Wang",
+        "Dakai An",
+        "Lunxi Cao",
+        "Dilxat Muhtar",
+        "Zichen Liu",
+        "Haizhou Zhao",
+        "Ju Huang",
+        "Siran Yang",
+        "Yongbin Li",
+        "Wenbo Su",
+        "Jiamang Wang",
+        "Lin Qu",
+        "Bo Zheng",
+        "Wei Wang"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2026-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi26/presentation/gao",
+      "pdf_url": "https://www.usenix.org/system/files/osdi26-gao.pdf",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    }
+  ],
+  "queries": [
+    {
+      "type": "intent_query",
+      "tag": "dcn-comm",
+      "paper_tag": "query:dcn-comm",
+      "query_text": "How to design collective communication algorithms for data center networks",
+      "sim_scores": {
+        "osdi-2026-roce-balboa-service-enhanced-rdma-offload-engine-for-data-center-smartnics": {
+          "score": 0.01639344262295082,
+          "rank": 1
+        },
+        "sosp-2026-streamep-straggler-tolerant-moe-decoding-without-communication-barriers": {
+          "score": 0.015873015873015872,
+          "rank": 3
+        },
+        "osdi-2026-pluto-high-performance-memory-efficient-distributed-graph-analytics-through-advanced-mirroring": {
+          "score": 0.015384615384615385,
+          "rank": 5
+        },
+        "osdi-2026-sbb-eliminating-centralized-bottlenecks-in-userspace-network-runtime": {
+          "score": 0.015151515151515152,
+          "rank": 6
+        },
+        "osdi-2026-the-abstention-protocol-rca-for-clos-fabrics": {
+          "score": 0.014084507042253521,
+          "rank": 11
+        },
+        "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training": {
+          "score": 0.013513513513513514,
+          "rank": 14
+        },
+        "osdi-2026-uccl-tran-an-extensible-software-transport-layer-for-gpu-networking": {
+          "score": 0.0125,
+          "rank": 20
+        },
+        "osdi-2026-rakaia-scalable-in-kernel-scheduling-for-tcp-based-rpcs": {
+          "score": 0.011764705882352941,
+          "rank": 25
+        },
+        "sosp-2025-oasis-pooling-pcie-devices-over-cxl-to-boost-utilization": {
+          "score": 0.011494252873563218,
+          "rank": 27
+        },
+        "osdi-2026-efficient-llm-serving-on-commodity-gpu-clusters-with-data-reduced-cross-instance-orchestration": {
+          "score": 0.009708737864077669,
+          "rank": 43
+        }
+      },
+      "ranked": [
+        {
+          "paper_id": "sosp-2026-streamep-straggler-tolerant-moe-decoding-without-communication-barriers",
+          "score": 1.0,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training",
+          "score": 1.0,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "osdi-2026-uccl-tran-an-extensible-software-transport-layer-for-gpu-networking",
+          "score": 0.9586435070306036,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "osdi-2026-the-abstention-protocol-rca-for-clos-fabrics",
+          "score": 0.9185999185999183,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "osdi-2026-dynarl-flexible-and-dynamic-scheduling-of-large-scale-reinforcement-learning-training",
+          "score": 0.8798076923076922,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-roce-balboa-service-enhanced-rdma-offload-engine-for-data-center-smartnics",
+          "score": 0.8798076923076922,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-teaching-the-old-dog-new-tricks-building-efficient-data-pipelines-for-large-scale-llm-pre-training",
+          "score": 0.8422090729783037,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-syncopate-efficient-multi-gpu-ai-kernels-via-automatic-chunk-centric-compute-communication-overlap",
+          "score": 0.8422090729783037,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-pluto-high-performance-memory-efficient-distributed-graph-analytics-through-advanced-mirroring",
+          "score": 0.8057498057498057,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-hetu-v2-a-general-and-scalable-deep-learning-system-with-hierarchical-and-heterogeneous-single-program-multiple-data-ann",
+          "score": 0.7703788748564866,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-sbb-eliminating-centralized-bottlenecks-in-userspace-network-runtime",
+          "score": 0.73604826546003,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "sosp-2025-device-assisted-live-migration-of-rdma-devices",
+          "score": 0.6703296703296702,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-efficient-llm-serving-on-commodity-gpu-clusters-with-data-reduced-cross-instance-orchestration",
+          "score": 0.6388587937883712,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "sosp-2025-oasis-pooling-pcie-devices-over-cxl-to-boost-utilization",
+          "score": 0.608262108262108,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-rollart-disaggregated-multi-task-agentic-rl-training-at-scale",
+          "score": 0.46719946719946726,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "sosp-2026-tensorhub-scalable-and-elastic-weight-transfer-for-llm-rl-training",
+          "score": 0.3910256410256411,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "osdi-2026-tessera-a-holistic-pipeline-parallelism-framework-for-trillion-parameter-heterogeneous-moe-training",
+          "score": 0.3910256410256411,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "sosp-2025-dcp-addressing-input-dynamism-in-long-context-training-via-dynamic-context-parallelism",
+          "score": 0.21328671328671328,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "osdi-2026-trainmover-an-interruption-resilient-runtime-for-ml-training",
+          "score": 0.1737891737891738,
+          "star_rating": 3
+        }
+      ]
+    },
+    {
+      "type": "intent_query",
+      "tag": "dcn-comm",
+      "paper_tag": "query:dcn-comm",
+      "query_text": "How to optimize communication overhead in distributed training over data center fabrics",
+      "sim_scores": {
+        "sosp-2025-sailor-automating-distributed-training-over-dynamic-heterogeneous-and-geo-distributed-clusters": {
+          "score": 0.01639344262295082,
+          "rank": 1
+        },
+        "osdi-2026-teaching-the-old-dog-new-tricks-building-efficient-data-pipelines-for-large-scale-llm-pre-training": {
+          "score": 0.016129032258064516,
+          "rank": 2
+        },
+        "osdi-2026-roce-balboa-service-enhanced-rdma-offload-engine-for-data-center-smartnics": {
+          "score": 0.015873015873015872,
+          "rank": 3
+        },
+        "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training": {
+          "score": 0.015625,
+          "rank": 4
+        },
+        "sosp-2026-streamep-straggler-tolerant-moe-decoding-without-communication-barriers": {
+          "score": 0.015384615384615385,
+          "rank": 5
+        },
+        "sosp-2025-dcp-addressing-input-dynamism-in-long-context-training-via-dynamic-context-parallelism": {
+          "score": 0.014492753623188406,
+          "rank": 9
+        },
+        "osdi-2026-trainmover-an-interruption-resilient-runtime-for-ml-training": {
+          "score": 0.013888888888888888,
+          "rank": 12
+        },
+        "osdi-2026-sbb-eliminating-centralized-bottlenecks-in-userspace-network-runtime": {
+          "score": 0.013513513513513514,
+          "rank": 14
+        },
+        "osdi-2026-the-abstention-protocol-rca-for-clos-fabrics": {
+          "score": 0.012987012987012988,
+          "rank": 17
+        },
+        "sosp-2026-tensorhub-scalable-and-elastic-weight-transfer-for-llm-rl-training": {
+          "score": 0.012658227848101266,
+          "rank": 19
+        },
+        "osdi-2026-pluto-high-performance-memory-efficient-distributed-graph-analytics-through-advanced-mirroring": {
+          "score": 0.011904761904761904,
+          "rank": 24
+        },
+        "osdi-2026-uccl-tran-an-extensible-software-transport-layer-for-gpu-networking": {
+          "score": 0.011627906976744186,
+          "rank": 26
+        },
+        "osdi-2026-hetu-v2-a-general-and-scalable-deep-learning-system-with-hierarchical-and-heterogeneous-single-program-multiple-data-ann": {
+          "score": 0.011111111111111112,
+          "rank": 30
+        },
+        "osdi-2026-rollart-disaggregated-multi-task-agentic-rl-training-at-scale": {
+          "score": 0.01,
+          "rank": 40
+        },
+        "osdi-2026-tessera-a-holistic-pipeline-parallelism-framework-for-trillion-parameter-heterogeneous-moe-training": {
+          "score": 0.00980392156862745,
+          "rank": 42
+        },
+        "sosp-2025-device-assisted-live-migration-of-rdma-devices": {
+          "score": 0.009174311926605505,
+          "rank": 49
+        }
+      },
+      "ranked": [
+        {
+          "paper_id": "osdi-2026-teaching-the-old-dog-new-tricks-building-efficient-data-pipelines-for-large-scale-llm-pre-training",
+          "score": 1.0,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "sosp-2026-streamep-straggler-tolerant-moe-decoding-without-communication-barriers",
+          "score": 1.0,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "sosp-2025-dcp-addressing-input-dynamism-in-long-context-training-via-dynamic-context-parallelism",
+          "score": 0.9586435070306036,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "osdi-2026-syncopate-efficient-multi-gpu-ai-kernels-via-automatic-chunk-centric-compute-communication-overlap",
+          "score": 0.9586435070306036,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "sosp-2025-sailor-automating-distributed-training-over-dynamic-heterogeneous-and-geo-distributed-clusters",
+          "score": 0.9185999185999183,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "osdi-2026-pluto-high-performance-memory-efficient-distributed-graph-analytics-through-advanced-mirroring",
+          "score": 0.9185999185999183,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "sosp-2026-tensorhub-scalable-and-elastic-weight-transfer-for-llm-rl-training",
+          "score": 0.8798076923076922,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-hetu-v2-a-general-and-scalable-deep-learning-system-with-hierarchical-and-heterogeneous-single-program-multiple-data-ann",
+          "score": 0.8798076923076922,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-rollart-disaggregated-multi-task-agentic-rl-training-at-scale",
+          "score": 0.8422090729783037,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-trainmover-an-interruption-resilient-runtime-for-ml-training",
+          "score": 0.8057498057498057,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-uccl-tran-an-extensible-software-transport-layer-for-gpu-networking",
+          "score": 0.7703788748564866,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-tessera-a-holistic-pipeline-parallelism-framework-for-trillion-parameter-heterogeneous-moe-training",
+          "score": 0.7703788748564866,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training",
+          "score": 0.702712746191007,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-dynarl-flexible-and-dynamic-scheduling-of-large-scale-reinforcement-learning-training",
+          "score": 0.6388587937883712,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-efficient-llm-serving-on-commodity-gpu-clusters-with-data-reduced-cross-instance-orchestration",
+          "score": 0.578503688092729,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "sosp-2025-oasis-pooling-pcie-devices-over-cxl-to-boost-utilization",
+          "score": 0.5213675213675214,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-the-abstention-protocol-rca-for-clos-fabrics",
+          "score": 0.49392712550607265,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "sosp-2025-device-assisted-live-migration-of-rdma-devices",
+          "score": 0.46719946719946726,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "osdi-2026-roce-balboa-service-enhanced-rdma-offload-engine-for-data-center-smartnics",
+          "score": 0.3433395872420263,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "osdi-2026-rakaia-scalable-in-kernel-scheduling-for-tcp-based-rpcs",
+          "score": 0.32035835650293487,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "osdi-2026-sbb-eliminating-centralized-bottlenecks-in-userspace-network-runtime",
+          "score": 0.06517094017094004,
+          "star_rating": 2
+        }
+      ]
+    },
+    {
+      "type": "intent_query",
+      "tag": "dcn-comm",
+      "paper_tag": "query:dcn-comm",
+      "query_text": "What network scheduling and congestion control techniques improve collective communication performance",
+      "sim_scores": {
+        "osdi-2026-sbb-eliminating-centralized-bottlenecks-in-userspace-network-runtime": {
+          "score": 0.01639344262295082,
+          "rank": 1
+        },
+        "sosp-2026-streamep-straggler-tolerant-moe-decoding-without-communication-barriers": {
+          "score": 0.016129032258064516,
+          "rank": 2
+        },
+        "osdi-2026-rakaia-scalable-in-kernel-scheduling-for-tcp-based-rpcs": {
+          "score": 0.015384615384615385,
+          "rank": 5
+        },
+        "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training": {
+          "score": 0.015151515151515152,
+          "rank": 6
+        },
+        "osdi-2026-pluto-high-performance-memory-efficient-distributed-graph-analytics-through-advanced-mirroring": {
+          "score": 0.014285714285714285,
+          "rank": 10
+        },
+        "osdi-2026-roce-balboa-service-enhanced-rdma-offload-engine-for-data-center-smartnics": {
+          "score": 0.013157894736842105,
+          "rank": 16
+        },
+        "osdi-2026-uccl-tran-an-extensible-software-transport-layer-for-gpu-networking": {
+          "score": 0.011904761904761904,
+          "rank": 24
+        },
+        "osdi-2026-efficient-llm-serving-on-commodity-gpu-clusters-with-data-reduced-cross-instance-orchestration": {
+          "score": 0.011627906976744186,
+          "rank": 26
+        },
+        "osdi-2026-syncopate-efficient-multi-gpu-ai-kernels-via-automatic-chunk-centric-compute-communication-overlap": {
+          "score": 0.010101010101010102,
+          "rank": 39
+        },
+        "sosp-2025-device-assisted-live-migration-of-rdma-devices": {
+          "score": 0.009433962264150943,
+          "rank": 46
+        }
+      },
+      "ranked": [
+        {
+          "paper_id": "osdi-2026-uccl-tran-an-extensible-software-transport-layer-for-gpu-networking",
+          "score": 1.0,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "sosp-2026-streamep-straggler-tolerant-moe-decoding-without-communication-barriers",
+          "score": 0.9586435070306036,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training",
+          "score": 0.9586435070306036,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "osdi-2026-dynarl-flexible-and-dynamic-scheduling-of-large-scale-reinforcement-learning-training",
+          "score": 0.9185999185999183,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "osdi-2026-sbb-eliminating-centralized-bottlenecks-in-userspace-network-runtime",
+          "score": 0.8798076923076922,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-rakaia-scalable-in-kernel-scheduling-for-tcp-based-rpcs",
+          "score": 0.8057498057498057,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-syncopate-efficient-multi-gpu-ai-kernels-via-automatic-chunk-centric-compute-communication-overlap",
+          "score": 0.6703296703296702,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-roce-balboa-service-enhanced-rdma-offload-engine-for-data-center-smartnics",
+          "score": 0.6703296703296702,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-the-abstention-protocol-rca-for-clos-fabrics",
+          "score": 0.4411571334648256,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "osdi-2026-pluto-high-performance-memory-efficient-distributed-graph-analytics-through-advanced-mirroring",
+          "score": 0.41577409931840303,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "sosp-2025-device-assisted-live-migration-of-rdma-devices",
+          "score": 0.3668882557771445,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "osdi-2026-trainmover-an-interruption-resilient-runtime-for-ml-training",
+          "score": 0.23371647509578536,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "osdi-2026-teaching-the-old-dog-new-tricks-building-efficient-data-pipelines-for-large-scale-llm-pre-training",
+          "score": 0.1933160472486314,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "osdi-2026-hetu-v2-a-general-and-scalable-deep-learning-system-with-hierarchical-and-heterogeneous-single-program-multiple-data-ann",
+          "score": 0.15469146238377016,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "osdi-2026-tessera-a-holistic-pipeline-parallelism-framework-for-trillion-parameter-heterogeneous-moe-training",
+          "score": 0.11772814998621459,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "osdi-2026-efficient-llm-serving-on-commodity-gpu-clusters-with-data-reduced-cross-instance-orchestration",
+          "score": 0.06517094017094004,
+          "star_rating": 2
+        },
+        {
+          "paper_id": "osdi-2026-rollart-disaggregated-multi-task-agentic-rl-training-at-scale",
+          "score": 0.0319204604918889,
+          "star_rating": 2
+        }
+      ]
+    },
+    {
+      "type": "intent_query",
+      "tag": "dcn-comm",
+      "paper_tag": "query:dcn-comm",
+      "query_text": "What topology aware routing and in network aggregation methods support scalable collective communication",
+      "sim_scores": {
+        "sosp-2026-streamep-straggler-tolerant-moe-decoding-without-communication-barriers": {
+          "score": 0.01639344262295082,
+          "rank": 1
+        },
+        "osdi-2026-pluto-high-performance-memory-efficient-distributed-graph-analytics-through-advanced-mirroring": {
+          "score": 0.016129032258064516,
+          "rank": 2
+        },
+        "osdi-2026-sbb-eliminating-centralized-bottlenecks-in-userspace-network-runtime": {
+          "score": 0.015625,
+          "rank": 4
+        },
+        "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training": {
+          "score": 0.014925373134328358,
+          "rank": 7
+        },
+        "osdi-2026-uccl-tran-an-extensible-software-transport-layer-for-gpu-networking": {
+          "score": 0.014285714285714285,
+          "rank": 10
+        },
+        "osdi-2026-efficient-llm-serving-on-commodity-gpu-clusters-with-data-reduced-cross-instance-orchestration": {
+          "score": 0.013157894736842105,
+          "rank": 16
+        },
+        "osdi-2026-the-abstention-protocol-rca-for-clos-fabrics": {
+          "score": 0.012987012987012988,
+          "rank": 17
+        },
+        "osdi-2026-roce-balboa-service-enhanced-rdma-offload-engine-for-data-center-smartnics": {
+          "score": 0.0125,
+          "rank": 20
+        },
+        "osdi-2026-syncopate-efficient-multi-gpu-ai-kernels-via-automatic-chunk-centric-compute-communication-overlap": {
+          "score": 0.011904761904761904,
+          "rank": 24
+        },
+        "sosp-2025-device-assisted-live-migration-of-rdma-devices": {
+          "score": 0.011235955056179775,
+          "rank": 29
+        },
+        "osdi-2026-rakaia-scalable-in-kernel-scheduling-for-tcp-based-rpcs": {
+          "score": 0.010309278350515464,
+          "rank": 37
+        }
+      },
+      "ranked": [
+        {
+          "paper_id": "sosp-2026-streamep-straggler-tolerant-moe-decoding-without-communication-barriers",
+          "score": 1.0,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "osdi-2026-uccl-tran-an-extensible-software-transport-layer-for-gpu-networking",
+          "score": 0.9586435070306036,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "osdi-2026-the-abstention-protocol-rca-for-clos-fabrics",
+          "score": 0.9185999185999183,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "osdi-2026-roce-balboa-service-enhanced-rdma-offload-engine-for-data-center-smartnics",
+          "score": 0.9185999185999183,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training",
+          "score": 0.8798076923076922,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-rakaia-scalable-in-kernel-scheduling-for-tcp-based-rpcs",
+          "score": 0.8057498057498057,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-sbb-eliminating-centralized-bottlenecks-in-userspace-network-runtime",
+          "score": 0.8057498057498057,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-dynarl-flexible-and-dynamic-scheduling-of-large-scale-reinforcement-learning-training",
+          "score": 0.7703788748564866,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-syncopate-efficient-multi-gpu-ai-kernels-via-automatic-chunk-centric-compute-communication-overlap",
+          "score": 0.73604826546003,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-hetu-v2-a-general-and-scalable-deep-learning-system-with-hierarchical-and-heterogeneous-single-program-multiple-data-ann",
+          "score": 0.6703296703296702,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-tessera-a-holistic-pipeline-parallelism-framework-for-trillion-parameter-heterogeneous-moe-training",
+          "score": 0.6388587937883712,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "sosp-2025-device-assisted-live-migration-of-rdma-devices",
+          "score": 0.608262108262108,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "sosp-2026-tensorhub-scalable-and-elastic-weight-transfer-for-llm-rl-training",
+          "score": 0.578503688092729,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2026-rollart-disaggregated-multi-task-agentic-rl-training-at-scale",
+          "score": 0.49392712550607265,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "osdi-2026-pluto-high-performance-memory-efficient-distributed-graph-analytics-through-advanced-mirroring",
+          "score": 0.3433395872420263,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "sosp-2025-oasis-pooling-pcie-devices-over-cxl-to-boost-utilization",
+          "score": 0.32035835650293487,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "osdi-2026-efficient-llm-serving-on-commodity-gpu-clusters-with-data-reduced-cross-instance-orchestration",
+          "score": 0.1360089186176142,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "sosp-2025-dcp-addressing-input-dynamism-in-long-context-training-via-dynamic-context-parallelism",
+          "score": 0.11772814998621459,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "osdi-2026-teaching-the-old-dog-new-tricks-building-efficient-data-pipelines-for-large-scale-llm-pre-training",
+          "score": 0.06517094017094004,
+          "star_rating": 2
+        },
+        {
+          "paper_id": "osdi-2026-trainmover-an-interruption-resilient-runtime-for-ml-training",
+          "score": 0.0319204604918889,
+          "star_rating": 2
+        }
+      ]
+    },
+    {
+      "type": "keyword",
+      "tag": "dcn-comm",
+      "paper_tag": "keyword:dcn-comm",
+      "query_text": "algorithms for efficient collective communication operations in distributed environments",
+      "sim_scores": {
+        "sosp-2026-streamep-straggler-tolerant-moe-decoding-without-communication-barriers": {
+          "score": 0.016129032258064516,
+          "rank": 2
+        },
+        "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training": {
+          "score": 0.015384615384615385,
+          "rank": 5
+        },
+        "osdi-2026-pluto-high-performance-memory-efficient-distributed-graph-analytics-through-advanced-mirroring": {
+          "score": 0.015151515151515152,
+          "rank": 6
+        },
+        "osdi-2026-sbb-eliminating-centralized-bottlenecks-in-userspace-network-runtime": {
+          "score": 0.01282051282051282,
+          "rank": 18
+        },
+        "osdi-2026-the-abstention-protocol-rca-for-clos-fabrics": {
+          "score": 0.011627906976744186,
+          "rank": 26
+        },
+        "osdi-2026-rakaia-scalable-in-kernel-scheduling-for-tcp-based-rpcs": {
+          "score": 0.010526315789473684,
+          "rank": 35
+        },
+        "osdi-2026-syncopate-efficient-multi-gpu-ai-kernels-via-automatic-chunk-centric-compute-communication-overlap": {
+          "score": 0.00980392156862745,
+          "rank": 42
+        },
+        "osdi-2026-roce-balboa-service-enhanced-rdma-offload-engine-for-data-center-smartnics": {
+          "score": 0.009259259259259259,
+          "rank": 48
+        }
+      }
+    },
+    {
+      "type": "keyword",
+      "tag": "dcn-comm",
+      "paper_tag": "keyword:dcn-comm",
+      "query_text": "collective communication",
+      "sim_scores": {
+        "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training": {
+          "score": 0.01639344262295082,
+          "rank": 1
+        },
+        "sosp-2026-streamep-straggler-tolerant-moe-decoding-without-communication-barriers": {
+          "score": 0.016129032258064516,
+          "rank": 2
+        },
+        "osdi-2026-uccl-tran-an-extensible-software-transport-layer-for-gpu-networking": {
+          "score": 0.015873015873015872,
+          "rank": 3
+        },
+        "sosp-2025-device-assisted-live-migration-of-rdma-devices": {
+          "score": 0.015151515151515152,
+          "rank": 6
+        }
+      }
+    },
+    {
+      "type": "keyword",
+      "tag": "dcn-comm",
+      "paper_tag": "keyword:dcn-comm",
+      "query_text": "collective communication protocols and primitives for distributed systems",
+      "sim_scores": {
+        "sosp-2026-streamep-straggler-tolerant-moe-decoding-without-communication-barriers": {
+          "score": 0.014925373134328358,
+          "rank": 7
+        },
+        "osdi-2026-the-abstention-protocol-rca-for-clos-fabrics": {
+          "score": 0.013157894736842105,
+          "rank": 16
+        },
+        "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training": {
+          "score": 0.012987012987012988,
+          "rank": 17
+        },
+        "osdi-2026-pluto-high-performance-memory-efficient-distributed-graph-analytics-through-advanced-mirroring": {
+          "score": 0.010869565217391304,
+          "rank": 32
+        },
+        "osdi-2026-roce-balboa-service-enhanced-rdma-offload-engine-for-data-center-smartnics": {
+          "score": 0.010101010101010102,
+          "rank": 39
+        },
+        "osdi-2026-rakaia-scalable-in-kernel-scheduling-for-tcp-based-rpcs": {
+          "score": 0.00980392156862745,
+          "rank": 42
+        }
+      }
+    },
+    {
+      "type": "keyword",
+      "tag": "dcn-comm",
+      "paper_tag": "keyword:dcn-comm",
+      "query_text": "communication optimization for distributed training workloads in data center networks",
+      "sim_scores": {
+        "sosp-2025-sailor-automating-distributed-training-over-dynamic-heterogeneous-and-geo-distributed-clusters": {
+          "score": 0.01639344262295082,
+          "rank": 1
+        },
+        "osdi-2026-teaching-the-old-dog-new-tricks-building-efficient-data-pipelines-for-large-scale-llm-pre-training": {
+          "score": 0.016129032258064516,
+          "rank": 2
+        },
+        "osdi-2026-roce-balboa-service-enhanced-rdma-offload-engine-for-data-center-smartnics": {
+          "score": 0.015873015873015872,
+          "rank": 3
+        },
+        "sosp-2026-streamep-straggler-tolerant-moe-decoding-without-communication-barriers": {
+          "score": 0.014925373134328358,
+          "rank": 7
+        },
+        "osdi-2026-sbb-eliminating-centralized-bottlenecks-in-userspace-network-runtime": {
+          "score": 0.014705882352941176,
+          "rank": 8
+        },
+        "osdi-2026-trainmover-an-interruption-resilient-runtime-for-ml-training": {
+          "score": 0.014084507042253521,
+          "rank": 11
+        },
+        "osdi-2026-uccl-tran-an-extensible-software-transport-layer-for-gpu-networking": {
+          "score": 0.013513513513513514,
+          "rank": 14
+        },
+        "osdi-2026-the-abstention-protocol-rca-for-clos-fabrics": {
+          "score": 0.013157894736842105,
+          "rank": 16
+        },
+        "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training": {
+          "score": 0.012987012987012988,
+          "rank": 17
+        },
+        "osdi-2026-pluto-high-performance-memory-efficient-distributed-graph-analytics-through-advanced-mirroring": {
+          "score": 0.012658227848101266,
+          "rank": 19
+        },
+        "sosp-2026-tensorhub-scalable-and-elastic-weight-transfer-for-llm-rl-training": {
+          "score": 0.012345679012345678,
+          "rank": 21
+        },
+        "sosp-2025-dcp-addressing-input-dynamism-in-long-context-training-via-dynamic-context-parallelism": {
+          "score": 0.011904761904761904,
+          "rank": 24
+        },
+        "sosp-2025-oasis-pooling-pcie-devices-over-cxl-to-boost-utilization": {
+          "score": 0.010416666666666666,
+          "rank": 36
+        },
+        "osdi-2026-tessera-a-holistic-pipeline-parallelism-framework-for-trillion-parameter-heterogeneous-moe-training": {
+          "score": 0.009900990099009901,
+          "rank": 41
+        },
+        "sosp-2025-device-assisted-live-migration-of-rdma-devices": {
+          "score": 0.009615384615384616,
+          "rank": 44
+        },
+        "osdi-2026-rollart-disaggregated-multi-task-agentic-rl-training-at-scale": {
+          "score": 0.009174311926605505,
+          "rank": 49
+        }
+      }
+    },
+    {
+      "type": "keyword",
+      "tag": "dcn-comm",
+      "paper_tag": "keyword:dcn-comm",
+      "query_text": "data center network architectures and communication mechanisms for large-scale clusters",
+      "sim_scores": {
+        "osdi-2026-roce-balboa-service-enhanced-rdma-offload-engine-for-data-center-smartnics": {
+          "score": 0.01639344262295082,
+          "rank": 1
+        },
+        "sosp-2026-streamep-straggler-tolerant-moe-decoding-without-communication-barriers": {
+          "score": 0.015625,
+          "rank": 4
+        },
+        "osdi-2026-sbb-eliminating-centralized-bottlenecks-in-userspace-network-runtime": {
+          "score": 0.015384615384615385,
+          "rank": 5
+        },
+        "osdi-2026-pluto-high-performance-memory-efficient-distributed-graph-analytics-through-advanced-mirroring": {
+          "score": 0.014084507042253521,
+          "rank": 11
+        },
+        "sosp-2025-oasis-pooling-pcie-devices-over-cxl-to-boost-utilization": {
+          "score": 0.013333333333333334,
+          "rank": 15
+        },
+        "sosp-2025-device-assisted-live-migration-of-rdma-devices": {
+          "score": 0.012658227848101266,
+          "rank": 19
+        },
+        "osdi-2026-uccl-tran-an-extensible-software-transport-layer-for-gpu-networking": {
+          "score": 0.012048192771084338,
+          "rank": 23
+        },
+        "osdi-2026-the-abstention-protocol-rca-for-clos-fabrics": {
+          "score": 0.011235955056179775,
+          "rank": 29
+        },
+        "osdi-2026-efficient-llm-serving-on-commodity-gpu-clusters-with-data-reduced-cross-instance-orchestration": {
+          "score": 0.010752688172043012,
+          "rank": 33
+        },
+        "osdi-2026-teaching-the-old-dog-new-tricks-building-efficient-data-pipelines-for-large-scale-llm-pre-training": {
+          "score": 0.01,
+          "rank": 40
+        }
+      }
+    },
+    {
+      "type": "keyword",
+      "tag": "dcn-comm",
+      "paper_tag": "keyword:dcn-comm",
+      "query_text": "data center networks",
+      "sim_scores": {
+        "osdi-2026-roce-balboa-service-enhanced-rdma-offload-engine-for-data-center-smartnics": {
+          "score": 0.01639344262295082,
+          "rank": 1
+        },
+        "sosp-2026-streamep-straggler-tolerant-moe-decoding-without-communication-barriers": {
+          "score": 0.016129032258064516,
+          "rank": 2
+        }
+      }
+    },
+    {
+      "type": "keyword",
+      "tag": "dcn-comm",
+      "paper_tag": "keyword:dcn-comm",
+      "query_text": "distributed training communication",
+      "sim_scores": {
+        "osdi-2026-hetu-v2-a-general-and-scalable-deep-learning-system-with-hierarchical-and-heterogeneous-single-program-multiple-data-ann": {
+          "score": 0.01639344262295082,
+          "rank": 1
+        },
+        "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training": {
+          "score": 0.016129032258064516,
+          "rank": 2
+        },
+        "osdi-2026-dynarl-flexible-and-dynamic-scheduling-of-large-scale-reinforcement-learning-training": {
+          "score": 0.015873015873015872,
+          "rank": 3
+        }
+      }
+    },
+    {
+      "type": "keyword",
+      "tag": "dcn-comm",
+      "paper_tag": "keyword:dcn-comm",
+      "query_text": "remote direct memory access",
+      "sim_scores": {
+        "osdi-2026-roce-balboa-service-enhanced-rdma-offload-engine-for-data-center-smartnics": {
+          "score": 0.01639344262295082,
+          "rank": 1
+        }
+      }
+    },
+    {
+      "type": "keyword",
+      "tag": "dcn-comm",
+      "paper_tag": "keyword:dcn-comm",
+      "query_text": "remote direct memory access transport for low-latency data center communication",
+      "sim_scores": {
+        "osdi-2026-roce-balboa-service-enhanced-rdma-offload-engine-for-data-center-smartnics": {
+          "score": 0.016129032258064516,
+          "rank": 2
+        },
+        "sosp-2025-oasis-pooling-pcie-devices-over-cxl-to-boost-utilization": {
+          "score": 0.014705882352941176,
+          "rank": 8
+        },
+        "sosp-2026-streamep-straggler-tolerant-moe-decoding-without-communication-barriers": {
+          "score": 0.013513513513513514,
+          "rank": 14
+        },
+        "osdi-2026-sbb-eliminating-centralized-bottlenecks-in-userspace-network-runtime": {
+          "score": 0.012195121951219513,
+          "rank": 22
+        },
+        "sosp-2025-device-assisted-live-migration-of-rdma-devices": {
+          "score": 0.011494252873563218,
+          "rank": 27
+        },
+        "osdi-2026-rakaia-scalable-in-kernel-scheduling-for-tcp-based-rpcs": {
+          "score": 0.010869565217391304,
+          "rank": 32
+        },
+        "osdi-2026-uccl-tran-an-extensible-software-transport-layer-for-gpu-networking": {
+          "score": 0.009259259259259259,
+          "rank": 48
+        }
+      }
+    },
+    {
+      "type": "keyword",
+      "tag": "dcn-comm",
+      "paper_tag": "keyword:dcn-comm",
+      "query_text": "topology-aware routing algorithms for data center network efficiency",
+      "sim_scores": {
+        "osdi-2026-roce-balboa-service-enhanced-rdma-offload-engine-for-data-center-smartnics": {
+          "score": 0.016129032258064516,
+          "rank": 2
+        },
+        "osdi-2026-pluto-high-performance-memory-efficient-distributed-graph-analytics-through-advanced-mirroring": {
+          "score": 0.015873015873015872,
+          "rank": 3
+        },
+        "osdi-2026-sbb-eliminating-centralized-bottlenecks-in-userspace-network-runtime": {
+          "score": 0.015625,
+          "rank": 4
+        },
+        "sosp-2025-oasis-pooling-pcie-devices-over-cxl-to-boost-utilization": {
+          "score": 0.015384615384615385,
+          "rank": 5
+        },
+        "sosp-2026-streamep-straggler-tolerant-moe-decoding-without-communication-barriers": {
+          "score": 0.014925373134328358,
+          "rank": 7
+        },
+        "osdi-2026-uccl-tran-an-extensible-software-transport-layer-for-gpu-networking": {
+          "score": 0.014705882352941176,
+          "rank": 8
+        },
+        "osdi-2026-the-abstention-protocol-rca-for-clos-fabrics": {
+          "score": 0.011904761904761904,
+          "rank": 24
+        },
+        "sosp-2025-device-assisted-live-migration-of-rdma-devices": {
+          "score": 0.00980392156862745,
+          "rank": 42
+        }
+      }
+    }
+  ],
+  "global_candidate_ids": [
+    "osdi-2026-roce-balboa-service-enhanced-rdma-offload-engine-for-data-center-smartnics",
+    "osdi-2026-spade-signal-aware-dag-scheduling-and-dynamic-provisioning-for-data-processing-clusters",
+    "sosp-2025-sailor-automating-distributed-training-over-dynamic-heterogeneous-and-geo-distributed-clusters",
+    "osdi-2026-teaching-the-old-dog-new-tricks-building-efficient-data-pipelines-for-large-scale-llm-pre-training",
+    "osdi-2026-sbb-eliminating-centralized-bottlenecks-in-userspace-network-runtime",
+    "sosp-2026-streamep-straggler-tolerant-moe-decoding-without-communication-barriers",
+    "osdi-2026-pluto-high-performance-memory-efficient-distributed-graph-analytics-through-advanced-mirroring",
+    "sosp-2026-disco-distributed-and-scalable-oblivious-joins-and-oblivious-primitives",
+    "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training",
+    "sosp-2026-i3dp-neuro-symbolic-inductive-invariant-inference-for-distributed-protocols",
+    "osdi-2026-hetu-v2-a-general-and-scalable-deep-learning-system-with-hierarchical-and-heterogeneous-single-program-multiple-data-ann",
+    "osdi-2026-writeguards-distributed-storage-support-for-strongly-consistent-caches",
+    "osdi-2026-efficient-and-scalable-synchronization-via-generalized-cache-coherence",
+    "sosp-2025-hedrarag-co-optimizing-generation-and-retrieval-for-heterogeneous-rag-workflows",
+    "osdi-2026-janus-cross-world-cooperative-nested-virtualization-for-secure-containers",
+    "sosp-2025-spirit-fair-allocation-of-interdependent-resources-in-remote-memory-systems",
+    "sosp-2026-tierce-observability-driven-tiered-memory-management-for-colocated-workloads",
+    "osdi-2026-duhu-shared-disaggregated-memory-for-distributed-data-processing-frameworks",
+    "osdi-2026-uccl-tran-an-extensible-software-transport-layer-for-gpu-networking",
+    "osdi-2026-stop-pretending-to-be-busy-a-case-for-serverless-paradigms-in-co-located-batch-workloads",
+    "osdi-2026-forge-mitigating-synchronization-amplification-for-memory-disaggregated-caching-systems",
+    "osdi-2026-opentela-unifying-decentralized-computing-resources-for-heterogeneous-llm-serving",
+    "osdi-2026-finding-nemo-nimble-and-expressive-memory-observability",
+    "osdi-2026-mdk-rethinking-the-data-center-memory-reclamation-problem",
+    "osdi-2026-the-abstention-protocol-rca-for-clos-fabrics",
+    "osdi-2026-what-are-you-m-waiting-for-the-hidden-cost-of-idle-in-the-hyperscale-cloud",
+    "sosp-2025-device-assisted-live-migration-of-rdma-devices",
+    "osdi-2026-svalinn-overload-control-in-large-scale-servers-with-multiple-resource-bottlenecks",
+    "osdi-2026-umap-revisiting-memory-mapped-i-o-on-distributed-file-systems-for-efficient-matrix-access",
+    "sosp-2025-demeter-a-scalable-and-elastic-tiered-memory-solution-for-virtualized-cloud-via-guest-delegation",
+    "osdi-2026-farlock-asymmetric-rdma-locking-made-fair",
+    "sosp-2025-tai-chi-a-general-high-efficiency-scheduling-framework-for-smartnics-in-hyperscale-clouds",
+    "osdi-2026-break-on-through-to-the-other-side-pooling-memory-elastically-with-ramryder",
+    "osdi-2026-vboids-taming-chaos-via-coarse-grained-scheduling-abstraction-for-containers",
+    "sosp-2025-copter-efficient-large-scale-resource-allocation-via-continual-optimization",
+    "osdi-2026-dpa-store-an-ordered-network-data-path-key-value-store",
+    "osdi-2026-delfs-a-decentralized-log-structured-file-system-for-manycores",
+    "sosp-2026-xtra-unifying-cache-coherence-and-concurrency-control-for-distributed-transactions-in-a-cxl-pod",
+    "osdi-2026-rakaia-scalable-in-kernel-scheduling-for-tcp-based-rpcs",
+    "osdi-2026-jetpack-consensus-made-generally-fast",
+    "sosp-2025-oasis-pooling-pcie-devices-over-cxl-to-boost-utilization",
+    "osdi-2026-tileloom-automatic-dataflow-planning-for-tile-based-languages-on-spatial-dataflow-accelerators",
+    "osdi-2026-bodega-localized-linearizable-reads-at-anywhere-anytime-via-roster-leases",
+    "sosp-2026-agilelog-a-forkable-shared-log-for-agents-on-data-streams",
+    "sosp-2025-moirai-optimizing-placement-of-data-and-compute-in-hybrid-clouds",
+    "sosp-2025-orq-complex-analytics-on-private-data-with-strong-security-guarantees",
+    "osdi-2026-shaving-the-peaks-taming-tail-latency-for-managed-workloads-via-disaggregated-garbage-collection",
+    "sosp-2026-taming-inference-workloads-at-global-scale-foundation-model-serving-in-amazon-bedrock",
+    "sosp-2026-janus-multi-llm-serving-at-production-scale",
+    "osdi-2026-megalon-efficient-data-sharing-for-partly-coherent-cxl-memory",
+    "osdi-2026-hardware-lifecycle-aware-power-planning-in-commercial-hyperscale-datacenters",
+    "osdi-2026-all-along-the-watchtower-achieving-the-trinity-of-observability-in-cloud-with-diting",
+    "sosp-2026-scheduling-linux-threads-under-i-o-chiplet-wall-using-cswitch",
+    "osdi-2026-efficient-llm-serving-on-commodity-gpu-clusters-with-data-reduced-cross-instance-orchestration",
+    "sosp-2025-flexguard-fast-mutual-exclusion-independent-of-subscription",
+    "osdi-2026-peer-first-class-scheduling-for-latency-critical-ebpf-applications",
+    "osdi-2026-achieving-cloud-grade-slos-for-local-mixture-of-experts-inference-through-cpu-gpu-hybrid-design",
+    "sosp-2025-quilt-resource-aware-merging-of-serverless-workflows",
+    "sosp-2026-qprof-fleetwide-transitive-cost-profiling-of-warehouse-scale-services",
+    "osdi-2026-distributed-speculative-execution-for-resilient-cloud-applications",
+    "osdi-2026-weave-efficient-co-scheduling-for-disaggregated-rl-post-training",
+    "osdi-2026-m3u-scalable-kernel-memory-management-for-efficient-post-copy-live-migration-of-high-end-virtual-machines",
+    "osdi-2026-mimesys-generating-realistic-executable-testing-environments-from-resource-usage-traces",
+    "sosp-2026-tamias-feedback-guided-systematic-concurrency-exploration-for-transparent-distributed-system-fuzzing",
+    "osdi-2026-unleash-all-cores-asymmetry-aware-scalable-dnn-inference-on-mobile-cpus",
+    "osdi-2026-obase-object-based-address-space-engineering-to-improve-memory-tiering",
+    "osdi-2026-heterogeneity-at-hyperscale-characterization-and-scheduling-of-large-production-ai-clusters-at-alibaba",
+    "osdi-2026-syncopate-efficient-multi-gpu-ai-kernels-via-automatic-chunk-centric-compute-communication-overlap",
+    "osdi-2026-robustrl-role-based-fault-tolerance-system-for-rl-post-training",
+    "osdi-2026-the-clustering-strikes-back-building-cost-effective-and-high-performance-anns-at-scale-with-helmsman",
+    "osdi-2026-dvla-dynamic-vm-lifetime-aware-scheduling-for-drifting-lifetime-distributions-and-long-lived-vm-placement-debt",
+    "sosp-2026-you-can-always-get-what-you-want-cpu-virtualization-made-fast-and-free",
+    "osdi-2026-trainmover-an-interruption-resilient-runtime-for-ml-training",
+    "sosp-2025-dcp-addressing-input-dynamism-in-long-context-training-via-dynamic-context-parallelism",
+    "sosp-2026-batched-in-back-characterizing-and-optimizing-offline-llm-inference-in-production-with-acdc",
+    "sosp-2026-gaze-rearchitecting-log-structured-filesystem-for-garbage-collection-on-zoned-namespace-flash-storage",
+    "sosp-2026-welder-compositional-liveness-verification-of-cluster-control-planes",
+    "sosp-2026-tensorhub-scalable-and-elastic-weight-transfer-for-llm-rl-training",
+    "osdi-2026-disentangling-graph-dependencies-for-efficient-billion-scale-gpu-vector-search",
+    "osdi-2026-mac-metadata-acceleration-for-sustainable-performance-in-big-data-systems-with-cxl-dram",
+    "osdi-2026-safeguarding-llm-training-at-scale-online-sdc-detection-and-insights-from-35-million-gpu-hours",
+    "sosp-2025-rearchitecting-the-thread-model-of-in-memory-key-value-stores-with-tps",
+    "sosp-2025-automan-facilitating-verified-distributed-systems-development-through-automatic-code-generation-and-manual-optimizations",
+    "osdi-2026-kareus-joint-reduction-of-dynamic-and-static-energy-in-large-model-training",
+    "sosp-2026-borges-a-low-latency-distributed-shared-log-on-a-cxl-memory-ssd-hybrid",
+    "sosp-2026-cryptdough-a-unified-analytics-engine-for-secure-multiparty-computation",
+    "sosp-2026-cohort-decentralized-pir",
+    "osdi-2026-cocoon-a-system-architecture-for-differentially-private-training-with-correlated-noises",
+    "osdi-2026-surviving-the-impossible-trinity-revisiting-cpu-scheduling-problem-on-modern-cots-mobile-devices",
+    "osdi-2026-ambulance-saving-bft-through-racing",
+    "sosp-2026-linux-agx-an-adaptive-gpu-extension-to-linux-fair-scheduling-for-physical-ai-and-robotic-systems",
+    "osdi-2026-aletheia-automated-detection-of-data-integrity-violations-in-microservices",
+    "osdi-2026-murakkab-resource-efficient-agentic-workflow-orchestration-in-cloud-platforms",
+    "osdi-2026-oxbow-a-coordinated-architecture-for-multi-component-file-systems",
+    "sosp-2025-pie-a-programmable-serving-system-for-emerging-llm-applications",
+    "osdi-2026-compaction-free-memory-defragmentation-for-virtualization-via-infinite-guest-physical-address-space",
+    "osdi-2026-when-ddio-meets-page-coloring-revisiting-ddio-performance-with-sepia",
+    "sosp-2025-scalable-address-spaces-using-concurrent-interval-skiplist",
+    "osdi-2026-tessera-a-holistic-pipeline-parallelism-framework-for-trillion-parameter-heterogeneous-moe-training",
+    "osdi-2026-efficient-gpu-centric-evolving-graph-processing-at-scale",
+    "osdi-2026-rollart-disaggregated-multi-task-agentic-rl-training-at-scale",
+    "osdi-2026-dynarl-flexible-and-dynamic-scheduling-of-large-scale-reinforcement-learning-training",
+    "sosp-2025-coyote-v2-raising-the-level-of-abstraction-for-data-center-fpgas",
+    "osdi-2026-shell-a-microkernel-based-fpga-shell-architecture",
+    "sosp-2026-lion-modular-verification-of-async-runtime-liveness",
+    "sosp-2026-verifying-a-high-performance-distributed-transaction-system-using-permissioned-state-machines",
+    "osdi-2026-blowfish-elastic-virtual-machine-memory-for-disaggregated-memory",
+    "sosp-2025-mitigating-application-resource-overload-with-targeted-task-cancellation",
+    "sosp-2026-skill-vm-write-once-run-everywhere-efficiently",
+    "sosp-2025-scalable-far-memory-balancing-faults-and-evictions",
+    "osdi-2026-learning-augmented-heuristics-simple-yet-smart-robust-and-interpretable-cache-eviction",
+    "sosp-2025-aeolia-a-fast-and-secure-userspace-interrupt-based-storage-stack",
+    "sosp-2026-diflow-a-system-for-micro-serving-text-to-image-diffusion-workflows",
+    "osdi-2026-harvesting-sub-microsecond-cxl-memory-stalls-with-liteswitch",
+    "sosp-2025-running-consistent-applications-closer-to-users-with-radical-for-lower-latency",
+    "sosp-2025-metis-fast-quality-aware-rag-systems-with-configuration-adaptation",
+    "osdi-2026-echo-efficient-kv-cache-offloading-with-lossless-prefetching-for-serving-native-sparse-attention-llms",
+    "osdi-2026-scaling-the-io-wall-with-declarative-io",
+    "osdi-2026-jwmalloc-a-verified-memory-allocator-for-mobile-devices",
+    "sosp-2026-big-bird-resilient-privacy-budgeting-across-untrusted-web-domains"
+  ],
+  "global_pool_lane_top_k": 30,
+  "global_pool_limit": 120,
+  "global_pool_guaranteed_per_lane": 2,
+  "global_pool_effective_size": 120,
+  "reranked_at": "2026-10-20T12:52:10.987196+00:00",
+  "llm_ranked": [
+    {
+      "paper_id": "osdi-2026-uccl-tran-an-extensible-software-transport-layer-for-gpu-networking",
+      "score": 9.0,
+      "evidence_en": "extensible software RDMA transport with multipath to improve ML collective communication",
+      "evidence_cn": "可扩展的软件RDMA传输与多路径机制提升ML集合通信性能",
+      "canonical_evidence": "可扩展的软件RDMA传输与多路径机制提升ML集合通信性能",
+      "tldr_en": "UCCL-Tran decouples RDMA NIC data and control paths, running extensible software transport on host CPUs so multipath transport can eliminate flow collisions in ML collectives.",
+      "tldr_cn": "RDMA网卡上的主机网络传输难以演进，单路径RDMA流量易发生流冲突，严重削弱ML集合通信性能。UCCL-Tran将现有RDMA网卡的数据路径与控制路径解耦，把可扩展的传输控制逻辑高效运行在主机CPU上，从而支持多路径传输等硬件难以实现的创新。基于该传输的ML集合通信性能最高提升4.5倍。该工作为GPU网络提供了可演进的软件传输层，对低延迟数据中心通信与集合通信优化具有直接价值。",
+      "title_zh": "UCCL-Tran：面向GPU网络的可扩展软件传输层",
+      "motivation_cn": "ML负载对网络要求快速演进，但RDMA网卡的主机传输难以修改，单路径流量易冲突拖慢集合通信。",
+      "method_cn": "UCCL-Tran解耦RDMA网卡数据路径与控制路径，在主机CPU上运行可扩展的软件传输控制，实现多路径传输。",
+      "result_cn": "在UCCL-Tran之上运行ML集合通信，吞吐相比原方案最高提升4.5倍。",
+      "conclusion_cn": "该工作表明软件可扩展传输能有效缓解流冲突，为GPU网络通信优化提供了新路径。",
+      "matched_requirement_id": "req-4",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "remote direct memory access transport for low-latency data center communication"
+    },
+    {
+      "paper_id": "osdi-2026-roce-balboa-service-enhanced-rdma-offload-engine-for-data-center-smartnics",
+      "score": 9.0,
+      "evidence_en": "open-source 100 Gbps RDMA offload engine for data center SmartNICs, modifiable transport layer",
+      "evidence_cn": "面向数据中心SmartNIC的开源100Gbps RDMA卸载引擎，可修改传输层",
+      "canonical_evidence": "面向数据中心SmartNIC的开源100Gbps RDMA卸载引擎，可修改传输层",
+      "tldr_en": "BALBOA is an open-source 100 Gbps RDMA offload engine for data center SmartNICs, compatible with commercial RNICs and modifiable at the transport layer, enabling realistic networking research.",
+      "tldr_cn": "论文针对RDMA虽已成为数据中心高性能网络的事实标准、但部署依赖固定功能的商用黑盒网卡、研究者无法修改传输层以适配专用任务的问题，提出开源100Gbps RDMA卸载引擎BALBOA，兼容商用RNIC并支持自定义传输层与完整的卸载网络栈。该引擎让新的网络机制能够在接近真实的硬件环境中实现与验证。其意义在于为数据中心RDMA传输层研究提供可编程、可复现的硬件平台。",
+      "title_zh": "RoCE BALBOA：面向数据中心SmartNIC的服务增强RDMA卸载引擎",
+      "motivation_cn": "RDMA已成数据中心高性能网络事实标准，但商用网卡是固定功能黑盒，研究者无法修改传输层以适配专用任务。",
+      "method_cn": "提出开源100Gbps RDMA卸载引擎BALBOA，兼容商用RNIC，可自定义传输层并提供完整的卸载网络栈。",
+      "result_cn": "填补研究用网卡缺乏真实卸载网络栈的空白，使新网络机制可在接近生产的环境中验证。",
+      "conclusion_cn": "为数据中心RDMA传输层的研究与定制提供了可编程、可复现的硬件平台。",
+      "matched_requirement_id": "req-4",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "remote direct memory access transport for low-latency data center communication"
+    },
+    {
+      "paper_id": "sosp-2026-streamep-straggler-tolerant-moe-decoding-without-communication-barriers",
+      "score": 9.0,
+      "evidence_en": "removes collective communication barrier in MoE expert parallelism decoding",
+      "evidence_cn": "消除MoE专家并行解码中的集合通信屏障",
+      "canonical_evidence": "消除MoE专家并行解码中的集合通信屏障",
+      "tldr_en": "Proposes StreamEP, a straggler-tolerant MoE decoding paradigm that removes collective communication barriers by letting each GPU independently receive tokens, execute layers, and forward results as ready.",
+      "tldr_cn": "该论文针对MoE专家并行解码依赖逐层集合通信、在共享且非均匀互连的商品GPU集群上被最慢传输拖慢的问题，提出无通信屏障的StreamEP范式。每个GPU独立接收令牌、执行相应层并尽早转发结果，从而避免全局同步。作者构建StreamInfer系统并在集群上评估，表明该方法能提升解码吞吐并容忍掉队者。该工作为数据中心内分布式训练与推理的集合通信优化提供了新思路。",
+      "title_zh": "StreamEP：无通信屏障的容错MoE解码",
+      "motivation_cn": "MoE专家并行依赖逐层集合通信，在商品GPU集群的非均匀互连上会被最慢传输串行化，形成通信屏障。",
+      "method_cn": "StreamEP让每个GPU独立接收令牌、执行对应专家层并尽早转发结果，从而彻底移除集合通信屏障。",
+      "result_cn": "基于StreamInfer的实现表明，该范式可在共享互连上提升解码吞吐并容忍掉队者，避免全局同步开销。",
+      "conclusion_cn": "研究表明去除集合通信屏障可改善MoE推理在商品集群上的可扩展性，为分布式推理通信优化提供新路径。",
+      "matched_requirement_id": "req-6",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "communication optimization for distributed training workloads in data center networks"
+    },
+    {
+      "paper_id": "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training",
+      "score": 8.0,
+      "evidence_en": "distributed tracing of collective communication states and dependencies for LLM training",
+      "evidence_cn": "对集合通信状态与依赖进行分布式追踪以保障LLM训练",
+      "canonical_evidence": "对集合通信状态与依赖进行分布式追踪以保障LLM训练",
+      "tldr_en": "Mycroft is a lightweight distributed tracing and root cause analysis system that instruments collective communication libraries, tracing states and control/data dependencies to diagnose hidden reliability issues in LLM training.",
+      "tldr_cn": "集合通信库目前如同黑盒，隐藏了根因分析所需的关键信息，导致LLM训练中许多可靠性问题难以解决。Mycroft对集合通信状态进行追踪，利用内部控制与数据依赖关系定位可靠性问题，实现轻量级分布式追踪与根因分析。系统已在字节跳动部署超过六个月并验证有效。其贡献在于为集合通信的可观测性与可靠性保障提供了系统化工具。",
+      "title_zh": "Mycroft：面向可靠LLM训练的集合通信依赖追踪",
+      "motivation_cn": "集合通信库作为黑盒隐藏关键信息，使LLM训练中的可靠性问题难以定位。",
+      "method_cn": "构建轻量级分布式追踪与根因分析系统，追踪集合通信状态并利用控制与数据依赖。",
+      "result_cn": "系统在字节跳动部署超过六个月，有效解决此前难以发现的集合通信可靠性问题。",
+      "conclusion_cn": "该工作提升了集合通信的可观测性，为可靠的大规模LLM训练提供支撑。",
+      "matched_requirement_id": "req-2",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "collective communication protocols and primitives for distributed systems"
+    },
+    {
+      "paper_id": "sosp-2026-tensorhub-scalable-and-elastic-weight-transfer-for-llm-rl-training",
+      "score": 7.0,
+      "evidence_en": "terabyte-scale weight transfer across thousands of GPUs with low data movement overhead",
+      "evidence_cn": "面向数千 GPU 的 TB 级权重传输与低数据搬移开销",
+      "canonical_evidence": "面向数千 GPU 的 TB 级权重传输与低数据搬移开销",
+      "tldr_en": "TensorHub targets LLM RL training where terabyte-scale weights move across thousands of GPUs as clusters scale. It introduces Reference-Oriented Storage to serve replicated weights without physical copies, cutting coordination, data movement and storage overhead.",
+      "tldr_cn": "针对大模型强化学习训练中 TB 级权重需在数千 GPU 间频繁迁移、且集群动态伸缩时协调与存储开销高的问题，TensorHub 提出面向引用的存储抽象。该方法利用高度复制的模型权重，在不物理保存副本的情况下按需提供权重版本。系统降低了数据搬移、协调和存储开销，使弹性异构集群上的权重传输更可扩展，为分布式训练通信优化提供了新机制。",
+      "title_zh": "TensorHub：面向大模型强化学习训练的可扩展弹性权重传输",
+      "motivation_cn": "大模型强化学习需在数千 GPU 间传输 TB 级权重，集群动态伸缩时协调、数据搬移与存储开销很高。",
+      "method_cn": "TensorHub 提出面向引用的存储抽象，利用高度复制的权重按需提供版本，而不物理保存额外副本。",
+      "result_cn": "该设计在保持低协调、低数据搬移和低存储开销的同时，支持异构集群上的弹性权重传输。",
+      "conclusion_cn": "结果表明利用权重复制特性可显著提升大规模强化学习权重传输的可扩展性与弹性。",
+      "matched_requirement_id": "req-9",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "How to optimize communication overhead in distributed training over data center fabrics"
+    },
+    {
+      "paper_id": "osdi-2026-syncopate-efficient-multi-gpu-ai-kernels-via-automatic-chunk-centric-compute-communication-overlap",
+      "score": 7.0,
+      "evidence_en": "fine-grained compute-communication overlap for large-scale GPU workloads",
+      "evidence_cn": "面向大规模GPU负载的细粒度计算通信重叠",
+      "canonical_evidence": "面向大规模GPU负载的细粒度计算通信重叠",
+      "tldr_en": "Syncopate is a compiler and runtime that automatically overlaps computation and communication at fine chunk granularity inside a single fused kernel, avoiding coarse stream-level overlap that wastes time on kernel launches and synchronizations.",
+      "tldr_cn": "现有分布式编译器仅在流级别对整块计算与通信内核做重叠，粒度粗糙，带来额外内核启动与设备级同步开销，通信尾部仍留有大量空隙。Syncopate提出通信分块抽象，将通信粒度与内核结构和后端机制解耦，围绕单个融合内核自动实现细粒度重叠。实验表明该方案能显著降低多GPU负载的通信瓶颈、提升整体吞吐。其贡献在于为大规模GPU训练与推理提供了可移植的细粒度通信优化机制。",
+      "title_zh": "Syncopate：通过自动分块式计算通信重叠实现高效多GPU AI内核",
+      "motivation_cn": "大规模GPU负载中通信已成为首要瓶颈，而现有编译器只在流级别粗粒度重叠计算与通信。",
+      "method_cn": "提出通信分块抽象，将通信粒度与内核结构及后端机制解耦，围绕单个融合内核自动生成细粒度重叠计划。",
+      "result_cn": "通过细粒度重叠减少内核启动与设备同步开销，缓解通信尾部延迟，提升多GPU负载吞吐。",
+      "conclusion_cn": "该编译器与运行时为多GPU AI工作负载提供了可移植、高效的通信重叠方案。",
+      "matched_requirement_id": "req-6",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "communication optimization for distributed training workloads in data center networks"
+    },
+    {
+      "paper_id": "sosp-2025-dcp-addressing-input-dynamism-in-long-context-training-via-dynamic-context-parallelism",
+      "score": 7.0,
+      "evidence_en": "reduces unnecessary communication overhead in long-context distributed training",
+      "evidence_cn": "降低长上下文分布式训练中不必要的通信开销",
+      "canonical_evidence": "降低长上下文分布式训练中不必要的通信开销",
+      "tldr_en": "DCP is a dynamic context-parallel training framework that uses fine-grained blockwise partitioning to adapt to variable sequence lengths and attention patterns, cutting unnecessary communication and imbalance.",
+      "tldr_cn": "现有上下文并行方法采用静态并行配置，忽视训练数据中序列长度与注意力模式的动态变化，导致多余通信开销与计算不均衡。DCP提出细粒度分块划分数据与计算，使块能灵活映射到设备上。该框架减少了不必要的通信并缓解负载失衡，提升了长上下文训练效率。其贡献在于为动态负载下的分布式训练通信优化提供了自适应并行方法。",
+      "title_zh": "DCP：通过动态上下文并行应对长上下文训练中的输入动态性",
+      "motivation_cn": "现有上下文并行采用静态配置，忽视序列长度与注意力模式的动态变化，造成多余通信与失衡。",
+      "method_cn": "提出动态上下文并行框架，对数据与计算做细粒度分块划分，并灵活映射到设备。",
+      "result_cn": "减少不必要的通信开销并缓解计算不均衡，提升长上下文训练效率。",
+      "conclusion_cn": "该工作为动态负载下长上下文训练的通信优化提供了自适应并行方案。",
+      "matched_requirement_id": "req-9",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "How to optimize communication overhead in distributed training over data center fabrics"
+    },
+    {
+      "paper_id": "osdi-2026-tessera-a-holistic-pipeline-parallelism-framework-for-trillion-parameter-heterogeneous-moe-training",
+      "score": 6.0,
+      "evidence_en": "communication-computation overlap in pipeline parallelism for trillion-parameter MoE training",
+      "evidence_cn": "万亿参数MoE训练流水线并行中的通信与计算重叠",
+      "canonical_evidence": "万亿参数MoE训练流水线并行中的通信与计算重叠",
+      "tldr_en": "Tessera is a pipeline parallelism framework for trillion-parameter heterogeneous MoE training that co-optimizes partitioning with communication-computation overlap and mitigates MoE routing stalls at 10K+ GPU scale.",
+      "tldr_cn": "针对Qwen等模型由均匀Transformer块转向混合MoE与多种注意力的异构结构、使现有流水线系统在通信与计算重叠后分区失衡的问题，Tessera提出整体性流水线并行框架，将分区选择与通信重叠联合优化。系统还应对万卡级规模下MoE路由波动带来的运行时停顿。该工作面向超大规模分布式训练的通信优化，对数据中心训练负载通信有直接意义。",
+      "title_zh": "Tessera：面向万亿参数异构MoE训练的整体流水线并行框架",
+      "motivation_cn": "万亿参数MoE模型结构异构，现有流水线系统在通信与计算重叠后分区失衡，且万卡规模下路由波动引发停顿。",
+      "method_cn": "Tessera提出整体流水线并行框架，联合考虑层代价与通信重叠进行分区，并缓解MoE路由运行时停顿。",
+      "result_cn": "框架在异构MoE训练中改善了负载均衡与通信重叠效率。",
+      "conclusion_cn": "表明超大规模分布式训练需将通信优化与并行划分协同设计。",
+      "matched_requirement_id": "req-6",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "communication optimization for distributed training workloads in data center networks"
+    },
+    {
+      "paper_id": "osdi-2026-rollart-disaggregated-multi-task-agentic-rl-training-at-scale",
+      "score": 6.0,
+      "evidence_en": "disaggregated RL training with cross-stage synchronization and hardware routing",
+      "evidence_cn": "解耦式强化学习训练中的跨阶段同步与硬件路由",
+      "canonical_evidence": "解耦式强化学习训练中的跨阶段同步与硬件路由",
+      "tldr_en": "RollArt addresses multi-task agentic RL training where mixed compute, bandwidth, CPU and reward stages incur synchronization overhead. It maps each pipeline stage to best-fit hardware on disaggregated infrastructure and decouples rollout to improve resource use.",
+      "tldr_cn": "针对多任务智能体强化学习训练中预填充、解码、环境执行与奖励评估负载异构且跨阶段同步开销大的问题，RollArt 将各流水线阶段映射到最合适的异构硬件，并在解耦式基础设施上拆分 rollout 流程。系统通过按任务特性路由计算与带宽资源，降低阶段间协调成本。实验表明该设计能提升大规模强化学习训练的资源利用率与整体效率，为异构集群上的分布式训练调度提供了新思路。",
+      "title_zh": "RollArt：面向大规模解耦式多任务智能体强化学习训练",
+      "motivation_cn": "现有多任务智能体强化学习系统粗粒度解耦或同置部署，忽视硬件异构并带来显著跨阶段同步开销。",
+      "method_cn": "RollArt 将预填充、解码和环境等流水线阶段映射到最适硬件，并在解耦基础设施上拆分 rollout 调度。",
+      "result_cn": "通过按负载特性路由计算与带宽资源，系统降低了阶段间协调成本并提升了大规模训练的资源利用率。",
+      "conclusion_cn": "该工作表明面向异构硬件的细粒度阶段解耦可有效支撑大规模多任务智能体强化学习训练。",
+      "matched_requirement_id": "req-6",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "communication optimization for distributed training workloads in data center networks"
+    },
+    {
+      "paper_id": "osdi-2026-dynarl-flexible-and-dynamic-scheduling-of-large-scale-reinforcement-learning-training",
+      "score": 6.0,
+      "evidence_en": "dynamic reallocation of computation, memory and communication in large-scale RL training",
+      "evidence_cn": "大规模强化学习训练中计算、内存与通信资源的动态重分配",
+      "canonical_evidence": "大规模强化学习训练中计算、内存与通信资源的动态重分配",
+      "tldr_en": "DynaRL targets large-scale RL training where heavy-tailed rollouts and shifting bottlenecks make static allocations idle. It uses a dynamic hypergraph to reallocate computation, memory and communication across heterogeneous components, reducing idle time and speeding training.",
+      "tldr_cn": "针对大规模强化学习训练中重尾 rollout、多轮工具交互和时变瓶颈导致静态资源分配大量闲置的问题，DynaRL 将整个训练流水线建模为动态超图，并统一迁移计算、内存与通信资源。系统据此持续感知负载变化并动态重分配异构组件资源。实验表明该调度方法能减少空闲算力、缩短训练时间，为动态分布式训练资源管理提供了通用控制面。",
+      "title_zh": "DynaRL：大规模强化学习训练中的灵活动态调度",
+      "motivation_cn": "大规模强化学习训练因重尾 rollout 和时变瓶颈呈现强动态性，静态资源分配会造成大量算力闲置。",
+      "method_cn": "DynaRL 用动态超图建模完整 RL 流水线，并通过统一资源迁移接口动态重分配计算、内存与通信资源。",
+      "result_cn": "该调度方法能随负载变化调整异构组件资源，减少空闲算力并缩短训练时间。",
+      "conclusion_cn": "结果表明持续演化的资源控制面可有效应对大规模强化学习训练的动态性。",
+      "matched_requirement_id": "req-6",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "communication optimization for distributed training workloads in data center networks"
+    },
+    {
+      "paper_id": "osdi-2026-hetu-v2-a-general-and-scalable-deep-learning-system-with-hierarchical-and-heterogeneous-single-program-multiple-data-ann",
+      "score": 6.0,
+      "evidence_en": "SPMD abstraction deducing tensor sharding and communication patterns for distributed training",
+      "evidence_cn": "SPMD抽象自动推导张量分片与通信模式以支持分布式训练",
+      "canonical_evidence": "SPMD抽象自动推导张量分片与通信模式以支持分布式训练",
+      "tldr_en": "Hetu v2 extends SPMD annotations to handle spatial and temporal workload heterogeneity in large-scale distributed training, automatically deducing tensor sharding and communication patterns.",
+      "tldr_cn": "SPMD范式虽为分布式深度学习提供统一并行抽象，但大规模训练中设备差异与数据变化带来时空负载异构，违背其对称划分假设。Hetu v2提出分层且异构的SPMD标注，使系统能自动推导张量分片与通信模式，并适配不均衡负载。该系统提升了异构环境下的可扩展性与通用性。其贡献在于为分布式训练中的通信与并行规划提供了更灵活的系统抽象。",
+      "title_zh": "Hetu v2：具有分层异构SPMD标注的通用可扩展深度学习系统",
+      "motivation_cn": "大规模分布式训练存在设备与数据导致的时空负载异构，违背SPMD对称划分假设。",
+      "method_cn": "提出分层且异构的SPMD标注，使系统自动推导张量分片与通信模式并适配不均衡负载。",
+      "result_cn": "系统在异构环境下提升可扩展性与通用性，支持混合硬件与数据变化场景。",
+      "conclusion_cn": "该工作为分布式深度学习的并行与通信规划提供了更灵活的系统抽象。",
+      "matched_requirement_id": "req-6",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "communication optimization for distributed training workloads in data center networks"
+    },
+    {
+      "paper_id": "osdi-2026-rakaia-scalable-in-kernel-scheduling-for-tcp-based-rpcs",
+      "score": 5.0,
+      "evidence_en": "in-kernel RPC scheduling to eliminate HOL blocking and cut latency",
+      "evidence_cn": "内核内RPC调度消除队头阻塞并降低延迟",
+      "canonical_evidence": "内核内RPC调度消除队头阻塞并降低延迟",
+      "tldr_en": "Rakaia hides TCP byte-stream abstractions and exposes a message-oriented API, doing message-level in-kernel scheduling to remove head-of-line blocking and cut RPC latency across many cores.",
+      "tldr_cn": "针对POSIX TCP按字节流暴露导致连接内外队头阻塞、gRPC等框架需在用户态重建消息语义并带来大量上下文切换与同步开销的问题，Rakaia将TCP抽象对用户态隐藏，提供纯消息接口并在内核内完成消息级调度。系统在多核上实现工作保持调度，消除队头阻塞并降低RPC时延，为高吞吐低延迟的数据中心RPC通信提供新路径。",
+      "title_zh": "Rakaia：面向基于TCP的RPC的可扩展内核内调度",
+      "motivation_cn": "TCP按字节流暴露引发队头阻塞，RPC框架需在用户态重建消息语义，带来额外上下文切换与同步开销。",
+      "method_cn": "Rakaia对用户态隐藏TCP抽象，提供纯消息接口，并在内核内进行消息级、工作保持的调度。",
+      "result_cn": "该设计在多核上消除连接内外队头阻塞，显著降低RPC时延与同步开销。",
+      "conclusion_cn": "表明将消息语义下沉到内核可提升数据中心RPC的吞吐与低延迟表现。",
+      "matched_requirement_id": "req-8",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "What network scheduling and congestion control techniques improve collective communication performance"
+    },
+    {
+      "paper_id": "sosp-2025-sailor-automating-distributed-training-over-dynamic-heterogeneous-and-geo-distributed-clusters",
+      "score": 5.0,
+      "evidence_en": "automating distributed training across heterogeneous geo-distributed clusters, addressing stragglers and job configuration search",
+      "evidence_cn": "面向异构跨区集群的分布式训练自动化，处理掉队者与作业配置搜索",
+      "canonical_evidence": "面向异构跨区集群的分布式训练自动化，处理掉队者与作业配置搜索",
+      "tldr_en": "Sailor automates distributed training job configuration and resource placement over heterogeneous, geo-distributed clusters using search-space exploration plus runtime and memory prediction to improve throughput and cost.",
+      "tldr_cn": "论文针对单一可用区难以凑齐大规模同构高端GPU、而异构与跨区资源又带来掉队者和庞大配置搜索空间的问题，提出Sailor系统，将高效的搜索空间探索算法与运行时间、显存开销预测相结合，自动为分布式训练选择作业配置与资源编排。在异构、地理分布且动态变化的集群上，Sailor 能自动完成配置搜索并获得更高吞吐与更优成本。该工作说明自动化配置搜索可让训练真正用上跨区异构算力。",
+      "title_zh": "Sailor：在动态、异构与地理分布式集群上自动化分布式训练",
+      "motivation_cn": "单一可用区难以凑齐大规模同构高端GPU，异构与跨区资源虽可降本增效，却带来掉队者与配置搜索难题。",
+      "method_cn": "提出Sailor系统，结合高效搜索空间探索算法与运行时、显存开销预测模型，自动为异构跨区资源选择训练配置。",
+      "result_cn": "通过自动配置搜索与资源编排，在异构、跨区且动态可用的资源上获得可行且高性价比的训练吞吐。",
+      "conclusion_cn": "表明自动化配置搜索与资源编排能让分布式训练有效利用异构、跨区与动态可用算力。",
+      "matched_requirement_id": "req-6",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "communication optimization for distributed training workloads in data center networks"
+    },
+    {
+      "paper_id": "sosp-2025-oasis-pooling-pcie-devices-over-cxl-to-boost-utilization",
+      "score": 4.0,
+      "evidence_en": "software pooling and routing of PCIe device traffic over CXL in datacenters",
+      "evidence_cn": "在数据中心通过CXL以软件方式池化并路由PCIe设备流量",
+      "canonical_evidence": "在数据中心通过CXL以软件方式池化并路由PCIe设备流量",
+      "tldr_en": "Oasis pools PCIe devices such as NICs and SSDs in software over CXL memory pools, providing a control plane and datapath that maps and routes device traffic across host boundaries to raise utilization.",
+      "tldr_cn": "针对PCIe设备在云平台中常被低利用、而基于PCIe交换机的池化方案昂贵且不灵活的问题，Oasis利用已部署的CXL内存池作为主机与设备间的数据通路，以软件方式池化PCIe设备。系统提供控制面与数据面，在跨主机边界映射并路由设备流量。该工作提升了数据中心设备利用率，与数据中心网络通信机制有一定关联但非集合通信算法。",
+      "title_zh": "Oasis：通过CXL池化PCIe设备以提升利用率",
+      "motivation_cn": "云平台中PCIe设备常被低利用，基于PCIe交换机的池化方案昂贵且不灵活。",
+      "method_cn": "Oasis以已部署的CXL内存池为数据通路，提供控制面与数据面，软件化地映射并路由跨主机的PCIe设备流量。",
+      "result_cn": "该方案提升了PCIe设备利用率并降低总拥有成本。",
+      "conclusion_cn": "表明CXL内存池可作为高效数据通路支撑数据中心设备池化。",
+      "matched_requirement_id": "req-1",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "data center network architectures and communication mechanisms for large-scale clusters"
+    },
+    {
+      "paper_id": "osdi-2026-pluto-high-performance-memory-efficient-distributed-graph-analytics-through-advanced-mirroring",
+      "score": 4.0,
+      "evidence_en": "inter-host communication bottleneck in distributed graph analytics with mirroring to reduce network traffic",
+      "evidence_cn": "分布式图分析中的主机间通信瓶颈及降低网络流量的镜像方法",
+      "canonical_evidence": "分布式图分析中的主机间通信瓶颈及降低网络流量的镜像方法",
+      "tldr_en": "Pluto addresses inter-host communication bottlenecks in distributed graph analytics, where full mirroring cuts network traffic but inflates memory. It introduces static partial mirroring and a mirror-free architecture to avoid nonproductive duplication and improve memory efficiency.",
+      "tldr_cn": "针对分布式图分析中主机间通信成为瓶颈、全镜像虽降低网络流量却显著增加内存占用的问题，Pluto 提出静态部分镜像与无镜像两种架构。系统避免非必要的数据复制，以更低内存开销保留粗粒度通信优势。与全镜像方案相比，它力图在降低网络流量的同时缓解内存压力并释放更多并行性，为分布式图分析通信优化提供新思路。",
+      "title_zh": "Pluto：通过高级镜像实现高性能内存高效的分布式图分析",
+      "motivation_cn": "分布式图分析中主机间通信是主要瓶颈，全镜像虽减少网络流量却大幅增加内存占用并限制并行度。",
+      "method_cn": "Pluto 设计静态部分镜像和无镜像架构，避免非必要的数据复制，以降低内存占用并保留通信优化收益。",
+      "result_cn": "该系统旨在同时降低内存开销和网络流量，并提升分布式图分析的系统并行度。",
+      "conclusion_cn": "该工作为分布式图分析中通信与内存效率的权衡提供了新的镜像设计思路。",
+      "matched_requirement_id": "req-3",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "algorithms for efficient collective communication operations in distributed environments"
+    },
+    {
+      "paper_id": "osdi-2026-trainmover-an-interruption-resilient-runtime-for-ml-training",
+      "score": 4.0,
+      "evidence_en": "two-phase delta-based communication group setup for collective groups in distributed training",
+      "evidence_cn": "面向分布式训练通信组的增量式两阶段通信组建立",
+      "canonical_evidence": "面向分布式训练通信组的增量式两阶段通信组建立",
+      "tldr_en": "TrainMover handles ML training interruptions with elastic and standby machines, using delta-based communication group setup to reach about 20 seconds of downtime without extra memory.",
+      "tldr_cn": "大规模ML训练常因硬件与软件异常、故障和管理事件中断，现有checkpoint-restart与运行时重配置方案停机时间长且性能下降。TrainMover提出弹性与备用机结合的容错运行时，采用两阶段增量式通信组建立、免通信的沙箱预热以及可从任意角色恢复的通用备用设计。评测显示其处理各类中断时停机时间约为20秒，且不引入额外内存开销。该工作降低了训练中断代价，其中通信组快速重建机制对分布式训练通信管理具有借鉴意义。",
+      "title_zh": "TrainMover：面向机器学习训练的抗中断运行时",
+      "motivation_cn": "大规模ML训练频繁被硬件软件异常和管理事件中断，现有重启与重配置方案停机久、性能差。",
+      "method_cn": "TrainMover结合弹性机与备用机，引入增量式两阶段通信组建立、免通信沙箱预热和通用备用角色设计。",
+      "result_cn": "在多种中断场景下将停机时间稳定控制在约20秒，且不增加内存开销。",
+      "conclusion_cn": "该运行时显著提升了训练作业的抗中断能力，并为通信组快速重建提供了可行做法。",
+      "matched_requirement_id": "req-2",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "collective communication protocols and primitives for distributed systems"
+    },
+    {
+      "paper_id": "osdi-2026-the-abstention-protocol-rca-for-clos-fabrics",
+      "score": 4.0,
+      "evidence_en": "root cause analysis for large datacenter networks with topology-aware Clos fabric configurations",
+      "evidence_cn": "面向大型数据中心网络、结合拓扑感知Clos配置的根因分析",
+      "canonical_evidence": "面向大型数据中心网络、结合拓扑感知Clos配置的根因分析",
+      "tldr_en": "CoreSec performs root cause analysis in large datacenter networks using a PAM-style abstention algebra plus topology-aware Clos fabric configurations, yielding stable and explainable attribution.",
+      "tldr_cn": "论文针对大型数据中心网络根因分析中遥测噪声、信息部分缺失且异步，打分融合方法易给出不稳定甚至错误归因的问题，提出生产级RCA系统CoreSec，用PAM式弃权代数替代加权融合，让各遥测代理通过控制标志给出确定性判断或在证据不足时显式弃权，并结合感知拓扑的Clos故障面配置。超大规模部署显示其归因稳定、可解释且随证据积累单调收敛。该工作为数据中心网络运维提供了更可靠的故障定位手段。",
+      "title_zh": "弃权协议：面向Clos Fabric的根因分析",
+      "motivation_cn": "大型数据中心网络根因分析面临遥测噪声、部分缺失与异步，基于打分融合的方法在此条件下易失稳或误判。",
+      "method_cn": "提出生产级RCA系统CoreSec，用PAM式弃权代数替代加权融合，并结合感知拓扑的Clos故障面配置。",
+      "result_cn": "在超大规模部署中，CoreSec在不同环境下给出稳定、可解释的根因归因，并随证据积累单调收敛。",
+      "conclusion_cn": "表明显式弃权与拓扑感知配置可提升数据中心网络故障定位的稳定性与可解释性。",
+      "matched_requirement_id": "req-1",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "data center network architectures and communication mechanisms for large-scale clusters"
+    },
+    {
+      "paper_id": "osdi-2026-efficient-llm-serving-on-commodity-gpu-clusters-with-data-reduced-cross-instance-orchestration",
+      "score": 4.0,
+      "evidence_en": "cross-instance orchestration tailored to commodity GPU cluster interconnects",
+      "evidence_cn": "面向通用GPU集群互联的跨实例编排",
+      "canonical_evidence": "面向通用GPU集群互联的跨实例编排",
+      "tldr_en": "EcoServe targets commodity GPU clusters lacking high-performance interconnects, using partially disaggregated, data-reduced cross-instance orchestration to cut prefill-decode interference.",
+      "tldr_cn": "现有LLM服务策略要么存在预填充与解码干扰，要么依赖通用GPU集群所缺乏的高性能互联。EcoServe面向通用GPU集群提出部分解耦策略，通过减少数据传输的跨实例协作缓解阶段干扰。系统在主流AI基础设施上实现了更优的服务效率。其贡献在于为缺乏高速互联的集群提供了适配的推理通信编排方法，但与集合通信算法关系有限。",
+      "title_zh": "在通用GPU集群上通过数据缩减的跨实例编排实现高效LLM服务",
+      "motivation_cn": "通用GPU集群缺乏高性能互联，现有LLM服务策略难以兼顾阶段干扰与互联约束。",
+      "method_cn": "提出部分解耦策略，通过减少数据传输的跨实例协作来缓解预填充与解码干扰。",
+      "result_cn": "在主流通用GPU集群上实现更优的推理服务效率与资源利用。",
+      "conclusion_cn": "该工作为受限互联集群中的LLM服务提供了适配的跨实例编排方案。",
+      "matched_requirement_id": "req-6",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "communication optimization for distributed training workloads in data center networks"
+    },
+    {
+      "paper_id": "osdi-2026-sbb-eliminating-centralized-bottlenecks-in-userspace-network-runtime",
+      "score": 4.0,
+      "evidence_en": "decentralized userspace network runtime for high throughput and low latency",
+      "evidence_cn": "去中心化用户态网络运行时，面向高吞吐与低延迟",
+      "canonical_evidence": "去中心化用户态网络运行时，面向高吞吐与低延迟",
+      "tldr_en": "SBB is a fully decentralized userspace network runtime that replaces centralized scheduling to deliver high throughput, low latency, CPU efficiency, and scalability.",
+      "tldr_cn": "针对用户态网络运行时依赖集中式组件、随着CPU工作线程增多而成为扩展瓶颈的问题，SBB提出一种完全去中心化的运行时，在请求抢占、CPU分配和跨核负载均衡三类调度上重新设计系统机制与调度策略。实验表明，它能够同时实现高吞吐、低延迟、高CPU效率和高可扩展性，为大规模数据中心网络通信运行时提供了可扩展的基础。",
+      "title_zh": "SBB：消除用户态网络运行时中的集中式瓶颈",
+      "motivation_cn": "现有用户态网络运行时依赖集中式组件，随着CPU工作线程增多会成为扩展瓶颈，限制系统性能。",
+      "method_cn": "SBB提出完全去中心化的运行时，在请求抢占、CPU分配和跨核负载均衡三类调度上重新设计系统机制与调度策略。",
+      "result_cn": "实验表明，SBB能够同时实现高吞吐、低延迟、高CPU效率和高可扩展性。",
+      "conclusion_cn": "该工作为大规模数据中心网络通信运行时提供了可扩展的去中心化设计思路。",
+      "matched_requirement_id": "req-1",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "data center network architectures and communication mechanisms for large-scale clusters"
+    },
+    {
+      "paper_id": "osdi-2026-teaching-the-old-dog-new-tricks-building-efficient-data-pipelines-for-large-scale-llm-pre-training",
+      "score": 4.0,
+      "evidence_en": "cross-datacenter traffic and data pipeline bottlenecks in large-scale LLM pre-training",
+      "evidence_cn": "大规模LLM预训练的数据管道与跨数据中心流量瓶颈",
+      "canonical_evidence": "大规模LLM预训练的数据管道与跨数据中心流量瓶颈",
+      "tldr_en": "Analyzes production data access patterns in large-scale LLM pre-training, identifying cross-datacenter traffic, checkpoint I/O contention, and CPU-heavy transformation bottlenecks, and proposes pipeline optimizations.",
+      "tldr_cn": "该论文针对大规模LLM预训练数据管道中的性能瓶颈，基于生产负载定量分析数据访问模式，揭示跨数据中心流量、检查点加载I/O竞争和多模态数据转换开销三类问题。作者据此提出相应的数据管道优化方法，以降低训练启动与评估延迟。结果表明这些优化能缓解数据加载瓶颈，对提升千卡级预训练作业效率具有实践意义。",
+      "title_zh": "老狗学新招：为大规模LLM预训练构建高效数据管道",
+      "motivation_cn": "大规模LLM预训练依赖数千GPU，数据管道效率直接影响作业性能，但生产负载中的数据访问瓶颈尚缺乏系统分析。",
+      "method_cn": "论文定量分析生产数据访问模式，并针对跨数据中心流量、检查点I/O竞争和数据转换瓶颈设计数据管道优化。",
+      "result_cn": "分析揭示三类此前低估的瓶颈，所提优化缓解了远程检查点评估与启动阶段的延迟和I/O竞争。",
+      "conclusion_cn": "研究表明数据管道是LLM预训练性能的关键环节，针对数据访问模式的优化可提升大规模训练作业效率。",
+      "matched_requirement_id": "req-9",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "How to optimize communication overhead in distributed training over data center fabrics"
+    },
+    {
+      "paper_id": "sosp-2025-device-assisted-live-migration-of-rdma-devices",
+      "score": 4.0,
+      "evidence_en": "live migration of RDMA devices for high-performance communication in cloud",
+      "evidence_cn": "面向云中高性能通信的RDMA设备热迁移",
+      "canonical_evidence": "面向云中高性能通信的RDMA设备热迁移",
+      "tldr_en": "Addresses live migration of directly passed-through RDMA devices in cloud environments, proposing a device-assisted transparent migration method for NVIDIA ConnectX NICs to preserve high-performance communication.",
+      "tldr_cn": "该论文针对云环境中HPC与AI工作负载依赖RDMA设备直通、却难以进行热迁移的问题，提出设备辅助的迁移方案。方法包括通用设备-虚拟机监控器接口，以及面向NVIDIA ConnectX网卡的迁移支持，使迁移对虚拟机和网络对端透明。该工作降低了RDMA设备直通与云基础设施解耦之间的矛盾，为高性能通信资源的弹性管理提供了可行路径。",
+      "title_zh": "设备辅助的RDMA设备热迁移",
+      "motivation_cn": "HPC与AI工作负载迁移到云需要RDMA直通，但设备直通破坏虚拟机与硬件解耦，使热迁移十分困难。",
+      "method_cn": "论文提出设备辅助的RDMA设备热迁移方法，设计通用设备-虚拟机监控器接口，并为NVIDIA ConnectX网卡实现迁移支持。",
+      "result_cn": "该方法使一组直接交互的硬件设备能够透明迁移，对虚拟机和网络对端均不暴露迁移过程。",
+      "conclusion_cn": "研究表明设备辅助方案可缓解RDMA直通与云热迁移的矛盾，为高性能通信设备的弹性运维提供支持。",
+      "matched_requirement_id": "req-4",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "remote direct memory access transport for low-latency data center communication"
+    }
+  ],
+  "llm_ranked_at": "2026-10-20T12:53:40.816851+00:00",
+  "display_min_score": 4.0,
+  "pruned_at": "2026-10-20T12:53:40.852513+00:00"
+}
