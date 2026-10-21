@@ -1,0 +1,39 @@
+{
+  "label": "2026-10-21",
+  "date": "2026-10-21",
+  "generated_at": "2026-10-21T22:55:19",
+  "count": 2,
+  "papers": [
+    {
+      "paper_id": "202610/21/2610.19462v1-bier-dc-stateless-multicast-for-in-orbit-space-data-centers-in-leo-constellations",
+      "section": "quick",
+      "title_en": "BIER-DC: Stateless Multicast for In-Orbit Space Data Centers in LEO Constellations",
+      "authors": "Mostafa Abdollahi, Wenjun Yang, Kousar Malekinasab, Jianping Pan",
+      "date": "2026-10-14",
+      "pdf": "https://arxiv.org/pdf/2610.19462v1",
+      "score": "7.0",
+      "evidence": "面向空间数据中心的无状态一对多组播协议",
+      "tldr": "面向LEO空间数据中心的大规模数据分发受星地可见性间歇与地面设施受限影响，传统地面组播难以适配。BIER-DC将SDC间转发与SDC内交付解耦，并在报文头中编码紧凑的簇级转发信息，实现无状态一对多通信。对比BIER、BIER-TE和Yeti，它显著缩短报文头、降低字节跳开销，提升有效吞吐与可扩展性。该工作为下一代LEO在轨计算集群提供轻量组播方案。",
+      "tags": "query:dcn-comm",
+      "abstract_en": "Emerging data-intensive space applications generate large volumes of data that must be processed, stored, replicated, and delivered efficiently. However, relying on terrestrial cloud regions can expose satellite data to high delivery latency and loss of timeliness due to intermittent satellite-to-ground visibility and limited access to ground infrastructure. Space Data Centers (SDCs), which organize collaborative satellites into logical compute and storage clusters, offer a promising approach for in-orbit data management and service continuity. In this paper, we first evaluate how satellite clustering with different sizes affects satellite visibility and gateway outage. We then propose BIER-DC, a stateless one-to-many communication protocol tailored for satellite-based SDCs. Unlike terrestrial multicast protocols designed for stable data center fabrics, BIER-DC decouples inter-SDC forwarding from intra-SDC delivery and encodes compact cluster-level forwarding information in packet headers. Comparative evaluations against BIER, BIER-TE, and Yeti show that BIER-DC significantly reduces packet-header length and byte-hop overhead, improving effective goodput and scalability for next-generation LEO space data centers.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    },
+    {
+      "paper_id": "202610/21/2610.18565v1-orrery-modeling-and-simulation-of-gpu-direct-mpi-communication-with-simgrid",
+      "section": "quick",
+      "title_en": "Orrery: Modeling and Simulation of GPU-direct MPI Communication with SimGrid",
+      "authors": "Ahmad Moh'd Saleh A. Belbeisi, Amir Raoofy, Josef Weidendorfer, Majid Salimi Beni",
+      "date": "2026-10-13",
+      "pdf": "https://arxiv.org/pdf/2610.18565v1",
+      "score": "6.0",
+      "evidence": "GPU感知MPI集合通信建模",
+      "tldr": "现代超算依赖GPU加速，GPU感知MPI的直接数据传输建模对仿真HPC应用至关重要。Orrery作为SimGrid SMPI上的拦截层，拦截GPU内存分配、内核启动、数据传输与MPI操作，并结合集合通信与流级仿真建模其执行。作者用CUDA-aware MPI微基准和Jacobi求解器在MUSICA最多32节点验证，复现关键GPU感知MPI机制。该工作使无物理GPU的系统设计与软硬件协同分析成为可能。",
+      "tags": "query:dcn-comm",
+      "abstract_en": "Simulation of HPC applications is an essential tool for analyzing system design trade-offs and enabling effective hardware--software co-design. As modern supercomputers increasingly rely on GPU acceleration, MPI implementations have evolved to support GPU-aware communication, enabling direct GPU data transfers. Modeling these mechanisms is therefore critical for simulating HPC applications on current systems. In this paper, we introduce Orrery, an interposition layer built on SimGrid's SMPI to model GPU-aware MPI communication using existing collective implementations and flow-based simulation. Orrery intercepts GPU memory allocations, kernel launches, data transfers, and MPI operations, and models their execution in SimGrid according to target system specifications, enabling simulation without requiring physical GPUs. We validate Orrery using CUDA-aware MPI microbenchmarks and a Jacobi solver on up to 32 nodes of the MUSICA supercomputer and demonstrate that it reproduces key GPU-aware MPI mechanisms.",
+      "source": "arxiv",
+      "selection_source": "fresh_fetch"
+    }
+  ],
+  "errors": []
+}

@@ -1,0 +1,94 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-10-21T22:55:00.852756+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 0,
+    "deep_cap": 6,
+    "deep_selected": 0,
+    "quick_candidates": 2,
+    "quick_skim_target": 11,
+    "quick_selected": 2
+  },
+  "deep_dive": [],
+  "quick_skim": [
+    {
+      "id": "2610.19462v1",
+      "source": "arxiv",
+      "title": "BIER-DC: Stateless Multicast for In-Orbit Space Data Centers in LEO Constellations",
+      "abstract": "Emerging data-intensive space applications generate large volumes of data that must be processed, stored, replicated, and delivered efficiently. However, relying on terrestrial cloud regions can expose satellite data to high delivery latency and loss of timeliness due to intermittent satellite-to-ground visibility and limited access to ground infrastructure. Space Data Centers (SDCs), which organize collaborative satellites into logical compute and storage clusters, offer a promising approach for in-orbit data management and service continuity. In this paper, we first evaluate how satellite clustering with different sizes affects satellite visibility and gateway outage. We then propose BIER-DC, a stateless one-to-many communication protocol tailored for satellite-based SDCs. Unlike terrestrial multicast protocols designed for stable data center fabrics, BIER-DC decouples inter-SDC forwarding from intra-SDC delivery and encodes compact cluster-level forwarding information in packet headers. Comparative evaluations against BIER, BIER-TE, and Yeti show that BIER-DC significantly reduces packet-header length and byte-hop overhead, improving effective goodput and scalability for next-generation LEO space data centers.",
+      "authors": [
+        "Mostafa Abdollahi",
+        "Wenjun Yang",
+        "Kousar Malekinasab",
+        "Jianping Pan"
+      ],
+      "primary_category": "cs.NI",
+      "categories": [
+        "cs.NI"
+      ],
+      "published": "2026-10-14T02:44:10+00:00",
+      "link": "https://arxiv.org/pdf/2610.19462v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 7.0,
+      "llm_evidence_en": "stateless one-to-many multicast protocol for space data centers",
+      "llm_evidence_cn": "面向空间数据中心的无状态一对多组播协议",
+      "llm_evidence": "面向空间数据中心的无状态一对多组播协议",
+      "canonical_evidence": "面向空间数据中心的无状态一对多组播协议",
+      "llm_tldr_en": "The paper studies in-orbit space data centers in LEO constellations and proposes BIER-DC, a stateless one-to-many multicast protocol for efficient data delivery among satellite clusters.",
+      "llm_tldr_cn": "该论文针对低轨星座中空间数据中心的数据交付问题，分析卫星聚类规模对可见性与网关中断的影响。作者提出BIER-DC，一种面向在轨空间数据中心的无状态一对多组播通信协议，以支持大规模数据的高效复制与分发。该协议旨在降低对地面云的依赖并提升数据时效性。研究为空间数据中心集群的通信机制提供了新方案，并展示了组播协议在受限星间网络中的适用性。",
+      "llm_tldr": "该论文针对低轨星座中空间数据中心的数据交付问题，分析卫星聚类规模对可见性与网关中断的影响。作者提出BIER-DC，一种面向在轨空间数据中心的无状态一对多组播通信协议，以支持大规模数据的高效复制与分发。该协议旨在降低对地面云的依赖并提升数据时效性。研究为空间数据中心集群的通信机制提供了新方案，并展示了组播协议在受限星间网络中的适用性。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "data center network architectures and communication mechanisms for large-scale clusters",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "7"
+    },
+    {
+      "id": "2610.18565v1",
+      "source": "arxiv",
+      "title": "Orrery: Modeling and Simulation of GPU-direct MPI Communication with SimGrid",
+      "abstract": "Simulation of HPC applications is an essential tool for analyzing system design trade-offs and enabling effective hardware--software co-design. As modern supercomputers increasingly rely on GPU acceleration, MPI implementations have evolved to support GPU-aware communication, enabling direct GPU data transfers. Modeling these mechanisms is therefore critical for simulating HPC applications on current systems. In this paper, we introduce Orrery, an interposition layer built on SimGrid's SMPI to model GPU-aware MPI communication using existing collective implementations and flow-based simulation. Orrery intercepts GPU memory allocations, kernel launches, data transfers, and MPI operations, and models their execution in SimGrid according to target system specifications, enabling simulation without requiring physical GPUs. We validate Orrery using CUDA-aware MPI microbenchmarks and a Jacobi solver on up to 32 nodes of the MUSICA supercomputer and demonstrate that it reproduces key GPU-aware MPI mechanisms.",
+      "authors": [
+        "Ahmad Moh'd Saleh A. Belbeisi",
+        "Amir Raoofy",
+        "Josef Weidendorfer",
+        "Majid Salimi Beni"
+      ],
+      "primary_category": "cs.DC",
+      "categories": [
+        "cs.DC",
+        "cs.PF"
+      ],
+      "published": "2026-10-13T15:33:31+00:00",
+      "link": "https://arxiv.org/pdf/2610.18565v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "modeling GPU-aware MPI collective communication",
+      "llm_evidence_cn": "GPU感知MPI集合通信建模",
+      "llm_evidence": "GPU感知MPI集合通信建模",
+      "canonical_evidence": "GPU感知MPI集合通信建模",
+      "llm_tldr_en": "Orrery interposes on SimGrid's SMPI to model GPU-direct MPI collectives and flow-based transfers, enabling scalable simulation of GPU-aware communication in HPC applications.",
+      "llm_tldr_cn": "现代超算依赖GPU加速，GPU直连MPI通信的建模对系统设计与软硬件协同至关重要，但现有模拟器缺乏相应支持。本文提出Orrery，作为SimGrid SMPI之上的拦截层，捕获GPU内存分配、内核启动、数据传输与MPI操作，并结合已有集合通信实现与流级模拟进行建模。实验表明其能较真实地复现GPU感知通信行为。该工作为大规模集合通信性能评估提供了可扩展的模拟手段。",
+      "llm_tldr": "现代超算依赖GPU加速，GPU直连MPI通信的建模对系统设计与软硬件协同至关重要，但现有模拟器缺乏相应支持。本文提出Orrery，作为SimGrid SMPI之上的拦截层，捕获GPU内存分配、内核启动、数据传输与MPI操作，并结合已有集合通信实现与流级模拟进行建模。实验表明其能较真实地复现GPU感知通信行为。该工作为大规模集合通信性能评估提供了可扩展的模拟手段。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "collective communication protocols and primitives for distributed systems",
+      "matched_requirement_id": "req-2",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}

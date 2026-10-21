@@ -1,0 +1,41 @@
+{
+  "date": "20261021",
+  "date_label": "",
+  "generated_at": "2026-10-21 22:55:17 UTC",
+  "recommend_exists": true,
+  "run_count": 1,
+  "papers": [
+    {
+      "paper_id": "2610.19462v1",
+      "route": "202610/21/2610.19462v1-bier-dc-stateless-multicast-for-in-orbit-space-data-centers-in-leo-constellations",
+      "title": "BIER-DC: Stateless Multicast for In-Orbit Space Data Centers in LEO Constellations",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 7.0,
+      "evidence": "面向空间数据中心的无状态一对多组播协议",
+      "first_seen_at": "2026-10-21 22:55:17 UTC",
+      "updated_at": "2026-10-21 22:55:17 UTC"
+    },
+    {
+      "paper_id": "2610.18565v1",
+      "route": "202610/21/2610.18565v1-orrery-modeling-and-simulation-of-gpu-direct-mpi-communication-with-simgrid",
+      "title": "Orrery: Modeling and Simulation of GPU-direct MPI Communication with SimGrid",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "GPU感知MPI集合通信建模",
+      "first_seen_at": "2026-10-21 22:55:17 UTC",
+      "updated_at": "2026-10-21 22:55:17 UTC"
+    }
+  ]
+}

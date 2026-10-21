@@ -1,0 +1,579 @@
+Title: BIER-DC: Stateless Multicast for In-Orbit Space Data Centers in LEO Constellations
+
+URL Source: https://arxiv.org/pdf/2610.19462v1
+
+Published Time: Thu, 15 Oct 2026 00:46:52 GMT
+
+Number of Pages: 11
+
+Markdown Content:
+# BIER-DC: Stateless Multicast for In-Orbit Space Data Centers in LEO Constellations 
+
+Mostafa Abdollahi, Wenjun Yang, Kousar Malekinasab, and Jianping Pan 
+
+University of Victoria, BC, Canada Email: {abdolahi68, wenjunyang, kovvy, pan }@uvic.ca 
+
+Abstract —Emerging data-intensive space applications generate large volumes of data that must be processed, stored, replicated, and delivered efficiently. However, relying on terrestrial cloud regions can expose satellite data to high delivery latency and loss of timeliness due to intermittent satellite-to-ground visibility and limited access to ground infrastructure. Space Data Cen-ters (SDCs), which organize collaborative satellites into logical compute and storage clusters, offer a promising approach for in-orbit data management and service continuity. In this paper, we first evaluate how satellite clustering with different sizes affects satellite visibility and gateway outage. We then propose BIER-DC, a stateless one-to-many communication protocol tailored for satellite-based SDCs. Unlike terrestrial multicast protocols designed for stable data center fabrics, BIER-DC decouples inter-SDC forwarding from intra-SDC delivery and encodes compact cluster-level forwarding information in packet headers. Comparative evaluations against BIER, BIER-TE, and Yeti show that BIER-DC significantly reduces packet-header length and byte-hop overhead, improving effective goodput and scalability for next-generation LEO space data centers. 
+
+Index Terms —Space data center, multicasting, LEO satellite networks. 
+
+I. I NTRODUCTION 
+
+Modern data-intensive Earth-observation (EO) missions, in-cluding high-resolution optical, hyperspectral, and SAR sens-ing, can generate terabyte-scale daily data depending on the payload and observation mode. Recent estimates suggest that global EO collections are growing by roughly 100 PB per year and may exceed 1400 PB by 2030 [1]. Yet data backhaul is limited by satellite-to-ground visibility, ground infrastructure, and variable downlink capacity. After downlink, data may still traverse long terrestrial paths from gateways to remote cloud or data center regions, adding latency and routing inefficiency. This bottleneck is acute in traditional EO architectures, where ground segments may capture as little as 2% of available hyperspectral observations [2]. Although broadband mega-constellations show that dense gateway deployments improve ground access, bent-pipe and terrestrial-cloud models still constrain timely processing and dissemination [3]. Onboard filtering and in-space computing can reduce this dependency. Prior work shows that, for a 1,000-satellite constellation, downlinking only useful data reduces required ground-station sites from 112 to 6, about a 95% reduction [3]. To address the limits of terrestrial-cloud and bent-pipe architectures, companies and startups are exploring space-based data centers with high-capability satellites and orbital platforms. Starcloud has launched a satellite with data-center-class GPU compute, Google’s Project Suncatcher studies TPU-equipped solar-powered satellites with optical links for in-space AI, and Lonestar Data Holdings has demonstrated space-based storage for disaster recovery and long-term resilience [4]–[7]. These efforts move computation and storage closer to space-generated data. However, space data centers differ from terrestrial ones, which rely on fixed racks, servers, top-of-rack and aggregation switches, and spine or leaf-spine fabrics [8], [9]. In space, each satellite acts as a rack-like unit with processing, memory, storage, VM or container hosting, and packet forwarding, but without a stable switch-centric fabric. As a result, existing data center communication protocols be-come inefficient. Terrestrial replication, cache updates, service synchronization, and multicast often rely on switch-resident forwarding state across hierarchical switches [10], [11]. In space, there are no dedicated top-of-rack or spine switches, and connectivity depends on resource-constrained satellites and dynamic inter-satellite links. Maintaining per-flow, per-group, or per-replica state across many satellites can therefore consume valuable onboard memory, processing, and control bandwidth. Space data centers require one-to-many communication for replication, fleet-wide management, and distributed learning. As in terrestrial systems that replicate data across data cen-ters and racks for availability [12], replication is critical in space to tolerate radiation effects, solar events, and hardware anomalies. Multicast supports fleet-wide firmware, software, configuration, and security updates [13], as well as satellite federated learning, where intra-orbit ISLs with partial in-network aggregation achieve a 29 × training speed-up and an 8 × reduction in parameter-server traffic [14]. However, existing protocols scale poorly in orbit. IP multicast requires per-flow state and frequent control updates [15], [16], while BIER, BIER-TE, and Yeti incur headers that grow with receivers, forwarding adjacencies, or network structure [17]– [19]. Terrestrial schemes such as Elmo assume stable Clos topologies and programmable switches [10], [20], [21], which do not match dynamic ISL networks. Thus, space data centers need a lightweight stateless multicast design whose header overhead is decoupled from constellation scale. To address the limitations of existing multicast schemes in orbital environments, we carry out our study in three steps. First, we show that single satellites are insufficient arXiv:2610.19462v1 [cs.NI] 14 Oct 2026 0 50 100 150 200 250 300 
+
+> Nearest cloud latency (ms)
+> 0.0 0.2 0.4 0.6 0.8 1.0
+> CDF
+> Africa Asia Europe North America Oceania South America
+
+Fig. 1: CDF of nearest-cloud access latency by source region.  
+
+> (a) (b)
+
+Fig. 2: TLE-based analysis setup: (a) selected H3 service cells and ground sites, and (b) representative ground tracks of OneWeb and Starlink shells A–C. as standalone SDC units. Similar to racks in terrestrial data centers, satellite clusters provide a logical unit for organizing in-orbit compute, storage, and services. This avoids inefficient VM/service communication over individual satellites with changing visibility, gateway access, and ISL connectivity. Since larger clusters improve service continuity and gateway reachability but increase intra-cluster delay, coordination cost, and synchronization overhead, we model SDC formation as a topology-aware cluster-size selection problem . Accordingly, the clustering analysis focuses on identifying a practical SDC size and organization for cooperative satellite computing and communication. Intra-cluster latency is used as the primary clustering metric, reflecting the frequent local coordination and data exchange among satellites within an SDC. Second, we design BIER-DC for stateless inter-SDC mul-ticast. Each SDC is assigned a compact cluster identifier, so multicast routing is performed between SDCs rather than individual satellites, links, or VM endpoints. This matches SDC workloads that require frequent one-to-many cluster communication for replication, service updates, AI parameter dissemination, and VM/service coordination. To avoid per-flow multicast state and large satellite/VM-level headers in dynamic LEO networks, BIER-DC encodes destination SDC IDs and selected ingress border satellites in the packet header, while intra-SDC delivery is handled locally through border satellites and topology knowledge. Third, we evaluate BIER-DC over representative LEO con-stellations using simulation and NetSatBench-based emulation, where each satellite runs as a Docker container and multicast data is transferred using UDP packets. This allows us to measure header overhead, byte-hop overhead, scalability, and the impact of header growth on payload capacity, packet deliv-ery, and goodput. Compared with existing multicast schemes, SDC-level encoding keeps headers compact, preserves more payload space, improves goodput, and maintains stateless one-to-many forwarding . The remainder of this paper is organized as follows. Sec. II establishes the motivation and context for this work. Based on these observations, Sec. III formulates the topology-aware selection of SDC cluster sizes, which informs the design of BIER-DC presented in Sec. IV. Sec. V then evaluates the proposed design. Finally, Sec. VI reviews related work, and Sec. VII concludes the paper. II. P ROBLEM DEFINITION AND CHALLENGES 
+
+Cloud access is geographically uneven. Terrestrial cloud data centers can expose users to long access latency because intercontinental traffic largely depends on submarine fiber-optic cables, which carry over 99% of international data traffic [22]. To quantify this limitation, we use the public cloud–edge latency dataset of Charyyev et al. [23], which reports RTT measurements from RIPE Atlas probes to cloud locations. For each probe, we compute the nearest-cloud latency as the minimum RTT to any measured cloud data center and group the results by source region. As shown in Fig. 1, Europe and North America achieve the lowest access latency, while South America and especially Africa experience much higher RTTs. This result shows that access to terrestrial cloud data centers remains geographically uneven even under an optimistic nearest-cloud assignment. This motivates SDCs, which enable satellite-generated data to be processed and disseminated cooperatively in orbit, closer to its source and with reduced dependence on geographically uneven terrestrial cloud access. 
+
+Single satellites provide only short service opportuni-ties. Emerging space applications such as Earth observation and in-space AI generate large data volumes, including the 
+
+∼100 TB/day produced by NASA’s SWOT and NISAR mis-sions [24]. However, downlink remains a major bottleneck: prior work reports that ground infrastructure can capture only about 2% of available observations [2]. A single satellite is also not a practical service unit because its compute, storage, and connectivity are available only intermittently as it moves along its orbit. To illustrate this limitation, over representative equatorial, mid-latitude, and polar H3 cells [25], together with Starlink gateways and OneWeb Satellite Network Portals (SNPs) [26], shown in Fig. 2, we conduct a two-line element (TLE)-driven analysis. Fig. 3 shows that an individual satellite remains over a target H3 cell for only a few minutes, with typical median dwell times around 3–6 minutes across OneWeb and Starlink shells. Such short service windows are insufficient for persistent workloads including multi-stage processing, AI inference pipelines, caching, and replication, because unfinished tasks must be checkpointed, migrated, or delayed until another satellite becomes available. 
+
+Direct gateway access is also intermittent. Even with sufficient onboard resources, a satellite may lack continuous (a) Equatorial. (b) Mid-latitude. (c) Polar. 
+
+Fig. 3: Service-window duration across regions and cluster sizes. 
+
+Fig. 4: Direct gateway outage percentage versus SDC cluster size. direct gateway access for receiving inputs, coordinating with other satellites, or offloading results. Fig. 4 shows outages of 51.6% for OneWeb and 94.0% for Starlink Shell A for a single satellite. Increasing the service-unit size reduces this outage, although the gain depends on the constellation shell and cluster size. Thus, a single satellite provides neither con-tinuous regional service nor continuous direct gateway access. Grouping nearby satellites into a logical service unit mitigates both limitations: the cluster maintains longer service periods across equatorial, mid-latitude, and polar regions as members move through the target region (Fig. 3), while increasing the likelihood that at least one member has a direct gateway link (Fig. 4). Therefore, clustering provides a practical SDC abstraction that aggregates compute, storage, and connectivity while reducing the impact of individual satellite mobility. 
+
+Design implications. Realizing a moving satellite cluster as a practical SDC requires three key design decisions:  
+
+> •
+
+Cluster size. The SDC size must balance service conti-nuity against coordination and forwarding overhead.  
+
+> •
+
+SDC architecture. The system must define cluster-level addressing, membership management, border-satellite se-lection, and intra-SDC resource coordination.  
+
+> •
+
+Stateless multicast. SDC workloads need efficient one-to-many delivery for replication, updates, AI parameter dissemination, and inter-SDC data placement without maintaining costly per-flow multicast state. To address these requirements, the following sections present a topology-aware clustering analysis for selecting practical SDC sizes and a stateless multicast protocol for scalable one-to-many communication across dynamic satellite-based SDCs. III. LEO S ATELLITE CLUSTER SIZE SELECTION 
+
+Network model. To capture LEO constellation dynamics, we divide time into discrete snapshots T = {t1, t 2, . . . }.During each interval (tm, t m+1 ), the topology and active link states are assumed to be fixed. Because LEO satellite motion follows predictable orbital trajectories, the sequence of topology snapshots and the corresponding ISL states can be computed in advance from orbital information. Therefore, shortest-path trees, border-satellite selections, and BIER-DC forwarding assignments can be precomputed for upcoming snapshots and installed before scheduled topology transitions, reducing online recomputation and packet disruption. At snap-shot t, the satellite network is modeled as an undirected graph 
+
+Gt = ( S, Et), where S is the set of satellites and Et is the set of active laser ISLs. Ground gateways and user terminals are excluded from the clustering objective and treated as part of the access layer, so the model captures the fundamental satellite-side coordination cost. 
+
+SDC cluster characterization. At each snapshot t, the con-stellation is partitioned into K logical SDC clusters Pt =
+
+{S1,t , S 2,t , . . . , S K,t }. For cluster Sk,t , the induced intra-cluster ISL set is Ek,t = {(i, j ) ∈ E t | i, j ∈ Sk,t }. The shortest-path propagation delay between satellites i and j over the induced subgraph (Sk,t , E k,t ) is denoted by δk,t (i, j ). The intra-cluster communication cost is 
+
+Ck,t = 1
+
+|Sk,t |(|Sk,t | − 1) 
+
+X
+
+> i,j ∈Sk,t
+> i̸=j
+
+δk,t (i, j ). (1) A smaller Ck,t indicates a more compact cluster with lower internal coordination delay, which is important because satel-lites within the same logical SDC are frequently involved in synchronization, replication, resource coordination, and intra-SDC delivery. Accordingly, the average intra-cluster shortest-path delay is used as a simple topology-derived proxy for coordination cost. 
+
+Fixed-K SDC cluster partitioning. For a given cluster count 
+
+K, the goal is to compute a time-dependent partition sequence 
+
+Pt that minimizes the aggregate intra-cluster communication cost across all snapshots. 
+
+Input: The dynamic constellation graph Gt = ( S, Et) for all 
+
+t ∈ T , and the target cluster count K.
+
+Output: A cluster partition {Sk,t } for all k ∈ { 1, . . . , K } and 
+
+t ∈ T .Goal: 
+
+min 
+
+> {Sk,t }
+
+X
+
+> t∈T
+> K
+
+X
+
+> k=1
+
+Ck,t . (2) 
+
+Constraints: 
+
+> K
+
+[
+
+> k=1
+
+Sk,t = S, ∀t ∈ T , (3) 
+
+Sk,t ∩ Sℓ,t = ∅, ∀k̸ = ℓ, ∀t ∈ T , (4) 
+
+|Sk,t | ≥ 2, ∀k, ∀t ∈ T , (5) 
+
+(Sk,t , E k,t ) is connected , ∀k, ∀t ∈ T . (6) The first two constraints ensure that every satellite belongs to exactly one SDC cluster. The size constraint avoids degenerate single-satellite clusters, and the connectivity constraint ensures that all members of a cluster can communicate through active intra-cluster ISLs. 
+
+Two-stage parameter and scale selection. The fixed-K
+
+objective is useful for comparing different assignments under the same K, but it is not directly comparable across different cluster counts. Therefore, we use the normalized pair-weighted intra-cluster delay: 
+
+¯Cintra (K) = 1
+
+|T | 
+
+X
+
+> t∈T
+
+PKk=1 |Sk,t |(|Sk,t | − 1) Ck,t 
+
+PKk=1 |Sk,t |(|Sk,t | − 1) . (7) We evaluate ¯Cintra (K) over candidate values of K and select the elbow point K∗, where increasing the number of clusters provides only marginal additional delay reduction. The corre-sponding target cluster size is ¯s(K∗) = |S|  
+
+> K∗
+
+.
+
+Solution methodology and scale selection. Our fixed-K
+
+formulation is closely related to Min-Sum k-Clustering, an NP-hard problem that partitions vertices under graph-induced distances to minimize intra-cluster pairwise communication cost [27]. Therefore, we use a scalable heuristic to construct compact and connected SDC clusters. For each candidate K,we select seed satellites and assign each remaining satellite to its nearest seed based on Dijkstra shortest-path distances over the weighted ISL graph. We then keep only assignments whose induced cluster subgraphs are connected. The resulting partitions are evaluated using the normalized pair-weighted intra-cluster delay, and the elbow point K∗ is selected as the point where additional clusters provide only marginal delay reduction. This defines the target average cluster size 
+
+¯s(K∗) = |S| /K ∗.The target size ¯s(K∗) specifies how many satellites should form an SDC, but not how these satellites should be arranged in the orbital topology. We therefore represent each practical SDC as a rectangular p × q block, consisting of p adjacent orbital planes moving in the same direction and q consecutive satellites in each plane, for a total of pq satellites. This co-moving structure limits relative motion and helps maintain stable relative positions over time. We evaluate candidate blocks whose size pq is close to ¯s(K∗) by placing each block at different positions in the constellation and examining it over all topology snapshots. Placements that do not induce a connected intra-SDC subgraph are discarded. Among the remaining candidates, we select the compact block that is closest to the target size while providing low average intra-SDC shortest-path delay and small diameter. IV. BIER-DC D ESIGN 
+
+A. BIER-DC Overview 
+
+We present BIER-DC, a stateless multicast architecture for in-orbit space data centers. As shown in Fig. 5, BIER-DC organizes satellites into logical space data center clusters, called SDCs, and separates multicast forwarding into two lev-els: inter-SDC delivery across clusters and intra-SDC delivery inside each cluster. 
+
+1) Design principles: The design of BIER-DC follows three primary goals. First, compact multicast headers. Since satel-lite links have limited bandwidth and energy budget, BIER-DC should avoid per-receiver or per-VM bit positions in the inter-SDC header. Second, scalable stateless forwarding. 
+
+Multicast forwarding should not require per-flow forwarding state at every satellite, especially as the number of destination satellites, VMs, containers, and multicast groups increases. 
+
+Third, hierarchical control. The control plane should match the clustered structure of space data centers: SDC controllers coordinate cluster-level forwarding, while satellite controllers handle local resource management and final service delivery. 
+
+2) Key ideas of BIER-DC: BIER-DC adopts three key ideas to realize these goals: (i) cluster-level addressing. Satellites are grouped into SDCs, denoted as SDC 1 to SDC m, and each SDC is assigned a unique Cluster ID . The Cluster ID is used in control messages, forwarding entries, and BIER-DC packet headers. We use m to denote the number of SDCs and 
+
+n to denote the number of satellites per SDC. This abstraction allows BIER-DC to describe multicast delivery at the SDC level rather than at the individual satellite, VM, or container level, thereby reducing header growth and limiting forwarding-state complexity as the number of service endpoints increases. 
+
+(ii) border-satellite-based inter-SDC forwarding. Instead of encoding every destination satellite or VM in the packet header, BIER-DC encodes compact forwarding entries that identify the destination SDC and the selected border satellite. This allows the source SDC to express the inter-SDC multicast tree using a small number of cluster-level entries. (iii) local header translation at the destination SDC. When a packet reaches a border satellite of a destination SDC, the inter-SDC BIER-DC header is replaced by a local intra-SDC header. The destination SDC then delivers the packet to the selected satellite, VM, container, or data object using local forwarding decisions. 
+
+3) System overview and workflow: The BIER-DC architec-ture consists of a data plane and a control plane . In the data plane, satellites inside each SDC are connected through intra-cluster ISLs, while neighboring SDCs are connected through inter-cluster ISLs. Each satellite may host local computation and storage resources, represented as VMs or containers, enabling in-orbit services such as data replication, caching, processing, and multicast delivery. Control Plane 
+
+SDC Controller 1 
+
+> SDC m
+
+SDC Controller m      
+
+> SDC Controller
+> • Membership management • Border satellite selection
+> • Multicast registration and response
+> Sat 1.1
+> VM
+> Sat Ctrl
+> VM
+> Sat 1.2
+> VM
+> Sat Ctrl
+> VM
+> Sat 1.3
+> VM
+> Sat Ctrl
+> Src
+> Sat 1.4
+> VM
+> Sat Ctrl
+> VM
+> SDC 1
+> Sat m.1
+> VM
+> Sat Ctrl
+> VM
+> Sat m.2
+> VM
+> Sat Ctrl
+> VM
+> Sat m.3
+> Sat Ctrl
+> Sat m.4
+> Sat Ctrl
+> Satellite Controller
+> •VM/service registration
+> •Local forwarding rule setup
+> •Packet delivery to VM/service
+> Data Plane
+> Multicast Path
+> Destination VMs Multicast Source
+> Logical SDC boundary
+> Sat Ctrl. 1.4 Sat Ctrl. 1.1 Sat Ctrl. m.1 Sat Ctrl. m.4
+
+Fig. 5: BIER-DC architecture with hierarchical SDC control and cluster-level data forwarding. The control plane follows a hierarchical structure. Each satellite has a local satellite controller, which abstracts func-tions already present in modern onboard systems [28], [29]. BIER-DC extends this role to networking and service man-agement: the satellite controller monitors neighboring ISLs, applies forwarding rules, tracks local resources, manages VM/container placement when onboard edge computing is available, and performs final delivery to the selected VM, container, or data object. Each SDC is managed by an SDC controller that maintains control sessions with the satellite controllers in its cluster. The SDC controller keeps cluster-level state, including the Cluster ID, SDC membership, intra-cluster topology, regis-tered border satellites, aggregate per-satellite capacity, and forwarding entries for intra-SDC and inter-SDC delivery. This design mirrors cloud and edge control planes, where a node-level agent manages local workloads and reports status to a higher-level controller. For example, Kubernetes uses kubelet as the node agent, and KubeEdge extends Kubernetes-native orchestration to edge hosts, including a cloud-native satellite case study [30]–[33]. Accordingly, BIER-DC keeps only an aggregate view at the SDC controller, while fine-grained placement and final delivery decisions remain with satellite controllers. 
+
+Border satellites are the managed entry and exit points of each SDC. They are edge satellites that maintain ISL connec-tions to neighboring SDCs. Each border satellite registers with its local SDC controller, which records its satellite ID, bound-ary face, and reachable neighboring SDCs. Only registered border satellites are used for inter-SDC forwarding; inter-SDC edges incident to non-registered satellites are excluded from the forwarding graph. On egress, a border satellite forwards cloned packets toward the selected neighboring SDC. On ingress, it hands incoming packets to the local intra-SDC de-livery process. If multiple border satellites can reach the same neighboring SDC, BIER-DC selects the lowest-cost candidate. SDC members, including border satellites, are selected from the same or adjacent orbital planes and move in the same direction, so their relative positions in the topology remain approximately stable over extended periods. This stability allows registered border satellites to remain active without fre-quent reselection. Moreover, predictable orbital motion enables inter-SDC border connectivity and scheduled handovers to be precomputed for upcoming topology snapshots. 
+
+B. BIER-DC Header and Addressing 
+
+BIER-DC first requires identifying where a multicast packet should be delivered and how it should cross the space data center topology. Unlike conventional satellite-level multicast encoding, which represents individual satellites or egress nodes in the packet header, BIER-DC uses a cluster-level addressing model. Each SDC is assigned a unique Cluster ID , denoted by CID k, which serves as the basic inter-SDC forwarding identifier. Each satellite also has a local Satellite ID , which is used for intra-SDC delivery, border-satellite registration, and ingress-satellite resolution. Services hosted inside an SDC, such as VMs, containers, storage replicas, or application instances, are identified by a local service or VM identifier. This two-level addressing model keeps inter-SDC forwarding compact while still allowing precise delivery inside each destination SDC. 
+
+Addressing scheme. BIER-DC follows a four-step process to address destinations. Step-I: assigning SDC identifiers. 
+
+Each SDC is assigned a unique cluster identifier and packets are forwarded across the SDC-level topology using these identifiers, instead of carrying a flat satellite-level multicast bitstring. 
+
+Step-II: identifying border satellites. Each SDC maintains a local list of border satellites that connect the SDC to neighboring SDCs. These satellites act as ingress or egress points for inter-SDC forwarding and can be represented by compact local indexes. 
+
+Step-III: identifying internal destinations. Inside each SDC, satellites and hosted services are assigned local identifiers. Therefore, a complete service address can be written as 
+
+[SDC , Border , Satellite , VM] , where the SDC and border fields guide inter-SDC forwarding, while the satellite and VM fields are used for local delivery after the packet reaches the destination SDC. 
+
+Step-IV: maintaining the address mapping. The SDC con-troller maintains the mapping between destination services, internal satellites, and selected border satellites. When the topology or SDC membership changes, these mappings are updated and forwarding assignments are re-evaluated over the updated topology snapshot. Fig. 6 shows an example of the BIER-DC addressing model. Each destination service is first represented by a hierarchical address in the form [SDC , Border , Satellite , VM] . The SDC and border-satellite fields are used for inter-SDC forwarding, while the satellite and VM fields are interpreted only inside the destination SDC. As shown in the figure, multiple desti-nation services may share the same SDC and selected border satellite. For example, two services in SDC 1 behind border satellite B1 can be compressed into the same inter-SDC entry [SDC1 . B1 . S2 . VM1]                    
+
+> [SDC2 . B2 . S4 . VM1]
+> [SDC3 . B 1. S7 . VM1]
+> [SDC3 . B 3. S8 . VM1]
+> [SDC3 . B 3. S8 . VM2]
+> [SDC3 . B 3. S8 . VM3]
+> [SDC1 . B1 . S2 . VM2]
+> SDC A
+> B2
+> SDC 1 SDC 2 SDC 3
+> B1 B1 B3 B1
+> S2 S4 S7 S8
+> VM2 VM1 VM1 VM 3VM1 VM1 VM 2
+> {(SDC1, B1)} =
+> {[SDC1 . B1 . S2 . VM1],
+> [SDC1 . B1 . S2 . VM2]}
+> {(SDC2, B2)} =
+> {[SDC2 . B2 . S4 . VM1]}
+> {(SDC3, B1)} ={[SDC3 . B1 . S7 . VM1]}
+> {(SDC3, B3)} ={[SDC3 . B3 . S8 . VM1], [SDC3 . B3. S8 . VM2], [SDC3 . B3 . S8 . VM3]}
+> Destination service addresses Source SDC addressing tree Compressed addresses
+
+Fig. 6: BIER-DC addressing example. Destination service addresses are compressed into compact SDC–border-satellite entries for inter-SDC forwarding. 
+
+(SDC1 , B 1). Similarly, multiple services in SDC 3 can be represented by compact border-satellite entries depending on the selected ingress border. This aggregation allows BIER-DC to avoid inserting all service-level destinations into the inter-SDC packet header. 
+
+Packing compressed addresses into packets. To indicate multicast forwarding, the source SDC packs a compressed destination representation into the BIER-DC header. Instead of inserting every service address into each packet, BIER-DC aggregates services that share the same destination SDC and selected border satellite into one (SDC , Border) entry. The destination SDC later expands this entry into the correspond-ing local satellite and service destinations using its internal mapping table. The destination path encoding is the main scalability feature of BIER-DC. Let m be the number of SDCs. For an SDC-level path [CID k1 , CID k2 , . . . , CID kh ], the source SDC CID k1 is implicit, so only the remaining h − 1 SDC hops are encoded. Each hop identifies the next SDC and the selected ingress border satellite. Under fixed-width encoding, each entry uses an SDC index of ⌈log 2 m⌉ bits and an ingress-border-satellite index of ⌈log 2 n2⌉ bits, where n2 is the maximum number of border satellites on the longest SDC face in the current topology snapshot. Thus, 
+
+wentry = ⌈log 2 m⌉ + ⌈log 2 n2⌉ bits . (8) The ingress-border-satellite index is interpreted locally within the destination SDC: the selected inter-SDC crossing de-termines the ingress face, and the encoded index selects a border satellite from the sorted list on that face. In our simulation, this gateway identity is read from the precomputed shortest-path tree state. In deployment, the destination SDC can reconstruct it from its local face-to-border-satellite map, making the header self-contained without a flat global satellite identifier. Fig. 7 illustrates the packet-header operation. A packet car-ries an IP/UDP header, followed by the BIER-DC header and payload. During inter-SDC forwarding, the BIER-DC header carries labels for the current forwarding SDC, destination SDC, and selected destination border satellite. Once the packet reaches the selected border satellite of a destination SDC, the inter-SDC label is replaced by an intra-SDC label that identifies the internal destination satellite or service group. IP/UDP  BIER-DC  Payload 
+
+> Forwarder SDC1
+> Border Sat
+> Dest SDC1
+> Border Sat
+
+a Inter -SDC labels 
+
+> Dest Sat i
+
+b Intra -SDC label      
+
+> Dest Sat i+m
+> Replaced
+> by border
+> Dest sat
+> Fwdr SDC Dest SDC
+> 𝑖 ab
+> Border Sat
+> 𝑚
+> Fwdr SDC Dest SDC Border sat Dest sat
+
+Fig. 7: The inter-SDC label used by satellite a in the forward-ing SDC is replaced by an intra-SDC label at ingress satellite 
+
+b in the destination SDC. This allows the same packet format to support inter-SDC routing and local intra-SDC delivery while keeping the wide-area forwarding header compact. For a destination path of h SDCs, the encoding length is 
+
+(h−1) wentry bits. For multicast traffic, the source concatenates the path encodings required by the destination set. Intermediate SDCs group destinations that share the same next SDC and ingress border satellite, so one forwarded packet copy can serve multiple downstream destinations. If destinations require different ingress satellites into the same next SDC, BIER-DC creates separate entries and packet copies for those branches, preserving the selected SDC-level distribution tree without a flat per-satellite multicast bitstring. Unlike satellite-level encoding, which scales as O(|S| ),BIER-DC reduces overhead by scaling with the number of SDC-level hops. For a destination set D, the overhead is proportional to 
+
+O X
+
+> d∈D
+
+(hd − 1) ( ⌈log 2 m⌉ + ⌈log 2 n2⌉)
+
+!
+
+.
+
+Here, hd is the number of SDCs on the path to destination d,
+
+m is the number of SDCs, and n2 is the maximum number of border satellites on the longest SDC face. Since m ≪ |S| ,BIER-DC replaces flat satellite-level bitstrings with two-level addressing: compact path entries route packets through SDCs, while local labels deliver packets to final satellites, VMs, containers, or services inside each destination SDC. This hierarchy lets the SDC controller manage aggregate inter-SDC mappings and the local satellite controller handle final delivery. Forwarding assignments are re-evaluated whenever the topology or SDC membership changes over the updated topology snapshot. 
+
+C. Forwarding Mechanism 
+
+BIER-DC forwards multicast packets at two levels: inter-SDC forwarding between space data centers and intra-SDC delivery inside destination SDCs. Inter-SDC forwarding is performed by border satellites, which process the compact path encoding carried in the BIER-DC header. Each remaining destination is associated with an SDC-level path and a selected ingress border satellite for each downstream SDC. When a packet reaches a border satellite, the satellite determines whether the current SDC contains local destinations and whether the packet must continue toward one or more adjacent SDCs. Algorithm 1 gives the border-node forwarding procedure. The algorithm takes as input a packet p with BIER-DC header 
+
+H, the current SDC c, the ingress border satellite bin , and the local SDC controller Γc. It first extracts the set of unresolved destinations Dloc that belong to the current SDC and groups the remaining destinations by their next adjacent SDC into 
+
+Gdown . This grouping allows BIER-DC to send only one packet copy for destinations that share the same next SDC and to replicate packets only when the downstream paths diverge. 
+
+Case 1: Local delivery inside the current SDC. If the current SDC contains one or more destinations, the ingress border satellite queries the local SDC controller to resolve the corresponding destination satellites, services, or VMs. The controller then constructs an intra-SDC header rooted at bin .This local header replaces the inter-SDC BIER-DC header only for the packet copy delivered inside the current SDC. Therefore, local delivery can be handled using compact intra-SDC forwarding information without exposing satellite-level destinations in the inter-SDC header. 
+
+Case 1.1: A single local destination satellite. If the local destination set contains only one destination satellite, no local multicast branching is needed. The border satellite creates a local packet copy, replaces its BIER-DC header with the intra-SDC header, and forwards the packet along the selected local path toward that destination satellite. 
+
+Case 1.2: Multiple local destination satellites. If the current SDC contains multiple local destination satellites, the controller identifies the required local branches from the ingress border satellite. The border satellite then creates one packet copy per local branch and attaches the corresponding intra-SDC header to each copy. Packets are replicated only at the required branching points, which avoids carrying a flat satellite-level bitstring in the inter-SDC header. 
+
+Case 2: Inter-SDC forwarding to downstream adjacent SDCs. After local destinations are processed, the border satellite forwards the packet toward unresolved destinations in downstream SDCs. For each group in Gdown , the border satellite selects the egress border satellite toward the next adjacent SDC and forwards the packet to it using the shortest path inside the current SDC. The egress border satellite then transmits the packet over the inter-SDC link to the selected ingress border satellite in the next SDC. Before forwarding, the packet header is updated to keep only the destinations belonging to that downstream branch, the current SDC entry is consumed, and the TTL is decremented. If the packet has no local destinations and no downstream SDCs, it is dropped. This design separates inter-SDC forwarding from intra-SDC delivery. The inter-SDC header only carries compact SDC-level path information, while detailed satellite-level delivery is resolved locally inside each destination SDC. Whenever the topology or SDC membership changes, the forwarding assignment should be re-evaluated over the updated topology 
+
+Algorithm 1 BIER-DC Border-Node Forwarding 
+
+Require: Packet p with BIER-DC header H, current SDC c,ingress border satellite bin , SDC controller Γc
+
+Ensure: Forwarding decision for p 
+
+> 1:
+
+Dloc ← LocalDestinations( H, c ) 
+
+> 2:
+
+Gdown ← GroupByNextAdjacentSDC( H, c )
+
+Case 1: Local delivery inside the current SDC.  
+
+> 3:
+
+if Dloc ̸ = ∅ then  
+
+> 4:
+
+L ← Γc.Resolve( Dloc ) 
+
+> 5:
+
+Hintra ← Γc.BuildIntraHeader( bin , L)
+
+Case 1.1: A single local destination satellite.  
+
+> 6:
+
+if |L| = 1 then  
+
+> 7:
+
+pl ← CloneAndReplaceHeader( p, H intra ) 
+
+> 8:
+
+Forward pl to the only destination satellite in L
+
+Case 1.2: Multiple local destination satellites.  
+
+> 9:
+
+else  
+
+> 10:
+
+for all q ∈ LocalBranches( bin , L) do  
+
+> 11:
+
+pq ← CloneAndReplaceHeader( p, H intra (q))  
+
+> 12:
+
+Forward pq toward local branch q 
+
+> 13:
+
+end for  
+
+> 14:
+
+end if  
+
+> 15:
+
+end if Case 2: Inter-SDC forwarding to downstream SDCs.  
+
+> 16:
+
+for all g ∈ G down do  
+
+> 17:
+
+(cnext , Dg ) ← g 
+
+> 18:
+
+bout ← SelectBorder( c, c next ) 
+
+> 19:
+
+P ← ShortestPath( bin , b out ) 
+
+> 20:
+
+pg ← Clone( p) 
+
+> 21:
+
+Update pg .H to keep only Dg 
+
+> 22:
+
+Consume the current SDC entry in pg .H  
+
+> 23:
+
+Decrement pg .H. TTL  
+
+> 24:
+
+Forward pg along P and transmit it to cnext  
+
+> 25:
+
+end for  
+
+> 26:
+
+if Dloc = ∅ and Gdown = ∅ then  
+
+> 27:
+
+Drop p 
+
+> 28:
+
+end if 
+
+snapshot. 
+
+Lemma 1 (Shortest-Path Concatenation). Consider snapshot 
+
+Gt = ( S, Et) with shortest-path delay δt(i, j ). For an ordered sequence v0, . . . , v k ∈ S , let P tvi−1,v i denote a shortest path between vi−1 and vi. The concatenation P tv0,v 1 ◦ · · · ◦ P tvk−1,v k
+
+is a shortest path from v0 to vk if and only if 
+
+δt(v0, v k) = 
+
+> k
+
+X
+
+> i=1
+
+δt(vi−1, v i).
+
+Proof sketch. The concatenated cost equals Pki=1 δt(vi−1, v i)
+
+since each segment is shortest. If this sum equals δt(v0, v k),the route achieves the minimum possible delay and is therefore shortest. The converse holds directly from the definition of δt.
+
+□
+
+By Lemma 1, BIER-DC preserves shortest-path routing because it does not recompute independent local routes be-tween SDC borders. Instead, each border-to-border segment is extracted from the original shortest-path tree computed for the current topology snapshot. Therefore, the selected SDC border satellites appear in the same order as they do on the original SPT path from the source ingress satellite to the destination. Concatenating these extracted segments reconstructs the same end-to-end shortest route. Hence, BIER-DC represents the original SPT result at the SDC-border level without loss of routing optimality. 
+
+Handling Failures in BIER-DC. BIER-DC handles satel-lite and ISL failures through snapshot-based recomputation and localized recovery. Because the packet header encodes SDC-border-level decisions derived from the current shortest-path tree, a failed satellite or inter-SDC link may invalidate one or more border-to-border segments. Upon detection, the affected satellite or SDC controller updates its connectivity view, reports the change to the SDC-level control plane, and recomputes the affected SPT-derived segments for the next topology snapshot. During this transition, packets with stale border-level information are either locally detoured toward the same next border satellite if an alternative path exists, or dropped and recovered by upper-layer reliability or source-side retransmission. Because the LEO topology evolves over time, the assignment should be re-evaluated over the updated topology snapshot. V. E VALUATION 
+
+Evaluations in this section focus on answering the following three questions related to BIER-DC. Q1: Can BIER-DC achieve high multicast goodput for data delivery compared with existing multicast forwarding approaches? Q2: Can BIER-DC maintain compact packet headers as the number of VMs or services inside each SDC increases? Q3: How does BIER-DC scale to larger space data center deployments with an increasing number of SDCs? 
+
+Prototype and testbed setup. We evaluate BIER-DC using NetSatBench [34], a container-based LEO emulator that instantiates satellites as independent Docker containers and connects them according to time-varying constellation snap-shots. The snapshots are generated using StarPerf [35], which provides satellite positions, ISL topology, and propagation de-lays for the target constellation. In our prototype, each satellite container additionally runs a lightweight BIER-DC runtime agent that parses BIER-DC headers and forwards multicast packets either to the next hop or to a local VM/service. A centralized controller computes forwarding rules based on the source, destinations, SDC membership, and inter-SDC paths, and installs them through the emulator control channel. For each experiment, a UDP sender in the source container segments the input file according to the available payload after subtracting the protocol header size, while destination receivers record delivery statistics. By varying the number of VMs per satellite and the number of SDCs, we measure header size, raw payload size, packet count, and goodput. 
+
+Compared protocols. We compare BIER-DC with BIER [17], BIER-TE [18], and Yeti [19], since these stateless or packet-carried multicast schemes can be evaluated over the 10 20 30 40 50 60 70 80 90 
+
+> Number of clusters K
+> 10 15 20 25
+> Weighted average intra-cluster delay (ms)
+> OneWeb K*=30 Avg. size=19.6 Starlink K*=32 Avg. size=53.3
+> OneWeb Starlink
+
+Fig. 8: Elbow-based cluster-count selection for OneWeb and Starlink. same LEO topology, source, and destination set. This enables a direct comparison of multicast header overhead and its effects on payload efficiency and goodput. We exclude terrestrial data center schemes such as Elmo [10] and Orca [11] because they assume fixed Clos/leaf-spine fabrics, stable rack structure, and terrestrial controller/switch abstractions. Adapting them to dynamic inter-satellite links and changing SDC membership would require architectural redesign, making the comparison implementation-dependent. 
+
+Constellation, SDC, workload, and multicast setting. 
+
+We evaluate BIER-DC on OneWeb with 588 satellites and a Starlink shell with 1705 satellites in a +grid topol-ogy. Satellites are grouped into SDCs that act as logi-cal clusters for computing, storage, and multicast services. In each experiment, one source satellite multicasts an EO data object to destination VMs/services across one or more SDCs. Each endpoint is assigned a globally unique address, 
+
+⟨SDC ID , Satellite ID , VM /Service ID ⟩, while BIER-DC keeps the inter-SDC header compact by encoding paths at the SDC level. We vary the number of virtualized service endpoints per satellite from M = 4 to M = 64 . The lower bound, M = 4 , represents a conservative core-pinned setting consistent with legacy radiation-hardened processors such as the four-core GR740 [36]. Higher densities reflect heteroge-neous satellite-edge platforms such as Jetson AGX Orin, with up to 12 Arm Cortex-A78AE CPU cores, 2,048 CUDA cores, and 64 Tensor Cores [37]. Thus, M = 16 –32 represents accelerator-assisted satellite-edge payloads, while M = 64 is a dense future SDC stress point for multicast header scaling. For each VM-scale and SDC-scale configuration, the same input file is transferred over UDP from the source container to all receivers, with packet payload adjusted to each protocol’s header size. Moreover, Fig. 8 shows that increasing the number of SDCs reduces the weighted average intra-cluster delay, but the reduction becomes marginal after K∗ = 30 for OneWeb and K∗ = 32 for Starlink. These elbows correspond to target average SDC sizes of 19.6 and 53.3 satellites, respectively. Accordingly, we select a 4×5 OneWeb footprint, which almost exactly matches the target size, and a compact 7 × 7 Starlink footprint, which remains close to the target while maintaining a balanced shape and small intra-SDC diameter. 
+
+Header overhead under SDC-scale multicast. Fig. 9compares the packet-header overhead of BIER-DC, Yeti, BIER, and BIER-TE under three evaluation scenarios. In all 4 10 20 30 40 50 64 
+
+> VMs per satellite
+> 01000 2000 3000 4000 5000
+> Header bytes
+> BIER BIER-TE YETI BIER-DC
+
+(a) VM scalability. 10 20 30 40 50 60 70 80 90 100  
+
+> Destination satellites per SDC (%)
+> 0100 200 300 400
+> Header bytes
+> BIER BIER-TE YETI BIER-DC
+
+(b) Destination satellite density. 5 10 15 20 25 30 35 40  
+
+> Destination SDCs (%)
+> 0100 200 300 400
+> Header bytes
+> BIER BIER-TE YETI BIER-DC
+
+(c) Destination SDC percentage. 
+
+Fig. 9: Header overhead comparison in the OneWeb topology across three evaluation scenarios: (a) VM scalability, (b) destination satellite density, and (c) destination SDC scaling. experiments, we select one source satellite inside one SDC and multicast traffic toward destination satellites located in multiple destination SDCs. To capture the effect of SDC-level path diversity, we select destination satellites distributed across SDCs located one, two, and three hops away from the source SDC. This setup allows us to evaluate whether each protocol can maintain compact packet headers when the multicast group expands in three dimensions: the number of VMs per satellite, the density of destination satellites inside each selected SDC, and the number of destination SDCs involved in the multicast session. As shown in Fig. 9a, the header overhead of BIER and BIER-TE increases rapidly as the number of VMs per satellite grows, because their bitstring-based encoding must reserve space for a larger forwarding or adjacency space. Yeti reduces this overhead compared with BIER and BIER-TE, but its header still grows with the number of service endpoints. In contrast, BIER-DC keeps the header nearly constant because it encodes forwarding at the SDC level and uses compact SDC/ingress-border identifiers instead of per-VM or per-satellite bit positions. Fig. 9b further shows that increasing the percentage of destination satellites inside each selected SDC has only a moderate impact on BIER-DC, while Yeti grows more noticeably. Finally, Fig. 9c shows that when the multicast session spans more destination SDCs, BIER-DC grows gradually with the number of encoded SDC-level paths, but remains substantially smaller than the bitmap-based baselines. These results confirm that BIER-DC is better suited for SDC-based multicast, where many satellites and hosted VMs may participate in the same in-orbit data distribution task. As the Starlink evaluation exhibits qualitatively similar trends to those observed in the OneWeb topology, the corresponding results are omitted in the interest of conciseness. To evaluate BIER-DC sensitivity to SDC cluster size, we select a common set of destination satellites and repartition the constellation using 2 × 3, 3 × 4, 4 × 5, and 5 × 6 clusters. We then multicast to randomly selected subsets (20%–100%) of the same destination set, with each subset reused across all cluster sizes. As shown in Fig. 10, the 2 × 3 case has the highest header overhead, as the same destinations are distributed across more SDCs, requiring more SDC-level information in the packet header. 
+
+Impact of Header Overhead on Goodput. Goodput measures 2×3 3×4 4×5 5×6 
+
+> Cluster size
+> 0100 200 300 400 500 600 700 800
+> Header size (bytes)
+> 20% 40% 60% 80% 100%
+
+Fig. 10: BIER-DC header size versus SDC cluster size. useful application payload delivered per unit time, excluding protocol metadata. We evaluate it by transmitting an 8 MB EO image file from one source satellite to multiple destinations at a fixed rate of 500 packets/s, with each 1500 B packet containing both protocol header and payload. For a header of H bytes, only 1500 − H bytes remain for EO data, so larger headers require more packets to deliver the same file and reduce effective goodput. For BIER and BIER-TE under larger VM configurations, the header can exceed the 1500 B packet budget, leaving no payload space and preventing the sender from forming a valid packet. Fig. 11 and Fig. 12 evaluate this effect through emulation on the OneWeb and Starlink topologies under three destination-density scenarios. In all cases, one source satellite inside a source SDC multicasts the EO image file to destination satellites distributed across SDCs located 1–3 hops away from the source SDC. We vary the number of VMs per satellite on the x-axis and consider destination satellite densities of 20%, 40%, and 60%, shown in Fig. 11a, Fig. 11b, and Fig. 11c, respectively. Across all scenarios, BIER-DC maintains the highest and most stable goodput because its compact SDC-level header leaves most of the 1500 B packet available for useful EO payload. Yeti achieves the second-best goodput, but its performance gradually decreases as the number of VMs increases because its header consumes more packet space. BIER and BIER-TE degrade much faster: their larger headers sharply reduce the available payload per packet, and when their headers exceed the packet-size budget, the correspond-ing configurations become infeasible for transmission. These results show that header reduction is not only an encoding benefit, it directly improves payload efficiency and application-level goodput for SDC-based multicast. 5 10 15 20 25 30 35 
+
+> # of VMs per satellite
+> 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7
+> Goodput (MB/s)
+> BIER-DC Yeti BIER BIER-TE
+
+(a) 20% destination density 5 10 15 20 25 30 35  
+
+> # of VMs per satellite
+> 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7
+> Goodput (MB/s)
+> BIER-DC Yeti BIER BIER-TE
+
+(b) 40% destination density 5 10 15 20 25 30 35  
+
+> # of VMs per satellite
+> 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7
+> Goodput (MB/s)
+> BIER-DC Yeti BIER BIER-TE
+
+(c) 60% destination density 
+
+Fig. 11: Goodput versus VM count in OneWeb at destination densities of 20%, 40%, and 60%. 5 10 15 20 25 30 35 
+
+> # of VMs per satellite
+> 0.1 0.2 0.3 0.4
+> Goodput (MB/s)
+> BIER-DC Yeti BIER BIER-TE
+
+(a) 20% destination density 5 10 15 20 25 30 35  
+
+> # of VMs per satellite
+> 0.0 0.1 0.2 0.3 0.4
+> Goodput (MB/s)
+> BIER-DC Yeti BIER BIER-TE
+
+(b) 40% destination density 5 10 15 20 25 30 35  
+
+> # of VMs per satellite
+> 0.05 0.10 0.15 0.20 0.25 0.30 0.35
+> Goodput (MB/s)
+> BIER-DC Yeti BIER BIER-TE
+
+(c) 60% destination density 
+
+Fig. 12: Goodput versus VM count in Starlink at destination densities of 20%, 40%, and 60%. VI. R ELATED WORK 
+
+Stateless multicast: BIER [17] encodes the multicast re-ceiver set as a packet-header bitstring, where each bit identi-fies an egress router. Routers use per-interface bitmasks to replicate and forward packets along shortest paths. BIER-TE [18] extends this model by assigning bits to adjacen-cies, enabling traffic-engineered multicast trees, while BIER-FRR [38] adds precomputed backup entries for local failure recovery. Yeti [19] is also stateless, using specialized labels, such as local interface IDs and interface bitmaps, in a dynamic stack that shrinks along the path. Such fine-grained encoding can still incur high header overhead in SDCs with many VMs, containers, and replicas. BIER-Star [39] improves scalability for large LEO systems by using a compact satellite-network abstraction, but it targets satellite access multicast rather than multicast among distributed computing and storage resources inside space data centers. 
+
+Cloud/data center multicast: Elmo [10] and Orca [11] are multicast systems for terrestrial cloud/data center networks. Elmo uses a logically centralized controller to encode mul-ticast forwarding rules in packet headers and exploits the symmetry and short paths of multi-rooted Clos fabrics. Orca targets Clos/leaf-spine data centers, using rack-level server agents and maintaining small exception state at selected spine switches. In SDCs, where each satellite acts as both a rack-like compute unit hosting multiple VMs/containers and a forwarding node connected to neighboring satellites through dynamic ISLs, directly applying Orca would require agent functionality to scale with the number of satellites and would rely on a fixed, port-based leaf/spine/core hierarchy that does not match this distributed satellite architecture. Thus, Orca is not directly suitable for space data centers. BIER-DC differs from conventional BIER and hierarchical data center multicast by separating inter-SDC forwarding from intra-SDC delivery. It aggregates multiple service destinations into compact SDC–border-satellite entries and performs local header translation at destination SDCs, keeping satellite- and VM-level information out of the inter-SDC header while preserving stateless forwarding. This design avoids the fixed Clos-fabric assumptions of Elmo and Orca and is tailored to multicast among distributed compute and storage resources in dynamic LEO SDCs. VII. C ONCLUSION 
+
+This paper presented BIER-DC, a compact stateless mul-ticast design for space data centers formed by cooperative LEO satellite clusters. By encoding forwarding at the SDC level through destination-SDC and ingress-border identifiers, rather than individual satellites, VMs, or adjacencies, BIER-DC substantially reduces header overhead and preserves more packet capacity for application payload. Our analysis and NetSatBench-based EO image transfer emulations show that BIER-DC scales more efficiently and achieves higher goodput than BIER, BIER-TE, and Yeti as multicast scope and service density increase. Overall, BIER-DC provides a scalable mul-ticast mechanism for in-orbit data replication, caching, and processing across distributed SDCs. Future work will extend BIER-DC with dynamic failure recovery, traffic-aware desti-nation grouping, and re-evaluation of forwarding assignments over updated topology snapshots. REFERENCES [1] R. Wilkinson, M. M. Mleczko, R. J. W. Brewin, K. J. Gaston, M. Mueller, J. D. Shutler, X. Yan, and K. Anderson, “Environmental impacts of Earth observation data in the constellation and cloud com-puting era,” Science of The Total Environment , vol. 909, p. 168584, 2024. [2] B. Denby, K. Chintalapudi, R. Chandra, B. Lucia, and S. Noghabi, “Ko-dan: Addressing the computational bottleneck in space,” in Proceedings of the 28th ACM International Conference on Architectural Support for Programming Languages and Operating Systems, Volume 3 , 2023, pp. 392–403. [3] B. Denby and B. Lucia, “Orbital edge computing: Nanosatellite con-stellations as a new class of computer system,” in Proceedings of the Twenty-Fifth International Conference on Architectural Support for Programming Languages and Operating Systems , 2020, pp. 939–954. [4] Starcloud, “Starcloud-1,” 2025, accessed: 2026-05-12. [Online]. Available: https://www.starcloud.com/starcloud-1 [5] A. Lee, “How Starcloud is bringing data centers to outer space,” NVIDIA Blog, Oct. 2025, accessed: 2026-05-12. [Online]. Available: https://blogs.nvidia.com/blog/starcloud/ [6] Google Research, “Exploring a space-based, scalable AI infrastructure system design,” 2025, accessed: 2026-05-12. [Online]. Available: https://research.google/blog/exploring-a-space-based-scalable-ai-infrast ructure-system-design/ [7] Lonestar Data Holdings, “Lunar and Space-Based Data Storage,” 2025, accessed: 2026-05-12. [Online]. Available: https://www.lonestarlunar.co m/ [8] A. Greenberg, J. R. Hamilton, N. Jain, S. Kandula, C. Kim, P. Lahiri, D. A. Maltz, P. Patel, and S. Sengupta, “VL2: A scalable and flexible data center network,” in Proceedings of the ACM SIGCOMM 2009 Conference on Data Communication , 2009, pp. 51–62. [9] R. N. Mysore, A. Pamboris, N. Farrington, N. Huang, P. Miri, S. Rad-hakrishnan, V. Subramanya, and A. Vahdat, “PortLand: A scalable fault-tolerant layer 2 data center network fabric,” in Proceedings of the ACM SIGCOMM 2009 Conference on Data Communication , 2009, pp. 39–50. [10] M. Shahbaz, L. Suresh, J. Rexford, N. Feamster, O. Rottenstreich, and M. Hira, “Elmo: Source routed multicast for public clouds,” in Pro-ceedings of the ACM Special Interest Group on Data Communication .ACM, 2019, pp. 458–471. [11] K. Diab, P. Yassini, and M. Hefeeda, “Orca: Server-assisted multicast for datacenter networks,” in 19th USENIX Symposium on Networked Systems Design and Implementation (NSDI) . USENIX Association, 2022, pp. 1075–1091. [12] J. C. Corbett, J. Dean, M. Epstein, A. Fikes, C. Frost, J. J. Furman, S. Ghemawat, A. Gubarev, C. Heiser, P. Hochschild et al. , “Spanner: Google’s globally distributed database,” ACM Transactions on Computer Systems , vol. 31, no. 3, pp. 1–22, 2013. [13] I. S¨ unter, A. Slavinskis, U. Kvell, A. Vahter, H. Kuuste, M. Noorma, J. Kutt, R. Vendt, K. Tarbe, M. Pajusalu et al. , “Firmware updating systems for nanosatellites,” IEEE Aerospace and Electronic Systems Magazine , vol. 31, no. 5, pp. 36–44, 2016. [14] N. Razmi, B. Matthiesen, A. Dekorsy, and P. Popovski, “On-board federated learning for dense LEO constellations,” in IEEE International Conference on Communications (ICC) , 2022, pp. 4715–4720. [15] B. Fenner, M. J. Handley, H. Holbrook, I. Kouvelas, R. Parekh, Z. J. Zhang, and L. Zheng, “Protocol independent multicast – sparse mode (PIM-SM): Protocol specification (revised),” RFC 7761, 2016. [Online]. Available: https://www.rfc-editor.org/info/rfc7761 [16] S. Bhattacharya, “An overview of source-specific multicast (SSM),” RFC 3569, 2003. [Online]. Available: https://www.rfc-editor.org/info/rfc3569 [17] I. Wijnands, E. C. Rosen, A. Dolganow, T. Przygienda, and S. Aldrin, “Multicast using bit index explicit replication (BIER),” RFC 8279, 2017. [Online]. Available: https://www.rfc-editor.org/info/rfc8279 [18] T. Eckert, M. Menth, and G. Cauchie, “Tree engineering for bit index explicit replication (BIER-TE),” RFC 9262, 2022. [Online]. Available: https://www.rfc-editor.org/info/rfc9262 [19] K. Diab and M. Hefeeda, “Yeti: Stateless and generalized multicast forwarding,” in 19th USENIX Symposium on Networked Systems Design and Implementation (NSDI) . USENIX Association, 2022, pp. 1093– 1114. [20] A. Singh, J. Ong, A. Agarwal, G. Anderson, A. Armistead, R. Bannon, S. Boving, G. Desai, B. Felderman, P. Germano et al. , “Jupiter rising: A decade of Clos topologies and centralized control in Google’s datacenter network,” ACM SIGCOMM Computer Communication Review , vol. 45, no. 4, pp. 183–197, 2015. [21] W. Xia, P. Zhao, Y. Wen, and H. Xie, “A survey on data center net-working (DCN): Infrastructure and operations,” IEEE Communications Surveys & Tutorials , vol. 19, no. 1, pp. 640–656, 2016. [22] S. Liu, Z. S. Bischof, I. Madan, P. K. Chan, and F. E. Bustamante, “Out of sight, not out of mind: A user-view on the criticality of the submarine cable network,” in Proceedings of the ACM Internet Measurement Conference (IMC) . ACM, 2020, pp. 194–200. [23] B. Charyyev, E. Arslan, and M. H. Gunes, “Latency comparison of cloud datacenters and edge servers,” in IEEE Global Communications Conference (GLOBECOM) , 2020, pp. 1–6. [24] NASA Sea Level Change Team, “NASA turns to the cloud for help with next-generation Earth missions,” Oct. 2021, accessed: 2026-05-01. [Online]. Available: https://sealevel.nasa.gov/news/226/nasa-turns-to-t he-cloud-for-help-with-next-generation-earth-missions/ [25] Uber Technologies Inc., “H3: Hexagonal hierarchical geospatial indexing system,” 2018, accessed: 2026-05-20. [Online]. Available: https://github.com/uber/h3 [26] J. Zhao, O. Perrin, A. Ahangarpour, and J. Pan, “Measuring the OneWeb satellite network,” in 2025 9th Network Traffic Measurement and Analysis Conference (TMA) . IEEE, 2025, pp. 1–10. [27] I. Naderi, M. Rezapour, and M. R. Salavatipour, “Approximation schemes for min-sum k-clustering,” Discrete Optimization , vol. 54, p. 100860, 2024. [28] NASA Small Spacecraft Systems Virtual Institute, “Command and data handling,” accessed: 2026-05-05. [Online]. Available: https: //s3vi.ndc.nasa.gov/ssri-kb/topics/32/ [29] NASA Small Spacecraft Systems Virtual Institute, “Communications,” accessed: 2026-05-05. [Online]. Available: https://www.nasa.gov/small sat-institute/sst-soa/soa-communications/ [30] Kubernetes, “Nodes,” accessed: 2026-05-05. [Online]. Available: https://kubernetes.io/docs/concepts/architecture/nodes/ [31] Kubernetes, “Kubelet,” accessed: 2026-05-05. [Online]. Available: https: //kubernetes.io/docs/reference/command-line-tools-reference/kubelet/ [32] KubeEdge, “KubeEdge: Kubernetes native edge computing framework,” accessed: 2026-05-05. [Online]. Available: https://kubeedge.io/ [33] KubeEdge, “Cloud native edge computing satellite,” accessed: 2026-05-05. [Online]. Available: https://kubeedge.io/case-studies/satellite/ [34] A. Detti, S. Dadras, and G. Tropea, “NetSatBench: A distributed LEO constellation emulator with an SRv6 case study,” arXiv preprint arXiv:2604.27854 , 2026. [35] Z. Lai, H. Li, and J. Li, “StarPerf: Characterizing network performance for emerging mega-constellations,” in Proceedings of the IEEE Interna-tional Conference on Network Protocols (ICNP) , 2020, pp. 1–11. [36] Frontgrade Gaisler, “GR740: Radiation-hardened quad-core LEON4FT system-on-chip,” accessed: 2026-05-20. [Online]. Available: https: //www.gaisler.com/products/gr740 [37] NVIDIA, “NVIDIA Jetson AGX Orin series technical specifications,” accessed: 2026-05-20. [Online]. Available: https://www.nvidia.com/e n-us/autonomous-machines/embedded-systems/jetson-orin/ [38] H. Chen, M. McBride, S. Lindner, M. Menth, A. Wang, and G. Mishra, “BIER fast reroute (BIER-FRR),” Internet Engineering Task Force, Internet-Draft draft-ietf-bier-frr-10, Jul. 2025. [Online]. Available: https://datatracker.ietf.org/doc/draft-ietf-bier-frr/10/ [39] M. Abdollahi, W. Yang, and J. Pan, “BIER-Star: Stateless geographic multicast for scalable satellite-terrestrial integration,” in 2026 IEEE 23rd Consumer Communications & Networking Conference (CCNC) . IEEE, 2026, pp. 1–6.
