@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "extractor": "pymupdf-images",
+  "figures": [
+    {
+      "url": "assets/figures/osdi-2024-usenix/osdi-2024-chop-chop-byzantine-atomic-broadcast-to-the-network-limit/fig-001.webp",
+      "caption": "",
+      "page": 1,
+      "index": 1,
+      "width": 875,
+      "height": 356
+    },
+    {
+      "url": "assets/figures/osdi-2024-usenix/osdi-2024-chop-chop-byzantine-atomic-broadcast-to-the-network-limit/fig-002.webp",
+      "caption": "",
+      "page": 1,
+      "index": 2,
+      "width": 875,
+      "height": 360
+    }
+  ]
+}

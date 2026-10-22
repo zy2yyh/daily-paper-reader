@@ -1,0 +1,30 @@
+{
+  "version": 2,
+  "extractor": "pymupdf-images",
+  "figures": [
+    {
+      "url": "assets/figures/osdi-2024-usenix/osdi-2024-high-throughput-and-flexible-host-networking-for-accelerated-computing/fig-001.webp",
+      "caption": "",
+      "page": 1,
+      "index": 1,
+      "width": 875,
+      "height": 356
+    },
+    {
+      "url": "assets/figures/osdi-2024-usenix/osdi-2024-high-throughput-and-flexible-host-networking-for-accelerated-computing/fig-002.webp",
+      "caption": "",
+      "page": 1,
+      "index": 2,
+      "width": 875,
+      "height": 360
+    },
+    {
+      "url": "assets/figures/osdi-2024-usenix/osdi-2024-high-throughput-and-flexible-host-networking-for-accelerated-computing/fig-003.webp",
+      "caption": "",
+      "page": 5,
+      "index": 3,
+      "width": 490,
+      "height": 364
+    }
+  ]
+}

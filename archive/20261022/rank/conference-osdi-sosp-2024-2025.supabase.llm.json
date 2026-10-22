@@ -1,0 +1,1916 @@
+{
+  "top_k": 200,
+  "generated_at": "2026-10-22T04:42:45.530946+00:00",
+  "papers": [
+    {
+      "id": "osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale",
+      "source": "OSDI-2025-USENIX",
+      "title": "{Söze}: One Network Telemetry Is All You Need for Per-flow Weighted Bandwidth Allocation at Scale",
+      "abstract": "Weighted bandwidth allocation is a powerful abstraction that has a wide range of use cases in modern data center networks. However, realizing highly agile and precise weighted bandwidth allocation for large-scale cloud environments is fundamentally challenging. In this paper, we propose Söze, a lightweight decentralized weighted bandwidth allocation system that leverages simple network telemetry features of commodity Ethernet switches. Given the flow weights, Söze can effectively use the telemetry information to compute and enforce the weighted bandwidth allocations without per-flow, topology, or routing knowledge. We demonstrate the effectiveness of Söze through simulations and testbed experiments, improving TPC-H jobs completion time by up to 0.59× and 0.79× on average.",
+      "authors": [
+        "Weitao Wang",
+        "T. S. Eugene Ng"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2025-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi25/presentation/wang-weitao",
+      "pdf_url": "https://www.usenix.org/system/files/osdi25-wang-weitao.pdf",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training",
+      "source": "SOSP-2025-ACM",
+      "title": "Mycroft: Tracing Dependencies in Collective Communication Towards Reliable LLM Training",
+      "abstract": "Reliability is essential for ensuring efficiency in LLM training. However, many real-world reliability issues remain difficult to resolve, resulting in wasted resources and degraded model performance. Unfortunately, today's collective communication libraries operate as black boxes, hiding critical information needed for effective root cause analysis. We propose Mycroft, a lightweight distributed tracing and root cause analysis system designed to address previously hidden reliability issues in collective communication. Mycroft's key idea is to trace collective communication states and leverage internal control and data dependencies to resolve reliability problems in LLM training. Mycroft has been deployed at ByteDance for over six months to debug collective communication-related issues at runtime. It detected anomalies within 15 seconds in 90% of cases and identified the root cause within 20 seconds in 60% of cases. We also conducted extensive fault injection experiments to demonstrate Mycroft's capability and efficiency.",
+      "authors": [
+        "Yangtao Deng",
+        "Lei Zhang",
+        "Xiaoyun Zhi",
+        "Lei Wang",
+        "Gaohong Liu",
+        "Yang Bai",
+        "Wencong Xiao",
+        "Jianxi Ye",
+        "Minlan Yu",
+        "Hong Xu"
+      ],
+      "primary_category": "sosp",
+      "categories": [
+        "sosp",
+        "systems"
+      ],
+      "published": "2025-10-12T00:00:00+00:00",
+      "link": "https://dl.acm.org/doi/10.1145/3731569.3764848",
+      "pdf_url": "https://dl.acm.org/doi/pdf/10.1145/3731569.3764848",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "osdi-2024-accl-an-fpga-based-collective-engine-for-distributed-applications",
+      "source": "OSDI-2024-USENIX",
+      "title": "{ACCL+}: an {FPGA-Based} Collective Engine for Distributed Applications",
+      "abstract": "FPGAs are increasingly prevalent in cloud deployments, serving as Smart-NICs or network-attached accelerators. To facilitate the development of distributed applications with FPGAs, in this paper we propose ACCL+, an open-source, FPGA-based collective communication library. Portable across different platforms and supporting UDP, TCP, as well as RDMA, ACCL+ empowers FPGA applications to initiate direct FPGA-to-FPGA collective communication. Additionally, it can serve as a collective offload engine for CPU applications, freeing the CPU from networking tasks. It is user-extensible, allowing new collectives to be implemented and deployed without having to re-synthesize the entire design. We evaluated ACCL+ on an FPGA cluster with 100 Gb/s networking, comparing its performance against software MPI over RDMA. The results demonstrate ACCL+'s significant advantages for FPGA-based distributed applications and its competitive performance for CPU applications. We showcase ACCL+'s dual role with two use cases: as a collective offload engine to distribute CPU-based vector-matrix multiplication, and as a component in designing fully FPGA-based distributed deep-learning recommendation inference.",
+      "authors": [
+        "Zhenhao He",
+        "Dario Korolija",
+        "Yu Zhu",
+        "Benjamin Ramhorst",
+        "Tristan Laan",
+        "Lucian Petrica",
+        "Michaela Blott",
+        "Gustavo Alonso"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2024-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi24/presentation/he",
+      "pdf_url": "https://www.usenix.org/system/files/osdi24-he.pdf",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "sosp-2025-device-assisted-live-migration-of-rdma-devices",
+      "source": "SOSP-2025-ACM",
+      "title": "Device-Assisted Live Migration of RDMA Devices",
+      "abstract": "Recently, we have seen growing pressure to move highperformance workloads, such as HPC and AI, to cloud environments that offer more affordable and manageable infrastructure. These workloads require direct access to RDMA devices for high-performance communication. Device passthrough, however, violates the decoupling between the guest OS and the underlying hardware, making Live Migration (LM) extremely challenging [29, 38, 40, 42, 48]. This paper presents a method for migrating a collection of directly interacting hardware devices in a manner that is transparent to both the VM and its network peers. We propose a device-assisted solution that includes (a) a generic device-hypervisor interface, (b) the design and implementation of LM support for the NVIDIA ConnectX family of network adapters, and (c) a novel scheme to quiesce direct communication over the memory fabric (e.g., PCIe). We demonstrate transparent migration of HPC and AI workloads in accelerated virtual environments. Our approach incurs no runtime overhead or performance degradation after migration and achieves sub-second downtimes even for VMs with high RDMA resource utilization.",
+      "authors": [
+        "Liran Liss"
+      ],
+      "primary_category": "sosp",
+      "categories": [
+        "sosp",
+        "systems"
+      ],
+      "published": "2025-10-12T00:00:00+00:00",
+      "link": "https://dl.acm.org/doi/10.1145/3731569.3764795",
+      "pdf_url": "https://dl.acm.org/doi/pdf/10.1145/3731569.3764795",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization",
+      "source": "OSDI-2025-USENIX",
+      "title": "{ZEN}: Empowering Distributed Training with Sparsity-driven Data Synchronization",
+      "abstract": "Distributed training is the de facto standard to scale up the training of deep learning models with multiple GPUs. Its performance bottleneck lies in communications for gradient synchronization. Although high tensor sparsity is widely observed, the optimal communication scheme to fully leverage sparsity is still missing. This paper aims to bridge this gap. We first analyze the characteristics of sparse tensors in popular models to understand the fundamentals of sparsity. We then systematically explore the design space of communication schemes for sparse tensors and find the optimal ones. These findings give a new understanding and inspire us to develop a holistic gradient synchronization system for sparse tensors called ZEN. We demonstrate that ZEN can achieve up to 5.09x speedup in communication time and up to 2.48x speedup in training throughput compared to the state-of-the-art methods.",
+      "authors": [
+        "Zhuang Wang",
+        "Zhaozhuo Xu",
+        "Jingyi Xi",
+        "Yuke Wang",
+        "Anshumali Shrivastava",
+        "T. S. Eugene Ng"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2025-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi25/presentation/wang-zhuang",
+      "pdf_url": "https://www.usenix.org/system/files/osdi25-wang-zhuang.pdf",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "sosp-2024-enabling-parallelism-hot-switching-for-efficient-training-of-large-language-models",
+      "source": "SOSP-2024-ACM",
+      "title": "Enabling Parallelism Hot Switching for Efficient Training of Large Language Models",
+      "abstract": "Training of large-scale deep learning models necessitates parallelizing the model and data across numerous devices, and the choice of parallelism strategy substantially depends on the training workloads such as memory consumption, computation cost, and communication cost. Current approaches generally assume uniform training workloads across samples in a given task. Thus, existing systems are designed to adopt a static parallelism strategy throughout one training process. Nevertheless, when training models with sequence inputs, this assumption fails due to the sequence length variation across samples. Consequently, training with a static parallelism strategy would result in sub-optimal performance. In this paper, we first reveal the under-explored fact that the optimal parallelism strategy varies even for the sequences within a single mini-batch. Motivated by this, we present HotSPa, a novel system that adopts multiple parallelism strategies for efficient training with sequence inputs. To be specific, given a mini-batch of training sequences, HotSPa partitions them into multiple groups and applies different parallelism strategies to process each group individually. To enable the hot switching between strategies, HotSPa transfers model parameters and accumulated gradients among the devices on the fly. Significant solutions are proposed with the hope of seamless and rapid parallelism hot switching. Firstly, we design a graph compiler, which generates distributed computation graphs for different parallelism strategies simultaneously, and orchestrates them to share a single model storage backbone. Secondly, we develop a simple yet effective hot switch planner, which heuristically deduces communication plans to accelerate the transition of model partitioning given any pairs of strategies. Extensive experiments on large language model training demonstrate that HotSPa can be up to 2.99× faster than Megatron-LM and DeepSpeed that utilize static parallelism strategies. Source code is available: https://github.com/PKU-DAIR/Hetu.",
+      "authors": [
+        "Hao Ge",
+        "Fangcheng Fu",
+        "Haoyang Li",
+        "Xuanyu Wang",
+        "Sheng Lin",
+        "Yujie Wang",
+        "Xiaonan Nie",
+        "Hailin Zhang",
+        "Xupeng Miao",
+        "Bin Cui"
+      ],
+      "primary_category": "sosp",
+      "categories": [
+        "sosp",
+        "systems"
+      ],
+      "published": "2024-11-04T00:00:00+00:00",
+      "link": "https://dl.acm.org/doi/10.1145/3694715.3695969",
+      "pdf_url": "https://dl.acm.org/doi/pdf/10.1145/3694715.3695969",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "osdi-2024-optimizing-resource-allocation-in-hyperscale-datacenters-scalability-usability-and-experiences",
+      "source": "OSDI-2024-USENIX",
+      "title": "Optimizing Resource Allocation in Hyperscale Datacenters: Scalability, Usability, and Experiences",
+      "abstract": "Meta's private cloud uses millions of servers to host tens of thousands of services that power multiple products for billions of users. This complex environment has various optimization problems involving resource allocation, including hardware placement, server allocation, ML training & inference placement, traffic routing, database & container migration for load balancing, grouping serverless functions for locality, etc. The main challenges for a reusable resource-allocation framework are its usability and scalability. Usability is impeded by practitioners struggling to translate real-life policies into precise mathematical formulas required by formal optimization methods, while scalability is hampered by NP-hard problems that cannot be solved efficiently by commercial solvers. These challenges are addressed by Rebalancer, Meta's resource-allocation framework. It has been applied to dozens of large-scale use cases over the past seven years, demonstrating its usability, scalability, and generality. At the core of Rebalancer is an expression graph that enables its optimization algorithm to run more efficiently than past algorithms. Moreover, Rebalancer offers a high-level specification language to lower the barrier for adoption by systems practitioners.",
+      "authors": [
+        "Neeraj Kumar",
+        "Pol Mauri Ruiz",
+        "Vijay Menon",
+        "Igor Kabiljo",
+        "Mayank Pundir",
+        "Andrew Newell",
+        "Daniel Lee",
+        "Liyuan Wang",
+        "Chunqiang Tang"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2024-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi24/presentation/kumar",
+      "pdf_url": "https://www.usenix.org/system/files/osdi24-kumar.pdf",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "sosp-2024-swarm-replicating-shared-disaggregated-memory-data-in-no-time",
+      "source": "SOSP-2024-ACM",
+      "title": "SWARM: Replicating Shared Disaggregated-Memory Data in No Time",
+      "abstract": "Memory disaggregation is an emerging data center architecture that improves resource utilization and scalability. Replication is key to ensure the fault tolerance of applications, but replicating shared data in disaggregated memory is hard. We propose SWARM (Swift WAit-free Replication in disaggregated Memory), the first replication scheme for in-disaggregated-memory shared objects to provide (1) single-roundtrip reads and writes in the common case, (2) strong consistency (linearizability), and (3) strong liveness (wait-freedom). SWARM makes two independent contributions. The first is Safe-Guess, a novel wait-free replication protocol with single-roundtrip operations. The second is In-n-Out, a novel technique to provide conditional atomic update and atomic retrieval of large buffers in disaggregated memory in one roundtrip. Using SWARM, we build SWARM-KV, a low-latency, strongly consistent and highly available disaggregated key-value store. We evaluate SWARM-KV and find that it has marginal latency overhead compared to an unreplicated key-value store, and that it offers much lower latency and better availability than FUSEE, a state-of-the-art replicated disaggregated key-value store.",
+      "authors": [
+        "Antoine Murat",
+        "Clément Burgelin",
+        "Athanasios Xygkis",
+        "Igor Zablotchi",
+        "Marcos K. Aguilera",
+        "Rachid Guerraoui"
+      ],
+      "primary_category": "sosp",
+      "categories": [
+        "sosp",
+        "systems"
+      ],
+      "published": "2024-11-04T00:00:00+00:00",
+      "link": "https://dl.acm.org/doi/10.1145/3694715.3695945",
+      "pdf_url": "https://dl.acm.org/doi/pdf/10.1145/3694715.3695945",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "osdi-2025-finemem-breaking-the-allocation-overhead-vs-memory-waste-dilemma-in-fine-grained-disaggregated-memory-management",
+      "source": "OSDI-2025-USENIX",
+      "title": "{FineMem}: Breaking the Allocation Overhead vs. Memory Waste Dilemma in {Fine-Grained} Disaggregated Memory Management",
+      "abstract": "RDMA-enabled memory disaggregation has emerged as an attractive approach to reducing memory costs in modern data centers. While RDMA enables efficient remote read/write operations, it presents challenges in remote memory (de)allocation. Consequently, existing systems adopt coarse-grained allocations (in GBs), leading to memory waste. We introduce FineMem, an RDMA-connected remote memory management system that enables high-performance, fine-grained memory allocation. FineMem addresses latency and scalability challenges related to fine-grained allocations. It removes RDMA memory region (MR) registration costs from allocation paths through per-compute node MR pre-registration, while ensuring remote memory isolation using RDMA memory windows and a trusted allocation service on each compute node. It employs a lock-free, one-sided RDMA-based protocol to allocate memory chunks (e.g., 4KB, 2MB) without involving the memory node's CPU and maintains metadata consistency during compute node failures via logging. We show that FineMem reduces remote memory allocation latency by as much as 95% compared to state-of-the-art remote memory management systems. It enables memory malloc systems, key-value stores systems, and swap systems running on FineMem to achieve low memory waste with minimal overhead.",
+      "authors": [
+        "Xiaoyang Wang",
+        "Yongkun Li",
+        "Kan Wu",
+        "Wenzhe Zhu",
+        "Yuqi Li",
+        "Yinlong Xu"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2025-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi25/presentation/wang-xiaoyang",
+      "pdf_url": "https://www.usenix.org/system/files/osdi25-wang-xiaoyang.pdf",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "osdi-2025-enabling-efficient-gpu-communication-over-multiple-nics-with-fuselink",
+      "source": "OSDI-2025-USENIX",
+      "title": "Enabling Efficient {GPU} Communication over Multiple {NICs} with {FuseLink}",
+      "abstract": "Machine learning (ML) clusters stack multiple network interface cards (NICs) within each server to improve inter-server GPU communication bandwidth. However, existing systems fall short in fully utilizing NICs because of static GPU-NIC bindings. This leads to bottlenecks at hot-spot NICs when handling imbalanced communication in ML tasks. For example, large language model serving instances may have different communication demands across NICs; expert-parallel training tasks have imbalanced all-to-all traffic; and the embedding transmission volumes during recommendation model training vary across GPUs. To fully utilize all NICs, we propose FuseLink to enable efficient GPU communication over multiple NICs. FuseLink extends inter-server network by integrating high-speed intra-server connections, and leverages GPUs to efficiently relay traffic to idle NICs. We implement FuseLink and integrate it into NCCL, so that ML applications can benefit from FuseLink seamlessly without code modifications. Compared to NCCL, we demonstrate that FuseLink achieves up to 212GBps bandwidth between two inter-server GPUs and accelerates ML tasks with dynamic traffic patterns. Specifically, it reduces the latencies of first-token generation in LLM model servings by 1.04-2.73×, improves the training throughput of mixture-of-experts model by up to 1.3×, and accelerates deep learning recommendation model training by up to 1.2×.",
+      "authors": [
+        "Zhenghang Ren",
+        "Yuxuan Li",
+        "Zilong Wang",
+        "Xinyang Huang",
+        "Wenxue Li",
+        "Kaiqiang Xu",
+        "Xudong Liao",
+        "Yijun Sun",
+        "Bowen Liu",
+        "Han Tian",
+        "Junxue Zhang",
+        "Mingfei Wang",
+        "Zhizhen Zhong",
+        "Guyue Liu",
+        "Ying Zhang",
+        "Kai Chen"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2025-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi25/presentation/ren",
+      "pdf_url": "https://www.usenix.org/system/files/osdi25-ren.pdf",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "osdi-2025-picsou-enabling-replicated-state-machines-to-communicate-efficiently",
+      "source": "OSDI-2025-USENIX",
+      "title": "Picsou: Enabling Replicated State Machines to Communicate Efficiently",
+      "abstract": "Replicated state machines (RSMs) cannot communicate effectively today as there is no formal framework or efficient protocol to do so. To address this issue, we introduce a new primitive, Cross-Cluster Consistent Broadcast (C3B) and present Picsou, a practical C3B implementation. Picsou draws inspiration from networking and TCP to allow two RSMs to communicate with constant metadata overhead in the failure-free case and a minimal number of message resends in the case of failures. Picsou is flexible and allows both crash fault tolerant and Byzantine fault tolerant protocols to communicate. At the heart of Picsou's good performance and generality is the concept of Quacks (quorum acknowledgments). Quacks allow nodes in each RSM to precisely determine when messages have definitely been received, or likely lost. Our results are promising: we obtain up to 24× better performance than prior solutions on microbenchmarks and applications, ranging from disaster recovery to data reconciliation.",
+      "authors": [
+        "Reginald Frank",
+        "Micah Murray",
+        "Chawinphat Tankuranand",
+        "Junseo Yoo",
+        "Ethan Xu",
+        "Natacha Crooks",
+        "Suyash Gupta",
+        "Manos Kapritsos"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2025-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi25/presentation/frank",
+      "pdf_url": "https://www.usenix.org/system/files/osdi25-frank.pdf",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "osdi-2024-mast-global-scheduling-of-ml-training-across-geo-distributed-datacenters-at-hyperscale",
+      "source": "OSDI-2024-USENIX",
+      "title": "{MAST}: Global Scheduling of {ML} Training across {Geo-Distributed} Datacenters at Hyperscale",
+      "abstract": "In public clouds, users must manually select a datacenter region to upload their ML training data and launch ML training workloads in the same region to ensure data and computation colocation. Unfortunately, isolated decisions by individual users can lead to a mismatch between workload demand and hardware supply across regions, hurting the cloud provider's hardware utilization and profitability. To address this problem in Meta's hyperscale private cloud, we provide a global-scheduling abstraction to all ML training workloads. Users simply submit their training workloads to MAST, our global scheduler, and rely on it to intelligently place both data and training workloads to different regions. We describe three design principles that enable MAST to schedule complex ML training workloads at a global scale: temporal decoupling, scope decoupling, and exhaustive search. MAST successfully balances the load across global regions. Before MAST, the most overloaded region had a GPU demand-to-supply ratio of 2.63 for high-priority workloads. With MAST, this ratio has been reduced to 0.98, effectively eliminating the overload.",
+      "authors": [
+        "Arnab Choudhury",
+        "Yang Wang",
+        "Tuomas Pelkonen",
+        "Kutta Srinivasan",
+        "Abha Jain",
+        "Shenghao Lin",
+        "Delia David",
+        "Siavash Soleimanifard",
+        "Michael Chen",
+        "Abhishek Yadav",
+        "Ritesh Tijoriwala",
+        "Denis Samoylov",
+        "Chunqiang Tang"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2024-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi24/presentation/choudhury",
+      "pdf_url": "https://www.usenix.org/system/files/osdi24-choudhury.pdf",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "osdi-2024-chop-chop-byzantine-atomic-broadcast-to-the-network-limit",
+      "source": "OSDI-2024-USENIX",
+      "title": "Chop Chop: Byzantine Atomic Broadcast to the Network Limit",
+      "abstract": "At the heart of state machine replication, the celebrated technique enabling decentralized and secure universal computation, lies Atomic Broadcast, a fundamental communication primitive that orders, authenticates, and deduplicates messages. This paper presents Chop Chop, a Byzantine Atomic Broadcast system that uses a novel authenticated memory pool to amortize the cost of ordering, authenticating and deduplicating messages, achieving \"line rate\" (i.e., closely matching the complexity of a protocol that does not ensure any ordering, authentication or Byzantine resilience) even when processing messages as small as 8 bytes. Chop Chop attains this performance by means of a new form of batching we call distillation. A distilled batch is a set of messages that are fast to authenticate, deduplicate, and order. Batches are distilled using a novel interactive protocol involving brokers, an untrusted layer of facilitating processes between clients and servers. In a geo-distributed deployment of 64 medium-sized servers, Chop Chop processes 43,600,000 messages per second with an average latency of 3.6 seconds. Under the same conditions, state-of-the-art alternatives offer two orders of magnitude less throughput for the same latency. We showcase three simple Chop Chop applications: a Payment system, an Auction house and a \"Pixel war\" game, respectively achieving 32, 2.3 and 35 million operations per second.",
+      "authors": [
+        "Martina Camaioni",
+        "Rachid Guerraoui",
+        "Matteo Monti",
+        "Pierre-Louis Roman",
+        "Manuel Vidigueira",
+        "Gauthier Voron"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2024-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi24/presentation/camaioni",
+      "pdf_url": "https://www.usenix.org/system/files/osdi24-camaioni.pdf",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "osdi-2024-high-throughput-and-flexible-host-networking-for-accelerated-computing",
+      "source": "OSDI-2024-USENIX",
+      "title": "High-throughput and Flexible Host Networking for Accelerated Computing",
+      "abstract": "Modern network hardware is able to meet the stringent bandwidth demands of applications like GPU-accelerated AI. However, existing host network stacks offer a hard tradeoff between performance (in terms of sustained throughput when compared to network hardware capacity) and flexibility (in terms of the ability to select, customize, and extend different network protocols). This paper explores a clean-slate approach to simultaneously offer high performance and flexibility. We present a co-design of the NIC hardware and the software stack to achieve this. The key idea in our design is the physical separation of the data path (payload transfer between network and application buffers) and the control path (header processing and transport-layer decisions). The NIC enables a high-performance zero-copy data path, independent of the placement of the application (CPU, GPU, FPGA, or other accelerators). The software stack provides a flexible control path by enabling the integration of any network protocol, executing in any environment (in the kernel, in user space, or in an accelerator). We implement and evaluate ZeroNIC, a prototype that combines an FPGA-based NIC with a software stack that integrates the Linux TCP protocol. We demonstrate that ZeroNIC achieves RDMA-like throughput while maintaining the benefits of robust protocols like TCP under various network perturbations. For instance, ZeroNIC enables a single TCP flow to saturate a 100Gbps link while utilizing only 17% of a single CPU core. ZeroNIC improves NCCL and Redis throughput by 2.66X and 3.71X, respectively, over Linux TCP on a Mellanox ConnectX-6 NIC, without requiring application modifications.",
+      "authors": [
+        "Athinagoras Skiadopoulos",
+        "Zhiqiang Xie",
+        "Mark Zhao",
+        "Qizhe Cai",
+        "Saksham Agarwal",
+        "Jacob Adelmann",
+        "David Ahern",
+        "Carlo Contavalli",
+        "Michael Goldflam",
+        "Vitaly Mayatskikh",
+        "Raghu Raja",
+        "Daniel Walton",
+        "Rachit Agarwal",
+        "Shrijeet Mukherjee",
+        "Christos Kozyrakis"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2024-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi24/presentation/skiadopoulos",
+      "pdf_url": "https://www.usenix.org/system/files/osdi24-skiadopoulos.pdf",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "sosp-2024-dns-congestion-control-in-adversarial-settings",
+      "source": "SOSP-2024-ACM",
+      "title": "DNS Congestion Control in Adversarial Settings",
+      "abstract": "We instigate the study of adversarial congestion in the context of the Domain Name System (DNS). By strategically choking inter-server channels, this new type of DoS attack can disrupt a large user group's access to target DNS servers at a low cost. In reminiscence of classic network congestion control, we propose a DNS congestion control (DCC) framework as a fundamental yet practical mitigation measure for such attacks. With an optimized fair-queuing message scheduler, DCC ensures benign clients fair access to inter-server channels regardless of an attacker's behavior; with a set of extensible anomaly detection and signaling mechanisms, it minimizes collateral damage to innocuous clients. We architect DCC in a non-invasive style so that it can readily augment existing DNS servers. Our prototype evaluation demonstrates that DCC effectively mitigates adversarial congestion while incurring minor performance overheads.",
+      "authors": [
+        "Huayi Duan",
+        "Jihye Kim",
+        "Marc Wyss",
+        "Adrian Perrig"
+      ],
+      "primary_category": "sosp",
+      "categories": [
+        "sosp",
+        "systems"
+      ],
+      "published": "2024-11-04T00:00:00+00:00",
+      "link": "https://dl.acm.org/doi/10.1145/3694715.3695982",
+      "pdf_url": "https://dl.acm.org/doi/pdf/10.1145/3694715.3695982",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "osdi-2025-blitzscale-fast-and-live-large-model-autoscaling-with-o-1-host-caching",
+      "source": "OSDI-2025-USENIX",
+      "title": "{BlitzScale}: Fast and Live Large Model Autoscaling with O(1) Host Caching",
+      "abstract": "Model autoscaling is the key mechanism to achieve serverless model-as-a-service, but it faces a fundamental trade-off between scaling speed and storage/memory usage to cache parameters, and cannot meet frequent scaling requirements across multiple hosts. The key problem is that data plane performance is slow, and scaled instances remain stopped while parameters are loading. In this paper, we first show that the data plane can be made fast with no or O(1) caching by loading parameters through the compute network between GPUs because: (1) its speed is comparable to host cache and is underutilized, and (2) scaling multiple instances requires no or O(1) caching with network-optimized multicast. Second, autoscaling can be made live by breaking the scaling abstraction for inference from a coarse-grained instance-level to a fine-grained layer-level. This allows us to offload the layer computation from the overloaded serving instances to the scaled ones without waiting for the parameters to be fully loaded. Under real-world workloads, our system BLITZSCALE achieves up to 94 % lower tail latency reductions compared to state-of-the-art autoscaling system (ServerlessLLM), and it reduces the GPU time used for serving by 49 % when compared with serving systems that do not support autoscaling like DistServe and vLLM with the same service-level-agreement.",
+      "authors": [
+        "Dingyan Zhang",
+        "Haotian Wang",
+        "Yang Liu",
+        "Xingda Wei",
+        "Yizhou Shan",
+        "Rong Chen",
+        "Haibo Chen"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2025-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi25/presentation/zhang-dingyan",
+      "pdf_url": "https://www.usenix.org/system/files/osdi25-zhang-dingyan.pdf",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "osdi-2025-wlb-llm-workload-balanced-4d-parallelism-for-large-language-model-training",
+      "source": "OSDI-2025-USENIX",
+      "title": "{WLB-LLM}: {Workload-Balanced} 4D Parallelism for Large Language Model Training",
+      "abstract": "In this work, we present WLB-LLM , a W ork L oad- B alanced 4D Parallelism for L arge L anguage M odel Training. We first thoroughly analyze the workload imbalance issue in LLM training and identify two primary sources of imbalance at the pipeline parallelism and context parallelism levels. Then, to address the imbalance issue, at the pipeline parallelism level, WLB-LLM incorporates a workload-aware variable-length document packing method to balance the computation and communication workload across micro-batches. Additionally, at the context parallelism level, WLB-LLM introduces a novel fine-grained per-document sharding strategy, ensuring each worker within a context parallelism group has an identical workload. Comprehensive experiments under different model scales demonstrate that WLB-LLM significantly mitigates the workload imbalance during 4D parallelism LLM training and achieves an average speedup of 1.23× when applying WLB-LLM in our internal LLM training framework.",
+      "authors": [
+        "Zheng Wang",
+        "Anna Cai",
+        "Xinfeng Xie",
+        "Zaifeng Pan",
+        "Yue Guan",
+        "Weiwei Chu",
+        "Jie Wang",
+        "Shikai Li",
+        "Jianyu Huang",
+        "Chris Cai",
+        "Yuchen Hao",
+        "Yufei Ding"
+      ],
+      "primary_category": "osdi",
+      "categories": [
+        "osdi",
+        "systems"
+      ],
+      "published": "2025-01-01T00:00:00+00:00",
+      "link": "https://www.usenix.org/conference/osdi25/presentation/wang-zheng",
+      "pdf_url": "https://www.usenix.org/system/files/osdi25-wang-zheng.pdf",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    },
+    {
+      "id": "sosp-2025-dcp-addressing-input-dynamism-in-long-context-training-via-dynamic-context-parallelism",
+      "source": "SOSP-2025-ACM",
+      "title": "DCP: Addressing Input Dynamism In Long-Context Training via Dynamic Context Parallelism",
+      "abstract": "Context parallelism has emerged as a key technique to support long-context training, a growing trend in generative AI for modern large models. However, existing context parallel methods rely on static parallelization configurations that overlook the dynamic nature of training data, specifically, the variability in sequence lengths and token relationships (i.e., attention patterns) across samples. As a result, these methods often suffer from unnecessary communication overhead and imbalanced computation. In this paper, we present DCP, a dynamic context parallel training framework that introduces fine-grained blockwise partitioning of both data and computation. By enabling flexible mapping of data and computation blocks to devices, DCP can adapt to varying sequence characteristics, effectively reducing communication and improving memory and computation balance. Micro-benchmarks demonstrate that DCP accelerates attention by 1.19x~2.45x under causal masks and 2.15x~3.77x under sparse attention patterns. Additionally, we observe up to 0.94x~1.16x end-to-end training speed-up for causal masks, and 1.00x~1.46x for sparse masks.",
+      "authors": [
+        "Chenyu Jiang",
+        "Zhenkun Cai",
+        "Ye Tian",
+        "Yida Wang",
+        "Chuan Wu"
+      ],
+      "primary_category": "sosp",
+      "categories": [
+        "sosp",
+        "systems"
+      ],
+      "published": "2025-10-12T00:00:00+00:00",
+      "link": "https://dl.acm.org/doi/10.1145/3731569.3764849",
+      "pdf_url": "https://dl.acm.org/doi/pdf/10.1145/3731569.3764849",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ]
+    }
+  ],
+  "queries": [
+    {
+      "type": "intent_query",
+      "tag": "dcn-comm",
+      "paper_tag": "query:dcn-comm",
+      "query_text": "How to design collective communication algorithms for data center networks",
+      "sim_scores": {
+        "sosp-2024-swarm-replicating-shared-disaggregated-memory-data-in-no-time": {
+          "score": 0.01639344262295082,
+          "rank": 1
+        },
+        "osdi-2024-accl-an-fpga-based-collective-engine-for-distributed-applications": {
+          "score": 0.015873015873015872,
+          "rank": 3
+        },
+        "osdi-2024-optimizing-resource-allocation-in-hyperscale-datacenters-scalability-usability-and-experiences": {
+          "score": 0.015625,
+          "rank": 4
+        },
+        "osdi-2025-picsou-enabling-replicated-state-machines-to-communicate-efficiently": {
+          "score": 0.015384615384615385,
+          "rank": 5
+        },
+        "osdi-2024-chop-chop-byzantine-atomic-broadcast-to-the-network-limit": {
+          "score": 0.015151515151515152,
+          "rank": 6
+        },
+        "osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale": {
+          "score": 0.013888888888888888,
+          "rank": 12
+        },
+        "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training": {
+          "score": 0.013513513513513514,
+          "rank": 14
+        },
+        "osdi-2025-enabling-efficient-gpu-communication-over-multiple-nics-with-fuselink": {
+          "score": 0.013157894736842105,
+          "rank": 16
+        },
+        "sosp-2024-dns-congestion-control-in-adversarial-settings": {
+          "score": 0.011764705882352941,
+          "rank": 25
+        },
+        "osdi-2025-finemem-breaking-the-allocation-overhead-vs-memory-waste-dilemma-in-fine-grained-disaggregated-memory-management": {
+          "score": 0.011111111111111112,
+          "rank": 30
+        },
+        "osdi-2024-high-throughput-and-flexible-host-networking-for-accelerated-computing": {
+          "score": 0.010752688172043012,
+          "rank": 33
+        },
+        "osdi-2024-mast-global-scheduling-of-ml-training-across-geo-distributed-datacenters-at-hyperscale": {
+          "score": 0.010416666666666666,
+          "rank": 36
+        },
+        "sosp-2025-device-assisted-live-migration-of-rdma-devices": {
+          "score": 0.00980392156862745,
+          "rank": 42
+        }
+      },
+      "ranked": [
+        {
+          "paper_id": "osdi-2024-accl-an-fpga-based-collective-engine-for-distributed-applications",
+          "score": 1.0,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "osdi-2024-mast-global-scheduling-of-ml-training-across-geo-distributed-datacenters-at-hyperscale",
+          "score": 1.0,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training",
+          "score": 0.9586435070306036,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "osdi-2024-optimizing-resource-allocation-in-hyperscale-datacenters-scalability-usability-and-experiences",
+          "score": 0.9586435070306036,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale",
+          "score": 0.9185999185999183,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "osdi-2024-chop-chop-byzantine-atomic-broadcast-to-the-network-limit",
+          "score": 0.9185999185999183,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "osdi-2025-enabling-efficient-gpu-communication-over-multiple-nics-with-fuselink",
+          "score": 0.8798076923076922,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2025-picsou-enabling-replicated-state-machines-to-communicate-efficiently",
+          "score": 0.8422090729783037,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2024-high-throughput-and-flexible-host-networking-for-accelerated-computing",
+          "score": 0.8057498057498057,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "sosp-2025-device-assisted-live-migration-of-rdma-devices",
+          "score": 0.8057498057498057,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization",
+          "score": 0.7703788748564866,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "sosp-2024-enabling-parallelism-hot-switching-for-efficient-training-of-large-language-models",
+          "score": 0.702712746191007,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2025-wlb-llm-workload-balanced-4d-parallelism-for-large-language-model-training",
+          "score": 0.608262108262108,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "sosp-2024-dns-congestion-control-in-adversarial-settings",
+          "score": 0.46719946719946726,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "sosp-2025-dcp-addressing-input-dynamism-in-long-context-training-via-dynamic-context-parallelism",
+          "score": 0.41577409931840303,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "osdi-2025-blitzscale-fast-and-live-large-model-autoscaling-with-o-1-host-caching",
+          "score": 0.3668882557771445,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "sosp-2024-swarm-replicating-shared-disaggregated-memory-data-in-no-time",
+          "score": 0.2760180995475112,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "osdi-2025-finemem-breaking-the-allocation-overhead-vs-memory-waste-dilemma-in-fine-grained-disaggregated-memory-management",
+          "score": 0.0483743061062648,
+          "star_rating": 2
+        }
+      ]
+    },
+    {
+      "type": "intent_query",
+      "tag": "dcn-comm",
+      "paper_tag": "query:dcn-comm",
+      "query_text": "How to optimize communication overhead in distributed training over data center fabrics",
+      "sim_scores": {
+        "osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization": {
+          "score": 0.016129032258064516,
+          "rank": 2
+        },
+        "osdi-2024-mast-global-scheduling-of-ml-training-across-geo-distributed-datacenters-at-hyperscale": {
+          "score": 0.015873015873015872,
+          "rank": 3
+        },
+        "osdi-2025-enabling-efficient-gpu-communication-over-multiple-nics-with-fuselink": {
+          "score": 0.015625,
+          "rank": 4
+        },
+        "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training": {
+          "score": 0.015384615384615385,
+          "rank": 5
+        },
+        "sosp-2025-dcp-addressing-input-dynamism-in-long-context-training-via-dynamic-context-parallelism": {
+          "score": 0.015151515151515152,
+          "rank": 6
+        },
+        "osdi-2025-wlb-llm-workload-balanced-4d-parallelism-for-large-language-model-training": {
+          "score": 0.014925373134328358,
+          "rank": 7
+        },
+        "sosp-2024-swarm-replicating-shared-disaggregated-memory-data-in-no-time": {
+          "score": 0.014084507042253521,
+          "rank": 11
+        },
+        "osdi-2024-optimizing-resource-allocation-in-hyperscale-datacenters-scalability-usability-and-experiences": {
+          "score": 0.013888888888888888,
+          "rank": 12
+        },
+        "osdi-2024-accl-an-fpga-based-collective-engine-for-distributed-applications": {
+          "score": 0.0136986301369863,
+          "rank": 13
+        },
+        "osdi-2025-finemem-breaking-the-allocation-overhead-vs-memory-waste-dilemma-in-fine-grained-disaggregated-memory-management": {
+          "score": 0.013513513513513514,
+          "rank": 14
+        },
+        "sosp-2024-enabling-parallelism-hot-switching-for-efficient-training-of-large-language-models": {
+          "score": 0.012987012987012988,
+          "rank": 17
+        },
+        "sosp-2024-dns-congestion-control-in-adversarial-settings": {
+          "score": 0.01282051282051282,
+          "rank": 18
+        },
+        "osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale": {
+          "score": 0.011764705882352941,
+          "rank": 25
+        },
+        "sosp-2025-device-assisted-live-migration-of-rdma-devices": {
+          "score": 0.01020408163265306,
+          "rank": 38
+        }
+      },
+      "ranked": [
+        {
+          "paper_id": "osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization",
+          "score": 1.0,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "osdi-2024-mast-global-scheduling-of-ml-training-across-geo-distributed-datacenters-at-hyperscale",
+          "score": 1.0,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "osdi-2025-enabling-efficient-gpu-communication-over-multiple-nics-with-fuselink",
+          "score": 0.9586435070306036,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "sosp-2025-dcp-addressing-input-dynamism-in-long-context-training-via-dynamic-context-parallelism",
+          "score": 0.9185999185999183,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "osdi-2024-optimizing-resource-allocation-in-hyperscale-datacenters-scalability-usability-and-experiences",
+          "score": 0.8798076923076922,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training",
+          "score": 0.8798076923076922,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2025-picsou-enabling-replicated-state-machines-to-communicate-efficiently",
+          "score": 0.8057498057498057,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2025-wlb-llm-workload-balanced-4d-parallelism-for-large-language-model-training",
+          "score": 0.7703788748564866,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "sosp-2024-enabling-parallelism-hot-switching-for-efficient-training-of-large-language-models",
+          "score": 0.73604826546003,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2025-finemem-breaking-the-allocation-overhead-vs-memory-waste-dilemma-in-fine-grained-disaggregated-memory-management",
+          "score": 0.6703296703296702,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2025-blitzscale-fast-and-live-large-model-autoscaling-with-o-1-host-caching",
+          "score": 0.6388587937883712,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale",
+          "score": 0.578503688092729,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2024-chop-chop-byzantine-atomic-broadcast-to-the-network-limit",
+          "score": 0.578503688092729,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "sosp-2025-device-assisted-live-migration-of-rdma-devices",
+          "score": 0.5495495495495496,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2024-high-throughput-and-flexible-host-networking-for-accelerated-computing",
+          "score": 0.5213675213675214,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2024-accl-an-fpga-based-collective-engine-for-distributed-applications",
+          "score": 0.46719946719946726,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "sosp-2024-swarm-replicating-shared-disaggregated-memory-data-in-no-time",
+          "score": 0.3910256410256411,
+          "star_rating": 3
+        }
+      ]
+    },
+    {
+      "type": "intent_query",
+      "tag": "dcn-comm",
+      "paper_tag": "query:dcn-comm",
+      "query_text": "What network scheduling and congestion control techniques improve collective communication performance",
+      "sim_scores": {
+        "osdi-2024-accl-an-fpga-based-collective-engine-for-distributed-applications": {
+          "score": 0.01639344262295082,
+          "rank": 1
+        },
+        "sosp-2024-dns-congestion-control-in-adversarial-settings": {
+          "score": 0.016129032258064516,
+          "rank": 2
+        },
+        "osdi-2025-picsou-enabling-replicated-state-machines-to-communicate-efficiently": {
+          "score": 0.015873015873015872,
+          "rank": 3
+        },
+        "sosp-2024-swarm-replicating-shared-disaggregated-memory-data-in-no-time": {
+          "score": 0.015625,
+          "rank": 4
+        },
+        "osdi-2024-chop-chop-byzantine-atomic-broadcast-to-the-network-limit": {
+          "score": 0.015384615384615385,
+          "rank": 5
+        },
+        "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training": {
+          "score": 0.015151515151515152,
+          "rank": 6
+        },
+        "osdi-2025-enabling-efficient-gpu-communication-over-multiple-nics-with-fuselink": {
+          "score": 0.014084507042253521,
+          "rank": 11
+        },
+        "osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale": {
+          "score": 0.013157894736842105,
+          "rank": 16
+        },
+        "osdi-2024-optimizing-resource-allocation-in-hyperscale-datacenters-scalability-usability-and-experiences": {
+          "score": 0.012658227848101266,
+          "rank": 19
+        },
+        "osdi-2024-high-throughput-and-flexible-host-networking-for-accelerated-computing": {
+          "score": 0.0125,
+          "rank": 20
+        },
+        "osdi-2025-finemem-breaking-the-allocation-overhead-vs-memory-waste-dilemma-in-fine-grained-disaggregated-memory-management": {
+          "score": 0.010752688172043012,
+          "rank": 33
+        },
+        "osdi-2024-mast-global-scheduling-of-ml-training-across-geo-distributed-datacenters-at-hyperscale": {
+          "score": 0.01020408163265306,
+          "rank": 38
+        },
+        "osdi-2025-blitzscale-fast-and-live-large-model-autoscaling-with-o-1-host-caching": {
+          "score": 0.010101010101010102,
+          "rank": 39
+        },
+        "sosp-2025-device-assisted-live-migration-of-rdma-devices": {
+          "score": 0.01,
+          "rank": 40
+        }
+      },
+      "ranked": [
+        {
+          "paper_id": "sosp-2024-dns-congestion-control-in-adversarial-settings",
+          "score": 1.0,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training",
+          "score": 1.0,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "osdi-2024-chop-chop-byzantine-atomic-broadcast-to-the-network-limit",
+          "score": 0.9586435070306036,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "osdi-2024-accl-an-fpga-based-collective-engine-for-distributed-applications",
+          "score": 0.9586435070306036,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "osdi-2025-picsou-enabling-replicated-state-machines-to-communicate-efficiently",
+          "score": 0.8798076923076922,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2025-enabling-efficient-gpu-communication-over-multiple-nics-with-fuselink",
+          "score": 0.8422090729783037,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale",
+          "score": 0.73604826546003,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization",
+          "score": 0.73604826546003,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2024-mast-global-scheduling-of-ml-training-across-geo-distributed-datacenters-at-hyperscale",
+          "score": 0.702712746191007,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "sosp-2025-device-assisted-live-migration-of-rdma-devices",
+          "score": 0.6703296703296702,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2024-high-throughput-and-flexible-host-networking-for-accelerated-computing",
+          "score": 0.608262108262108,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2025-wlb-llm-workload-balanced-4d-parallelism-for-large-language-model-training",
+          "score": 0.49392712550607265,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "osdi-2025-blitzscale-fast-and-live-large-model-autoscaling-with-o-1-host-caching",
+          "score": 0.3668882557771445,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "sosp-2024-swarm-replicating-shared-disaggregated-memory-data-in-no-time",
+          "score": 0.29792429792429775,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "sosp-2025-dcp-addressing-input-dynamism-in-long-context-training-via-dynamic-context-parallelism",
+          "score": 0.23371647509578536,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "osdi-2024-optimizing-resource-allocation-in-hyperscale-datacenters-scalability-usability-and-experiences",
+          "score": 0.21328671328671328,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "sosp-2024-enabling-parallelism-hot-switching-for-efficient-training-of-large-language-models",
+          "score": 0.1933160472486314,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "osdi-2025-finemem-breaking-the-allocation-overhead-vs-memory-waste-dilemma-in-fine-grained-disaggregated-memory-management",
+          "score": 0.015799015799015898,
+          "star_rating": 2
+        }
+      ]
+    },
+    {
+      "type": "intent_query",
+      "tag": "dcn-comm",
+      "paper_tag": "query:dcn-comm",
+      "query_text": "What topology aware routing and in network aggregation methods support scalable collective communication",
+      "sim_scores": {
+        "osdi-2024-accl-an-fpga-based-collective-engine-for-distributed-applications": {
+          "score": 0.01639344262295082,
+          "rank": 1
+        },
+        "sosp-2024-swarm-replicating-shared-disaggregated-memory-data-in-no-time": {
+          "score": 0.015873015873015872,
+          "rank": 3
+        },
+        "osdi-2025-enabling-efficient-gpu-communication-over-multiple-nics-with-fuselink": {
+          "score": 0.015625,
+          "rank": 4
+        },
+        "osdi-2025-picsou-enabling-replicated-state-machines-to-communicate-efficiently": {
+          "score": 0.015384615384615385,
+          "rank": 5
+        },
+        "sosp-2024-dns-congestion-control-in-adversarial-settings": {
+          "score": 0.015151515151515152,
+          "rank": 6
+        },
+        "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training": {
+          "score": 0.014705882352941176,
+          "rank": 8
+        },
+        "osdi-2024-chop-chop-byzantine-atomic-broadcast-to-the-network-limit": {
+          "score": 0.014492753623188406,
+          "rank": 9
+        },
+        "osdi-2024-optimizing-resource-allocation-in-hyperscale-datacenters-scalability-usability-and-experiences": {
+          "score": 0.012658227848101266,
+          "rank": 19
+        },
+        "osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale": {
+          "score": 0.0125,
+          "rank": 20
+        },
+        "osdi-2024-high-throughput-and-flexible-host-networking-for-accelerated-computing": {
+          "score": 0.012345679012345678,
+          "rank": 21
+        },
+        "osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization": {
+          "score": 0.012048192771084338,
+          "rank": 23
+        },
+        "sosp-2025-device-assisted-live-migration-of-rdma-devices": {
+          "score": 0.011627906976744186,
+          "rank": 26
+        },
+        "osdi-2025-blitzscale-fast-and-live-large-model-autoscaling-with-o-1-host-caching": {
+          "score": 0.009345794392523364,
+          "rank": 47
+        }
+      },
+      "ranked": [
+        {
+          "paper_id": "osdi-2024-accl-an-fpga-based-collective-engine-for-distributed-applications",
+          "score": 1.0,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "osdi-2024-chop-chop-byzantine-atomic-broadcast-to-the-network-limit",
+          "score": 1.0,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale",
+          "score": 0.9586435070306036,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "osdi-2025-picsou-enabling-replicated-state-machines-to-communicate-efficiently",
+          "score": 0.9586435070306036,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training",
+          "score": 0.9185999185999183,
+          "star_rating": 5
+        },
+        {
+          "paper_id": "osdi-2025-enabling-efficient-gpu-communication-over-multiple-nics-with-fuselink",
+          "score": 0.8798076923076922,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization",
+          "score": 0.8798076923076922,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "sosp-2024-swarm-replicating-shared-disaggregated-memory-data-in-no-time",
+          "score": 0.8422090729783037,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "sosp-2025-device-assisted-live-migration-of-rdma-devices",
+          "score": 0.8422090729783037,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2025-wlb-llm-workload-balanced-4d-parallelism-for-large-language-model-training",
+          "score": 0.8057498057498057,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2024-optimizing-resource-allocation-in-hyperscale-datacenters-scalability-usability-and-experiences",
+          "score": 0.8057498057498057,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2024-mast-global-scheduling-of-ml-training-across-geo-distributed-datacenters-at-hyperscale",
+          "score": 0.6703296703296702,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2025-blitzscale-fast-and-live-large-model-autoscaling-with-o-1-host-caching",
+          "score": 0.608262108262108,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2024-high-throughput-and-flexible-host-networking-for-accelerated-computing",
+          "score": 0.5213675213675214,
+          "star_rating": 4
+        },
+        {
+          "paper_id": "osdi-2025-finemem-breaking-the-allocation-overhead-vs-memory-waste-dilemma-in-fine-grained-disaggregated-memory-management",
+          "score": 0.41577409931840303,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "sosp-2024-enabling-parallelism-hot-switching-for-efficient-training-of-large-language-models",
+          "score": 0.25462134764460337,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "sosp-2025-dcp-addressing-input-dynamism-in-long-context-training-via-dynamic-context-parallelism",
+          "score": 0.1933160472486314,
+          "star_rating": 3
+        },
+        {
+          "paper_id": "sosp-2024-dns-congestion-control-in-adversarial-settings",
+          "score": 0.15469146238377016,
+          "star_rating": 3
+        }
+      ]
+    },
+    {
+      "type": "keyword",
+      "tag": "dcn-comm",
+      "paper_tag": "keyword:dcn-comm",
+      "query_text": "algorithms for efficient collective communication operations in distributed environments",
+      "sim_scores": {
+        "sosp-2024-swarm-replicating-shared-disaggregated-memory-data-in-no-time": {
+          "score": 0.01639344262295082,
+          "rank": 1
+        },
+        "osdi-2025-picsou-enabling-replicated-state-machines-to-communicate-efficiently": {
+          "score": 0.016129032258064516,
+          "rank": 2
+        },
+        "osdi-2024-accl-an-fpga-based-collective-engine-for-distributed-applications": {
+          "score": 0.015873015873015872,
+          "rank": 3
+        },
+        "osdi-2024-chop-chop-byzantine-atomic-broadcast-to-the-network-limit": {
+          "score": 0.015625,
+          "rank": 4
+        },
+        "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training": {
+          "score": 0.014925373134328358,
+          "rank": 7
+        },
+        "osdi-2024-optimizing-resource-allocation-in-hyperscale-datacenters-scalability-usability-and-experiences": {
+          "score": 0.0125,
+          "rank": 20
+        },
+        "sosp-2024-dns-congestion-control-in-adversarial-settings": {
+          "score": 0.011764705882352941,
+          "rank": 25
+        },
+        "osdi-2025-enabling-efficient-gpu-communication-over-multiple-nics-with-fuselink": {
+          "score": 0.010416666666666666,
+          "rank": 36
+        },
+        "osdi-2025-blitzscale-fast-and-live-large-model-autoscaling-with-o-1-host-caching": {
+          "score": 0.009259259259259259,
+          "rank": 48
+        }
+      }
+    },
+    {
+      "type": "keyword",
+      "tag": "dcn-comm",
+      "paper_tag": "keyword:dcn-comm",
+      "query_text": "collective communication",
+      "sim_scores": {
+        "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training": {
+          "score": 0.01639344262295082,
+          "rank": 1
+        },
+        "osdi-2024-accl-an-fpga-based-collective-engine-for-distributed-applications": {
+          "score": 0.016129032258064516,
+          "rank": 2
+        },
+        "sosp-2025-device-assisted-live-migration-of-rdma-devices": {
+          "score": 0.015873015873015872,
+          "rank": 3
+        }
+      }
+    },
+    {
+      "type": "keyword",
+      "tag": "dcn-comm",
+      "paper_tag": "keyword:dcn-comm",
+      "query_text": "collective communication protocols and primitives for distributed systems",
+      "sim_scores": {
+        "osdi-2025-picsou-enabling-replicated-state-machines-to-communicate-efficiently": {
+          "score": 0.01639344262295082,
+          "rank": 1
+        },
+        "sosp-2024-swarm-replicating-shared-disaggregated-memory-data-in-no-time": {
+          "score": 0.015873015873015872,
+          "rank": 3
+        },
+        "osdi-2024-accl-an-fpga-based-collective-engine-for-distributed-applications": {
+          "score": 0.015384615384615385,
+          "rank": 5
+        },
+        "osdi-2024-chop-chop-byzantine-atomic-broadcast-to-the-network-limit": {
+          "score": 0.015151515151515152,
+          "rank": 6
+        },
+        "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training": {
+          "score": 0.013513513513513514,
+          "rank": 14
+        },
+        "sosp-2024-dns-congestion-control-in-adversarial-settings": {
+          "score": 0.010752688172043012,
+          "rank": 33
+        },
+        "osdi-2025-finemem-breaking-the-allocation-overhead-vs-memory-waste-dilemma-in-fine-grained-disaggregated-memory-management": {
+          "score": 0.01,
+          "rank": 40
+        },
+        "osdi-2024-high-throughput-and-flexible-host-networking-for-accelerated-computing": {
+          "score": 0.009345794392523364,
+          "rank": 47
+        },
+        "osdi-2024-optimizing-resource-allocation-in-hyperscale-datacenters-scalability-usability-and-experiences": {
+          "score": 0.009174311926605505,
+          "rank": 49
+        }
+      }
+    },
+    {
+      "type": "keyword",
+      "tag": "dcn-comm",
+      "paper_tag": "keyword:dcn-comm",
+      "query_text": "communication optimization for distributed training workloads in data center networks",
+      "sim_scores": {
+        "osdi-2024-mast-global-scheduling-of-ml-training-across-geo-distributed-datacenters-at-hyperscale": {
+          "score": 0.016129032258064516,
+          "rank": 2
+        },
+        "osdi-2025-enabling-efficient-gpu-communication-over-multiple-nics-with-fuselink": {
+          "score": 0.015873015873015872,
+          "rank": 3
+        },
+        "osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization": {
+          "score": 0.015625,
+          "rank": 4
+        },
+        "osdi-2024-optimizing-resource-allocation-in-hyperscale-datacenters-scalability-usability-and-experiences": {
+          "score": 0.014705882352941176,
+          "rank": 8
+        },
+        "osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale": {
+          "score": 0.014285714285714285,
+          "rank": 10
+        },
+        "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training": {
+          "score": 0.013513513513513514,
+          "rank": 14
+        },
+        "osdi-2025-wlb-llm-workload-balanced-4d-parallelism-for-large-language-model-training": {
+          "score": 0.013333333333333334,
+          "rank": 15
+        },
+        "sosp-2024-swarm-replicating-shared-disaggregated-memory-data-in-no-time": {
+          "score": 0.013157894736842105,
+          "rank": 16
+        },
+        "sosp-2025-dcp-addressing-input-dynamism-in-long-context-training-via-dynamic-context-parallelism": {
+          "score": 0.0125,
+          "rank": 20
+        },
+        "osdi-2024-accl-an-fpga-based-collective-engine-for-distributed-applications": {
+          "score": 0.012345679012345678,
+          "rank": 21
+        },
+        "sosp-2024-dns-congestion-control-in-adversarial-settings": {
+          "score": 0.011363636363636364,
+          "rank": 28
+        },
+        "sosp-2025-device-assisted-live-migration-of-rdma-devices": {
+          "score": 0.011235955056179775,
+          "rank": 29
+        },
+        "osdi-2025-finemem-breaking-the-allocation-overhead-vs-memory-waste-dilemma-in-fine-grained-disaggregated-memory-management": {
+          "score": 0.010869565217391304,
+          "rank": 32
+        },
+        "sosp-2024-enabling-parallelism-hot-switching-for-efficient-training-of-large-language-models": {
+          "score": 0.00980392156862745,
+          "rank": 42
+        },
+        "osdi-2024-chop-chop-byzantine-atomic-broadcast-to-the-network-limit": {
+          "score": 0.009615384615384616,
+          "rank": 44
+        },
+        "osdi-2024-high-throughput-and-flexible-host-networking-for-accelerated-computing": {
+          "score": 0.00909090909090909,
+          "rank": 50
+        }
+      }
+    },
+    {
+      "type": "keyword",
+      "tag": "dcn-comm",
+      "paper_tag": "keyword:dcn-comm",
+      "query_text": "data center network architectures and communication mechanisms for large-scale clusters",
+      "sim_scores": {
+        "osdi-2024-optimizing-resource-allocation-in-hyperscale-datacenters-scalability-usability-and-experiences": {
+          "score": 0.01639344262295082,
+          "rank": 1
+        },
+        "osdi-2024-accl-an-fpga-based-collective-engine-for-distributed-applications": {
+          "score": 0.015625,
+          "rank": 4
+        },
+        "sosp-2024-swarm-replicating-shared-disaggregated-memory-data-in-no-time": {
+          "score": 0.015384615384615385,
+          "rank": 5
+        },
+        "osdi-2025-finemem-breaking-the-allocation-overhead-vs-memory-waste-dilemma-in-fine-grained-disaggregated-memory-management": {
+          "score": 0.014285714285714285,
+          "rank": 10
+        },
+        "osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale": {
+          "score": 0.0136986301369863,
+          "rank": 13
+        },
+        "sosp-2025-device-assisted-live-migration-of-rdma-devices": {
+          "score": 0.013157894736842105,
+          "rank": 16
+        },
+        "osdi-2025-enabling-efficient-gpu-communication-over-multiple-nics-with-fuselink": {
+          "score": 0.01282051282051282,
+          "rank": 18
+        },
+        "osdi-2025-picsou-enabling-replicated-state-machines-to-communicate-efficiently": {
+          "score": 0.012658227848101266,
+          "rank": 19
+        },
+        "osdi-2024-mast-global-scheduling-of-ml-training-across-geo-distributed-datacenters-at-hyperscale": {
+          "score": 0.011904761904761904,
+          "rank": 24
+        },
+        "osdi-2024-chop-chop-byzantine-atomic-broadcast-to-the-network-limit": {
+          "score": 0.01098901098901099,
+          "rank": 31
+        },
+        "osdi-2024-high-throughput-and-flexible-host-networking-for-accelerated-computing": {
+          "score": 0.01020408163265306,
+          "rank": 38
+        },
+        "sosp-2024-dns-congestion-control-in-adversarial-settings": {
+          "score": 0.00909090909090909,
+          "rank": 50
+        }
+      }
+    },
+    {
+      "type": "keyword",
+      "tag": "dcn-comm",
+      "paper_tag": "keyword:dcn-comm",
+      "query_text": "data center networks",
+      "sim_scores": {
+        "osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale": {
+          "score": 0.01639344262295082,
+          "rank": 1
+        }
+      }
+    },
+    {
+      "type": "keyword",
+      "tag": "dcn-comm",
+      "paper_tag": "keyword:dcn-comm",
+      "query_text": "distributed training communication",
+      "sim_scores": {
+        "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training": {
+          "score": 0.01639344262295082,
+          "rank": 1
+        },
+        "osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization": {
+          "score": 0.016129032258064516,
+          "rank": 2
+        },
+        "sosp-2024-enabling-parallelism-hot-switching-for-efficient-training-of-large-language-models": {
+          "score": 0.015873015873015872,
+          "rank": 3
+        }
+      }
+    },
+    {
+      "type": "keyword",
+      "tag": "dcn-comm",
+      "paper_tag": "keyword:dcn-comm",
+      "query_text": "remote direct memory access transport for low-latency data center communication",
+      "sim_scores": {
+        "osdi-2025-finemem-breaking-the-allocation-overhead-vs-memory-waste-dilemma-in-fine-grained-disaggregated-memory-management": {
+          "score": 0.01639344262295082,
+          "rank": 1
+        },
+        "sosp-2024-swarm-replicating-shared-disaggregated-memory-data-in-no-time": {
+          "score": 0.014705882352941176,
+          "rank": 8
+        },
+        "sosp-2025-device-assisted-live-migration-of-rdma-devices": {
+          "score": 0.012195121951219513,
+          "rank": 22
+        },
+        "osdi-2025-picsou-enabling-replicated-state-machines-to-communicate-efficiently": {
+          "score": 0.01098901098901099,
+          "rank": 31
+        },
+        "osdi-2024-high-throughput-and-flexible-host-networking-for-accelerated-computing": {
+          "score": 0.010869565217391304,
+          "rank": 32
+        },
+        "osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale": {
+          "score": 0.010526315789473684,
+          "rank": 35
+        },
+        "osdi-2024-chop-chop-byzantine-atomic-broadcast-to-the-network-limit": {
+          "score": 0.010309278350515464,
+          "rank": 37
+        },
+        "osdi-2024-accl-an-fpga-based-collective-engine-for-distributed-applications": {
+          "score": 0.01020408163265306,
+          "rank": 38
+        },
+        "sosp-2024-dns-congestion-control-in-adversarial-settings": {
+          "score": 0.009708737864077669,
+          "rank": 43
+        }
+      }
+    },
+    {
+      "type": "keyword",
+      "tag": "dcn-comm",
+      "paper_tag": "keyword:dcn-comm",
+      "query_text": "topology-aware routing algorithms for data center network efficiency",
+      "sim_scores": {
+        "osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale": {
+          "score": 0.016129032258064516,
+          "rank": 2
+        },
+        "sosp-2024-swarm-replicating-shared-disaggregated-memory-data-in-no-time": {
+          "score": 0.015151515151515152,
+          "rank": 6
+        },
+        "osdi-2024-optimizing-resource-allocation-in-hyperscale-datacenters-scalability-usability-and-experiences": {
+          "score": 0.014925373134328358,
+          "rank": 7
+        },
+        "osdi-2025-enabling-efficient-gpu-communication-over-multiple-nics-with-fuselink": {
+          "score": 0.014084507042253521,
+          "rank": 11
+        },
+        "osdi-2024-high-throughput-and-flexible-host-networking-for-accelerated-computing": {
+          "score": 0.0125,
+          "rank": 20
+        },
+        "sosp-2024-dns-congestion-control-in-adversarial-settings": {
+          "score": 0.012345679012345678,
+          "rank": 21
+        },
+        "osdi-2025-finemem-breaking-the-allocation-overhead-vs-memory-waste-dilemma-in-fine-grained-disaggregated-memory-management": {
+          "score": 0.011627906976744186,
+          "rank": 26
+        },
+        "sosp-2025-device-assisted-live-migration-of-rdma-devices": {
+          "score": 0.01098901098901099,
+          "rank": 31
+        },
+        "osdi-2024-accl-an-fpga-based-collective-engine-for-distributed-applications": {
+          "score": 0.009900990099009901,
+          "rank": 41
+        },
+        "osdi-2025-picsou-enabling-replicated-state-machines-to-communicate-efficiently": {
+          "score": 0.009708737864077669,
+          "rank": 43
+        },
+        "osdi-2024-chop-chop-byzantine-atomic-broadcast-to-the-network-limit": {
+          "score": 0.009174311926605505,
+          "rank": 49
+        }
+      }
+    }
+  ],
+  "global_candidate_ids": [
+    "sosp-2024-swarm-replicating-shared-disaggregated-memory-data-in-no-time",
+    "osdi-2024-beaver-practical-partial-snapshots-for-distributed-cloud-services",
+    "sosp-2025-sailor-automating-distributed-training-over-dynamic-heterogeneous-and-geo-distributed-clusters",
+    "osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization",
+    "osdi-2024-accl-an-fpga-based-collective-engine-for-distributed-applications",
+    "sosp-2024-dns-congestion-control-in-adversarial-settings",
+    "sosp-2025-hedrarag-co-optimizing-generation-and-retrieval-for-heterogeneous-rag-workflows",
+    "osdi-2025-picsou-enabling-replicated-state-machines-to-communicate-efficiently",
+    "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training",
+    "osdi-2024-inductive-invariants-that-spark-joy-using-invariant-taxonomies-to-streamline-distributed-protocol-proofs",
+    "osdi-2024-mast-global-scheduling-of-ml-training-across-geo-distributed-datacenters-at-hyperscale",
+    "osdi-2024-optimizing-resource-allocation-in-hyperscale-datacenters-scalability-usability-and-experiences",
+    "osdi-2024-burstable-cloud-block-storage-with-data-processing-units",
+    "osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale",
+    "sosp-2025-coyote-v2-raising-the-level-of-abstraction-for-data-center-fpgas",
+    "osdi-2025-finemem-breaking-the-allocation-overhead-vs-memory-waste-dilemma-in-fine-grained-disaggregated-memory-management",
+    "osdi-2025-tiered-memory-management-beyond-hotness",
+    "sosp-2025-oasis-pooling-pcie-devices-over-cxl-to-boost-utilization",
+    "sosp-2025-spirit-fair-allocation-of-interdependent-resources-in-remote-memory-systems",
+    "osdi-2025-tigon-a-distributed-database-for-a-cxl-pod",
+    "sosp-2024-dirigent-lightweight-serverless-orchestration",
+    "osdi-2024-motor-enabling-multi-versioning-for-distributed-transactions-on-disaggregated-memory",
+    "osdi-2024-chop-chop-byzantine-atomic-broadcast-to-the-network-limit",
+    "osdi-2025-skybridge-bounded-staleness-for-distributed-caches",
+    "osdi-2025-kamino-efficient-vm-allocation-at-scale-with-latency-driven-cache-aware-scheduling",
+    "osdi-2025-enabling-efficient-gpu-communication-over-multiple-nics-with-fuselink",
+    "osdi-2025-decouple-and-decompose-scaling-resource-allocation-with-dede",
+    "osdi-2025-nanoflow-towards-optimal-large-language-model-serving-throughput",
+    "sosp-2024-fast-core-scheduling-with-userspace-process-abstraction",
+    "sosp-2025-device-assisted-live-migration-of-rdma-devices",
+    "osdi-2025-deriving-semantic-checkers-from-tests-to-detect-silent-failures-in-production-distributed-systems",
+    "sosp-2025-demeter-a-scalable-and-elastic-tiered-memory-solution-for-virtualized-cloud-via-guest-delegation",
+    "sosp-2025-copter-efficient-large-scale-resource-allocation-via-continual-optimization",
+    "sosp-2025-tai-chi-a-general-high-efficiency-scheduling-framework-for-smartnics-in-hyperscale-clouds",
+    "osdi-2024-distserve-disaggregating-prefill-and-decoding-for-goodput-optimized-large-language-model-serving",
+    "osdi-2024-drust-language-guided-distributed-shared-memory-with-fine-granularity-full-transparency-and-ultra-efficiency",
+    "osdi-2024-high-throughput-and-flexible-host-networking-for-accelerated-computing",
+    "sosp-2024-trenv-transparently-share-serverless-execution-environments-across-different-functions-and-nodes",
+    "osdi-2025-disentangling-the-dual-role-of-nic-receive-rings",
+    "sosp-2025-orq-complex-analytics-on-private-data-with-strong-security-guarantees",
+    "osdi-2024-flock-a-framework-for-deploying-on-demand-distributed-trust",
+    "sosp-2025-quilt-resource-aware-merging-of-serverless-workflows",
+    "sosp-2024-chime-a-cache-efficient-and-high-performance-hybrid-index-on-disaggregated-memory",
+    "osdi-2025-achieving-low-latency-graph-based-vector-search-via-aligning-best-first-search-algorithm-with-ssd",
+    "sosp-2025-moirai-optimizing-placement-of-data-and-compute-in-hybrid-clouds",
+    "osdi-2024-harvesting-memory-bound-cpu-stall-cycles-in-software-with-msh",
+    "osdi-2025-weave-efficient-and-expressive-oblivious-analytics-at-scale",
+    "sosp-2025-rearchitecting-the-thread-model-of-in-memory-key-value-stores-with-tps",
+    "osdi-2024-serverlessllm-low-latency-serverless-inference-for-large-language-models",
+    "osdi-2024-data-flow-availability-achieving-timing-assurance-in-autonomous-systems",
+    "osdi-2025-fork-in-the-road-reflections-and-optimizations-for-cold-start-latency-in-production-serverless-systems",
+    "osdi-2024-a-tale-of-two-paths-toward-a-hybrid-data-plane-for-efficient-far-memory-applications",
+    "osdi-2025-stripeless-data-placement-for-erasure-coded-in-memory-storage",
+    "sosp-2025-flexguard-fast-mutual-exclusion-independent-of-subscription",
+    "sosp-2024-autobahn-seamless-high-speed-bft",
+    "osdi-2024-dsig-breaking-the-barrier-of-signatures-in-data-centers",
+    "osdi-2025-principles-and-methodologies-for-serial-performance-optimization",
+    "sosp-2024-efficient-file-lifetime-redundancy-management-for-cluster-file-systems",
+    "sosp-2024-loongserve-efficiently-serving-long-context-large-language-models-with-elastic-sequence-parallelism",
+    "osdi-2024-fast-and-scalable-in-network-lock-management-using-lock-fission",
+    "sosp-2024-enabling-parallelism-hot-switching-for-efficient-training-of-large-language-models",
+    "sosp-2024-reducing-cross-cloud-region-costs-with-the-auto-configuring-macaron-cache",
+    "sosp-2025-automan-facilitating-verified-distributed-systems-development-through-automatic-code-generation-and-manual-optimizations",
+    "osdi-2024-anvil-verifying-liveness-of-cluster-management-controllers",
+    "sosp-2025-scalable-address-spaces-using-concurrent-interval-skiplist",
+    "sosp-2025-prefillonly-an-inference-engine-for-prefill-only-workloads-in-large-language-model-applications",
+    "sosp-2025-running-consistent-applications-closer-to-users-with-radical-for-lower-latency",
+    "osdi-2025-okapi-decoupling-data-striping-and-redundancy-grouping-in-cluster-file-systems",
+    "sosp-2024-reducing-energy-bloat-in-large-model-training",
+    "osdi-2024-llumnix-dynamic-scheduling-for-large-language-model-serving",
+    "osdi-2025-blitzscale-fast-and-live-large-model-autoscaling-with-o-1-host-caching",
+    "osdi-2025-wlb-llm-workload-balanced-4d-parallelism-for-large-language-model-training",
+    "sosp-2025-characterizing-mobile-soc-for-accelerating-heterogeneous-llm-inference",
+    "sosp-2025-dcp-addressing-input-dynamism-in-long-context-training-via-dynamic-context-parallelism",
+    "sosp-2024-recycle-pipeline-adaptation-for-the-resilient-distributed-training-of-large-dnns",
+    "sosp-2024-aceso-achieving-efficient-fault-tolerance-in-memory-disaggregated-key-value-stores",
+    "osdi-2025-basilisk-using-provenance-invariants-to-automate-proofs-of-undecidable-protocols",
+    "sosp-2025-pie-a-programmable-serving-system-for-emerging-llm-applications",
+    "osdi-2024-nnscaler-constraint-guided-parallelization-plan-generation-for-deep-learning-training",
+    "sosp-2024-tenplex-dynamic-parallelism-for-deep-learning-using-parallelizable-tensor-collections",
+    "osdi-2024-managing-memory-tiers-with-cxl-in-virtualized-environments",
+    "osdi-2025-compass-encrypted-semantic-search-with-high-accuracy",
+    "osdi-2024-fairness-in-serving-large-language-models",
+    "sosp-2024-lazylog-a-new-shared-log-abstraction-for-low-latency-applications",
+    "osdi-2024-usher-holistic-interference-avoidance-for-resource-optimized-ml-inference",
+    "osdi-2024-sabre-hardware-accelerated-snapshot-compression-for-serverless-microvms",
+    "sosp-2024-scaling-deep-learning-computation-over-the-inter-core-connected-intelligence-processor-with-t10",
+    "sosp-2024-fast-safe-io-memory-protection",
+    "osdi-2025-scalio-scaling-up-dpu-based-jbof-key-value-store-with-nvme-of-target-offload",
+    "sosp-2025-mitigating-application-resource-overload-with-targeted-task-cancellation",
+    "sosp-2025-scalable-far-memory-balancing-faults-and-evictions",
+    "sosp-2025-metis-fast-quality-aware-rag-systems-with-configuration-adaptation",
+    "sosp-2025-aeolia-a-fast-and-secure-userspace-interrupt-based-storage-stack",
+    "osdi-2024-caravan-practical-online-learning-of-in-network-ml-models-with-labeling-agents",
+    "osdi-2025-deterministic-client-enforcing-determinism-on-untrusted-machine-code",
+    "sosp-2024-efficient-reproduction-of-fault-induced-failures-in-distributed-systems-with-feedback-driven-fault-injection",
+    "sosp-2025-sleeping-with-one-eye-open-fast-sustainable-storage-with-sandman",
+    "osdi-2024-when-will-my-ml-job-finish-toward-providing-completion-time-estimates-through-predictability-centric-scheduling",
+    "sosp-2024-unifying-serverless-and-microservice-workloads-with-sigmaos",
+    "osdi-2025-to-pri-or-not-to-pri-that-s-the-question",
+    "sosp-2024-tiered-memory-management-access-latency-is-the-key",
+    "sosp-2025-tiga-accelerating-geo-distributed-transactions-with-synchronized-clocks",
+    "sosp-2025-cortenmm-efficient-memory-management-with-strong-correctness-guarantees",
+    "osdi-2024-microkernel-goes-general-performance-and-compatibility-in-the-hongmeng-production-microkernel",
+    "sosp-2024-caribou-fine-grained-geospatial-shifting-of-serverless-applications-for-sustainability",
+    "sosp-2024-biza-design-of-self-governing-block-interface-zns-afa-for-endurance-and-performance",
+    "sosp-2025-cheriot-rtos-an-os-for-fine-grained-memory-safe-compartments-on-low-cost-embedded-devices",
+    "sosp-2025-ic-cache-efficient-large-language-model-serving-via-in-context-caching",
+    "sosp-2025-managing-scalable-direct-storage-accesses-for-gpus-with-gofs",
+    "sosp-2024-vpri-optimized-i-o-page-fault-in-public-iaas",
+    "sosp-2024-uncovering-nested-data-parallelism-and-data-reuse-in-dnn-computation-with-fractaltensor"
+  ],
+  "global_pool_lane_top_k": 30,
+  "global_pool_limit": 120,
+  "global_pool_guaranteed_per_lane": 2,
+  "global_pool_effective_size": 111,
+  "reranked_at": "2026-10-22T04:43:55.229810+00:00",
+  "llm_ranked": [
+    {
+      "paper_id": "osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization",
+      "score": 9.0,
+      "evidence_en": "sparsity-driven gradient synchronization communication optimization for distributed training",
+      "evidence_cn": "面向分布式训练的稀疏驱动梯度同步通信优化",
+      "canonical_evidence": "面向分布式训练的稀疏驱动梯度同步通信优化",
+      "tldr_en": "ZEN optimizes gradient synchronization in distributed training by exploiting tensor sparsity, systematically exploring communication schemes and building a holistic synchronization system that cuts communication cost.",
+      "tldr_cn": "分布式训练的主要瓶颈在于梯度同步的通信开销，尽管张量高度稀疏，但尚缺乏充分利用稀疏性的最优通信方案。本文先分析主流模型中稀疏张量的特征，系统探索稀疏张量的通信方案设计空间并找出最优方案。据此提出一体化梯度同步系统ZEN，针对稀疏梯度选择高效通信策略。实验表明ZEN显著降低同步通信量并提升训练性能，为稀疏梯度通信提供了可复用的设计方法。",
+      "title_zh": "ZEN：以稀疏性驱动数据同步赋能分布式训练",
+      "motivation_cn": "分布式训练瓶颈在梯度同步通信，而张量稀疏性未被现有通信方案充分利用。",
+      "method_cn": "分析稀疏张量特征，系统探索通信方案设计空间，构建一体化稀疏梯度同步系统ZEN。",
+      "result_cn": "实验表明ZEN有效降低梯度同步通信量并提升分布式训练性能。",
+      "conclusion_cn": "为稀疏张量的梯度同步提供了最优通信方案选择与可复用设计思路。",
+      "matched_requirement_id": "req-6",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "communication optimization for distributed training workloads in data center networks"
+    },
+    {
+      "paper_id": "osdi-2024-accl-an-fpga-based-collective-engine-for-distributed-applications",
+      "score": 9.0,
+      "evidence_en": "FPGA-based collective communication library with RDMA and collective offload",
+      "evidence_cn": "基于FPGA的集合通信库，支持RDMA与集合卸载",
+      "canonical_evidence": "基于FPGA的集合通信库，支持RDMA与集合卸载",
+      "tldr_en": "ACCL+ is an open-source FPGA-based collective communication library that supports UDP, TCP, and RDMA for direct FPGA-to-FPGA collectives and CPU offload, evaluated on a 100 Gb/s FPGA cluster.",
+      "tldr_cn": "针对FPGA分布式应用缺乏可移植集合通信支持的问题，本文提出开源集合通信库ACCL+，可在不同平台支持UDP、TCP和RDMA，实现FPGA间直接集合通信并可作为CPU应用的集合卸载引擎。在100Gb/s FPGA集群上的评估表明其能有效完成集合操作并降低CPU网络负担。该工作为异构加速器集群的集合通信设计提供了可移植且可扩展新集合的实现基础。",
+      "title_zh": "ACCL+：面向分布式应用的基于FPGA的集合通信引擎",
+      "motivation_cn": "FPGA在云数据中心日益普及，但分布式FPGA应用缺乏可移植、可扩展的集合通信支持。",
+      "method_cn": "提出开源FPGA集合通信库ACCL+，支持UDP、TCP和RDMA，并提供FPGA间直接集合通信与CPU集合卸载能力。",
+      "result_cn": "在100Gb/s FPGA集群上评估，ACCL+能够执行集合通信并减轻CPU网络处理负担，且支持用户扩展新集合而无需整体重综合。",
+      "conclusion_cn": "ACCL+为FPGA集群和SmartNIC场景提供了可移植的集合通信基础设施，有助于推动分布式加速器应用。",
+      "matched_requirement_id": "req-2",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "collective communication protocols and primitives for distributed systems"
+    },
+    {
+      "paper_id": "sosp-2025-mycroft-tracing-dependencies-in-collective-communication-towards-reliable-llm-training",
+      "score": 8.0,
+      "evidence_en": "tracing collective communication states and dependencies in LLM training",
+      "evidence_cn": "追踪LLM训练中集合通信状态与依赖关系",
+      "canonical_evidence": "追踪LLM训练中集合通信状态与依赖关系",
+      "tldr_en": "Mycroft traces collective communication states and leverages internal control/data dependencies to diagnose previously hidden reliability issues in LLM training, deployed at ByteDance for over six months.",
+      "tldr_cn": "集合通信库如同黑盒，隐藏了根因分析所需的关键信息，使LLM训练中的可靠性问题难以解决并浪费资源。Mycroft对集合通信状态进行轻量分布式追踪，并利用内部的控制与数据依赖关系定位故障根因。系统已在字节跳动部署超过六个月，能够揭示此前隐藏的可靠性问题。该工作提升了集合通信的可观测性，有助于保障大规模LLM训练的可靠性。",
+      "title_zh": "Mycroft：追踪集合通信中的依赖以实现可靠LLM训练",
+      "motivation_cn": "现有集合通信库为黑盒，隐藏根因分析信息，导致LLM训练中的可靠性问题难以定位。",
+      "method_cn": "Mycroft对集合通信状态进行轻量分布式追踪，并利用内部控制与数据依赖关系诊断故障。",
+      "result_cn": "系统在字节跳动部署逾六个月，可定位此前隐藏的集合通信可靠性问题。",
+      "conclusion_cn": "该工作提升了集合通信可观测性，有助于保障大规模LLM训练的可靠性。",
+      "matched_requirement_id": "req-2",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "collective communication protocols and primitives for distributed systems"
+    },
+    {
+      "paper_id": "osdi-2025-enabling-efficient-gpu-communication-over-multiple-nics-with-fuselink",
+      "score": 8.0,
+      "evidence_en": "efficient GPU communication over multiple NICs for imbalanced all-to-all traffic",
+      "evidence_cn": "面向多网卡与不均衡全对全流量的高效GPU通信",
+      "canonical_evidence": "面向多网卡与不均衡全对全流量的高效GPU通信",
+      "tldr_en": "ML clusters stack multiple NICs per server, but static GPU-NIC bindings create hot-spot bottlenecks under imbalanced all-to-all traffic. FuseLink dynamically extends the inter-server network across NICs to balance GPU communication.",
+      "tldr_cn": "机器学习集群为提升跨服务器GPU通信带宽而在单机堆叠多块网卡，但静态的GPU与网卡绑定导致在专家并行全对全等不均衡流量下出现热点网卡瓶颈。本文提出FuseLink，通过动态扩展跨网卡的服务器间网络连接，实现通信流在多网卡间的灵活分摊。实验表明该设计能充分利用全部网卡带宽、缓解热点拥塞，提升集合通信与训练任务的整体吞吐。",
+      "title_zh": "FuseLink：利用多网卡实现高效GPU通信",
+      "motivation_cn": "现有系统因静态GPU-网卡绑定，在ML任务的不均衡通信下无法充分利用多网卡带宽。",
+      "method_cn": "FuseLink动态扩展跨网卡的服务器间网络，将GPU通信流灵活分摊到多块网卡上。",
+      "result_cn": "实验显示FuseLink缓解热点网卡瓶颈，充分利用全部网卡带宽并提升通信吞吐。",
+      "conclusion_cn": "该工作为多网卡集群中的高效GPU集合通信提供了可行的系统设计。",
+      "matched_requirement_id": "req-2",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "collective communication protocols and primitives for distributed systems"
+    },
+    {
+      "paper_id": "sosp-2025-dcp-addressing-input-dynamism-in-long-context-training-via-dynamic-context-parallelism",
+      "score": 7.0,
+      "evidence_en": "dynamic context parallelism reduces communication overhead in distributed long-context training",
+      "evidence_cn": "动态上下文并行降低分布式长上下文训练中的通信开销",
+      "canonical_evidence": "动态上下文并行降低分布式长上下文训练中的通信开销",
+      "tldr_en": "DCP replaces static context-parallel configurations with fine-grained blockwise partitioning of data and computation, cutting unnecessary communication overhead and load imbalance in long-context distributed training.",
+      "tldr_cn": "现有上下文并行方法采用静态切分配置，忽视样本序列长度与注意力模式的动态差异，导致多余的通信开销与计算不均衡。DCP提出动态上下文并行训练框架，对数据和计算做细粒度分块，并灵活地把块映射到设备上，从而按样本动态调整并行划分。实验表明该方案在长上下文训练中显著降低通信量并改善负载均衡，提升训练效率。其贡献在于把输入动态性纳入并行通信优化，对数据中心分布式训练通信优化有直接参考价值。",
+      "title_zh": "DCP：通过动态上下文并行应对长上下文训练中的输入动态性",
+      "motivation_cn": "静态上下文并行配置忽视样本序列长度与注意力模式的动态差异，造成通信浪费与负载不均。",
+      "method_cn": "提出细粒度分块的数据与计算划分，并动态将块映射到设备以实现弹性并行。",
+      "result_cn": "在长上下文训练中减少了不必要的通信开销并缓解了计算不均衡。",
+      "conclusion_cn": "表明按输入动态调整并行策略可有效优化分布式训练的通信效率。",
+      "matched_requirement_id": "req-6",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "communication optimization for distributed training workloads in data center networks"
+    },
+    {
+      "paper_id": "osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale",
+      "score": 7.0,
+      "evidence_en": "per-flow weighted bandwidth allocation in data center networks",
+      "evidence_cn": "数据中心网络中的按流加权带宽分配",
+      "canonical_evidence": "数据中心网络中的按流加权带宽分配",
+      "tldr_en": "Söze is a decentralized system that uses commodity switch telemetry to compute and enforce per-flow weighted bandwidth allocation without per-flow, topology, or routing knowledge.",
+      "tldr_cn": "加权带宽分配在现代数据中心网络中有广泛用途，但在大规模云环境中实现敏捷精确的分配极具挑战。Söze提出一种轻量去中心化系统，仅利用商用以太网交换机的简单网络遥测信息，无需逐流、拓扑或路由知识即可计算并执行加权带宽分配。仿真与测试床实验表明其能改善TPC-H作业完成情况，为大规模数据中心网络调度提供了简洁有效的机制。",
+      "title_zh": "Söze：仅凭网络遥测即可实现大规模按流加权带宽分配",
+      "motivation_cn": "大规模云环境中实现敏捷精确的按流加权带宽分配十分困难，传统方法依赖逐流或拓扑信息。",
+      "method_cn": "Söze利用商用交换机简单遥测信息，在无需逐流、拓扑或路由知识下计算并执行加权带宽分配。",
+      "result_cn": "通过仿真与测试床实验验证有效性，改善了TPC-H作业完成情况。",
+      "conclusion_cn": "轻量去中心化的遥测驱动方法可在大规模数据中心网络中高效实现加权带宽分配。",
+      "matched_requirement_id": "req-8",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "What network scheduling and congestion control techniques improve collective communication performance"
+    },
+    {
+      "paper_id": "osdi-2024-high-throughput-and-flexible-host-networking-for-accelerated-computing",
+      "score": 7.0,
+      "evidence_en": "host networking stack co-designed with NIC for high-throughput AI communication",
+      "evidence_cn": "面向加速计算的网卡与主机网络栈协同设计",
+      "canonical_evidence": "面向加速计算的网卡与主机网络栈协同设计",
+      "tldr_en": "Existing host network stacks trade throughput for flexibility, limiting GPU-accelerated AI bandwidth. This paper co-designs NIC hardware and software, separating data path from control path to achieve both high throughput and protocol flexibility.",
+      "tldr_cn": "现有主机网络栈在吞吐与灵活性之间被迫取舍，难以满足GPU加速AI应用的带宽需求。本文采用网卡硬件与软件栈协同设计的全新方案，将数据路径与控制路径物理分离，使数据传输高效而传输层决策可灵活定制。基于原型实现，系统在保持接近硬件线速吞吐的同时支持多种协议扩展，为数据中心高性能通信基础设施提供了新架构。",
+      "title_zh": "面向加速计算的高吞吐且灵活的主机网络",
+      "motivation_cn": "现有主机网络栈难以兼顾高吞吐与协议灵活性，制约GPU加速AI应用的网络带宽发挥。",
+      "method_cn": "论文提出网卡硬件与软件栈协同设计，将数据路径与控制路径物理分离以兼顾性能与灵活。",
+      "result_cn": "原型系统在接近硬件线速吞吐的同时支持可定制的传输协议，验证了设计可行性。",
+      "conclusion_cn": "该工作为数据中心高性能、可扩展的主机网络架构提供了新范式。",
+      "matched_requirement_id": "req-1",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "data center network architectures and communication mechanisms for large-scale clusters"
+    },
+    {
+      "paper_id": "osdi-2025-finemem-breaking-the-allocation-overhead-vs-memory-waste-dilemma-in-fine-grained-disaggregated-memory-management",
+      "score": 6.0,
+      "evidence_en": "RDMA-connected remote memory management for low-latency datacenter disaggregation",
+      "evidence_cn": "面向数据中心内存解耦的RDMA远程内存管理",
+      "canonical_evidence": "面向数据中心内存解耦的RDMA远程内存管理",
+      "tldr_en": "FineMem enables fine-grained remote memory allocation over RDMA by pre-registering memory regions per compute node, removing registration cost from allocation paths and cutting memory waste in disaggregated datacenter memory.",
+      "tldr_cn": "RDMA内存解耦是降低数据中心内存成本的重要手段，但远程内存分配存在延迟与可扩展性难题，导致现有系统只能采用GB级粗粒度分配并造成内存浪费。FineMem提出RDMA连接的远程内存管理系统，通过按计算节点预注册内存区域把注册开销移出分配路径，并保证远程内存的可用性。系统实现了高性能细粒度分配，缓解了分配开销与内存浪费的两难。其工作直接服务于低延迟RDMA数据中心通信基础设施。",
+      "title_zh": "FineMem：破解细粒度解耦内存管理中的分配开销与内存浪费两难",
+      "motivation_cn": "RDMA内存解耦下远程内存分配开销大，迫使系统采用粗粒度分配并造成浪费。",
+      "method_cn": "通过按计算节点预注册内存区域，将RDMA注册成本移出分配路径，实现细粒度分配。",
+      "result_cn": "在保持低延迟的同时实现了高性能细粒度远程内存分配。",
+      "conclusion_cn": "为RDMA数据中心内存解耦提供了可扩展的细粒度管理方案。",
+      "matched_requirement_id": "req-4",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "remote direct memory access transport for low-latency data center communication"
+    },
+    {
+      "paper_id": "osdi-2025-picsou-enabling-replicated-state-machines-to-communicate-efficiently",
+      "score": 6.0,
+      "evidence_en": "new communication primitive C3B enabling efficient cross-cluster broadcast among replicated state machines",
+      "evidence_cn": "提出跨集群一致广播新原语，使副本状态机之间高效通信",
+      "canonical_evidence": "提出跨集群一致广播新原语，使副本状态机之间高效通信",
+      "tldr_en": "Picsou introduces Cross-Cluster Consistent Broadcast, a communication primitive letting replicated state machines exchange messages with constant metadata overhead and minimal resends, using quorum acknowledgments for both crash and Byzantine fault tolerance.",
+      "tldr_cn": "副本状态机之间目前缺乏形式化框架与高效协议，难以进行有效通信。论文提出跨集群一致广播原语C3B并实现Picsou，借鉴网络与TCP思想，使两个状态机在无故障时以常量元数据开销通信、在故障时仅需少量消息重传。其核心是仲裁确认Quacks机制，让节点精确判定消息何时可交付，并同时支持崩溃容错与拜占庭容错协议。该工作为分布式系统提供了一种通用高效的通信原语，与集合通信协议设计主题有方法层面的关联。",
+      "title_zh": "Picsou：让副本状态机高效通信",
+      "motivation_cn": "副本状态机之间缺少形式化框架和高效协议，跨集群通信开销大。",
+      "method_cn": "提出跨集群一致广播原语C3B及实现Picsou，基于仲裁确认机制控制消息交付。",
+      "result_cn": "无故障时元数据开销恒定，故障时仅需最少量的消息重传。",
+      "conclusion_cn": "为分布式系统提供通用且兼容崩溃与拜占庭容错的通信原语。",
+      "matched_requirement_id": "req-2",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "collective communication protocols and primitives for distributed systems"
+    },
+    {
+      "paper_id": "osdi-2025-wlb-llm-workload-balanced-4d-parallelism-for-large-language-model-training",
+      "score": 6.0,
+      "evidence_en": "balancing computation and communication workload across micro-batches in LLM training",
+      "evidence_cn": "在微批次间平衡计算与通信负载以优化大模型训练",
+      "canonical_evidence": "在微批次间平衡计算与通信负载以优化大模型训练",
+      "tldr_en": "LLM training suffers workload imbalance at pipeline and context parallelism levels. WLB-LLM introduces workload-aware document packing and fine-grained per-document sharding to balance computation and communication across workers.",
+      "tldr_cn": "大模型训练在流水并行与上下文并行层面存在明显的负载不均衡，导致计算与通信等待浪费。本文提出WLB-LLM，在流水并行层采用负载感知的变长文档打包平衡微批次间计算与通信量，并在上下文并行层引入细粒度的按文档分片策略。实验表明该方法显著缓解了各worker间的负载差异，提升了训练吞吐与效率，为大规模分布式训练的资源均衡调度提供了实用方案。",
+      "title_zh": "WLB-LLM：面向大模型训练的负载均衡四维并行",
+      "motivation_cn": "大模型训练在流水并行和上下文并行层面存在负载不均，造成计算与通信资源浪费。",
+      "method_cn": "WLB-LLM采用负载感知的变长文档打包与细粒度按文档分片策略，均衡各worker的计算与通信负载。",
+      "result_cn": "实验表明该方法缓解了worker间负载差异，提升了训练吞吐与效率。",
+      "conclusion_cn": "该工作为大规模分布式训练中的负载均衡并行调度提供了实用方案。",
+      "matched_requirement_id": "req-6",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "communication optimization for distributed training workloads in data center networks"
+    },
+    {
+      "paper_id": "sosp-2024-enabling-parallelism-hot-switching-for-efficient-training-of-large-language-models",
+      "score": 5.0,
+      "evidence_en": "parallelism strategy chosen using communication cost for LLM training",
+      "evidence_cn": "依据通信代价选择并行策略以优化大模型训练",
+      "canonical_evidence": "依据通信代价选择并行策略以优化大模型训练",
+      "tldr_en": "Static parallelism strategies hurt LLM training when sequence lengths vary. This work reveals the resulting under-utilization and proposes hot-switching parallelism strategies dynamically to track changing compute and communication costs.",
+      "tldr_cn": "大模型训练通常假设样本负载一致而采用静态并行策略，但变长序列输入使该假设失效，导致性能次优。本文揭示静态策略带来的资源利用不足问题，提出在训练过程中动态热切换并行策略，依据内存、计算与通信代价自适应调整。实验表明该方法能有效跟踪负载变化、提升训练效率，为变负载场景下的分布式训练调度提供了新思路。",
+      "title_zh": "面向大语言模型高效训练的并行策略热切换",
+      "motivation_cn": "现有大模型训练系统采用静态并行策略，难以应对变长序列带来的负载波动，造成性能次优。",
+      "method_cn": "论文揭示静态并行策略的利用不足问题，提出在训练过程中根据计算与通信代价动态热切换并行策略。",
+      "result_cn": "实验显示动态切换并行策略可跟踪样本负载变化，相比静态策略获得更优训练性能。",
+      "conclusion_cn": "该工作说明自适应并行策略对变负载大模型训练具有重要价值。",
+      "matched_requirement_id": "req-6",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "communication optimization for distributed training workloads in data center networks"
+    },
+    {
+      "paper_id": "sosp-2025-device-assisted-live-migration-of-rdma-devices",
+      "score": 5.0,
+      "evidence_en": "live migration of RDMA devices used for high-performance communication",
+      "evidence_cn": "面向高性能通信的RDMA设备实时迁移",
+      "canonical_evidence": "面向高性能通信的RDMA设备实时迁移",
+      "tldr_en": "HPC and AI workloads need direct RDMA device access in clouds, but passthrough breaks VM-hardware decoupling and blocks live migration. This paper proposes a device-assisted migration method with a generic device-hypervisor interface.",
+      "tldr_cn": "将HPC与AI等高性能工作负载迁移到云需要直接访问RDMA设备，但设备直通破坏了虚拟机与硬件的解耦，使实时迁移极为困难。本文提出设备辅助的迁移方案，设计通用设备-虚拟机监控器接口，并为NVIDIA ConnectX系列网卡实现迁移支持。该方案对虚拟机和网络对端均透明，能够在迁移中保持直接交互硬件设备间的连接，为云上RDMA通信的可迁移性提供了新思路。",
+      "title_zh": "设备辅助的RDMA设备实时迁移",
+      "motivation_cn": "云上高性能工作负载需直接访问RDMA设备，但设备直通使虚拟机实时迁移难以实现。",
+      "method_cn": "论文提出设备辅助迁移方案，设计通用设备-虚拟机监控器接口并为ConnectX网卡实现支持。",
+      "result_cn": "该方案对虚拟机和网络对端透明，可在迁移中保持相互交互硬件设备之间的连接。",
+      "conclusion_cn": "该工作为云环境中RDMA设备的高性能通信与可迁移性提供了可行方法。",
+      "matched_requirement_id": "req-4",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "remote direct memory access transport for low-latency data center communication"
+    },
+    {
+      "paper_id": "osdi-2025-blitzscale-fast-and-live-large-model-autoscaling-with-o-1-host-caching",
+      "score": 4.0,
+      "evidence_en": "loading parameters through the inter-GPU compute network with network-optimized multicast",
+      "evidence_cn": "通过GPU间计算网络与网络优化组播加载参数",
+      "canonical_evidence": "通过GPU间计算网络与网络优化组播加载参数",
+      "tldr_en": "BlitzScale loads model parameters through the inter-GPU compute network using network-optimized multicast, enabling fast, live large-model autoscaling with O(1) host caching.",
+      "tldr_cn": "大模型自动扩缩容受限于扩缩速度与参数缓存内存的权衡，数据面加载慢且实例在加载时停滞。BlitzScale利用GPU间计算网络传输参数，其速度接近主机缓存且利用率低，并用网络优化的组播支持多实例扩缩。由此数据面无需或仅需O(1)缓存即可快速加载，实现跨主机的热扩缩容。该工作为无服务器模型服务提供了可扩展的高效参数分发机制。",
+      "title_zh": "BlitzScale：基于O(1)主机缓存的大模型快速热自动扩缩容",
+      "motivation_cn": "模型自动扩缩容面临扩缩速度与参数缓存内存的权衡，数据面加载慢导致实例停滞。",
+      "method_cn": "BlitzScale借助GPU间计算网络与网络优化组播加载参数，实现无需或O(1)缓存的数据面。",
+      "result_cn": "数据面加载速度接近主机缓存，支持跨多主机的频繁热扩缩容。",
+      "conclusion_cn": "复用计算网络与组播使大模型自动扩缩容兼顾速度与内存开销。",
+      "matched_requirement_id": "req-1",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "data center network architectures and communication mechanisms for large-scale clusters"
+    },
+    {
+      "paper_id": "osdi-2024-optimizing-resource-allocation-in-hyperscale-datacenters-scalability-usability-and-experiences",
+      "score": 4.0,
+      "evidence_en": "hyperscale datacenter resource allocation including traffic routing across millions of servers",
+      "evidence_cn": "面向超大规模数据中心的资源分配，涵盖流量路由等优化问题",
+      "canonical_evidence": "面向超大规模数据中心的资源分配，涵盖流量路由等优化问题",
+      "tldr_en": "Meta describes a reusable resource-allocation framework for hyperscale datacenters covering placement, ML job scheduling and traffic routing, focusing on usability and scalability of optimization at millions-of-servers scale.",
+      "tldr_cn": "论文面向Meta拥有数百万台服务器的私有云环境，指出资源分配涉及硬件放置、服务器分配、训练与推理部署、流量路由等诸多优化问题。实际落地的主要障碍是策略难以写成精确数学形式，以及问题规模带来的可扩展性挑战。作者提出可复用的资源分配框架，兼顾易用性与大规模求解效率，并总结了生产部署经验。其价值在于为超大规模数据中心的资源与流量调度提供工程化方法，但与集合通信算法本身关联有限。",
+      "title_zh": "超大规模数据中心资源分配的优化：可扩展性、易用性与实践经验",
+      "motivation_cn": "超大规模数据中心资源分配问题多且规模大，策略建模难、求解可扩展性差。",
+      "method_cn": "构建可复用的资源分配优化框架，兼顾策略表达的易用性与大规模问题求解效率。",
+      "result_cn": "在Meta生产环境中支撑了硬件放置、任务部署与流量路由等多类优化。",
+      "conclusion_cn": "为超大规模数据中心资源与流量调度提供了可落地的工程化框架。",
+      "matched_requirement_id": "req-1",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "data center network architectures and communication mechanisms for large-scale clusters"
+    },
+    {
+      "paper_id": "sosp-2024-dns-congestion-control-in-adversarial-settings",
+      "score": 4.0,
+      "evidence_en": "fair-queuing message scheduler and congestion control framework for inter-server channels",
+      "evidence_cn": "面向服务器间通道的公平排队调度与拥塞控制框架",
+      "canonical_evidence": "面向服务器间通道的公平排队调度与拥塞控制框架",
+      "tldr_en": "DCC applies congestion-control ideas to DNS, using fair-queuing message scheduling and anomaly signaling so benign clients keep fair access to inter-server channels under adversarial choking attacks.",
+      "tldr_cn": "论文研究DNS场景中的对抗性拥塞攻击：攻击者只需低成本地阻塞服务器间通道，即可让大量用户无法访问目标DNS服务。作者借鉴经典网络拥塞控制，提出DNS拥塞控制框架DCC，通过优化的公平排队消息调度保证正常客户端公平访问通道，并结合可扩展的异常检测与信令机制减少对无害客户端的连带影响。该框架以非侵入方式设计，可增强现有DNS服务。其调度与拥塞控制思路对集合通信性能优化有方法层面的借鉴意义。",
+      "title_zh": "对抗环境下的DNS拥塞控制",
+      "motivation_cn": "攻击者可低成本阻塞服务器间通道，造成大规模用户无法访问目标DNS服务。",
+      "method_cn": "提出DCC框架，结合公平排队消息调度与异常检测信令机制进行非侵入式缓解。",
+      "result_cn": "在攻击存在时仍能保证正常客户端公平访问服务器间通道。",
+      "conclusion_cn": "为对抗性拥塞提供了通用调度思路，可迁移到其他网络通信场景。",
+      "matched_requirement_id": "req-8",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "What network scheduling and congestion control techniques improve collective communication performance"
+    },
+    {
+      "paper_id": "osdi-2024-mast-global-scheduling-of-ml-training-across-geo-distributed-datacenters-at-hyperscale",
+      "score": 4.0,
+      "evidence_en": "global scheduling of ML training across geo-distributed datacenters",
+      "evidence_cn": "跨地理分布数据中心的机器学习训练全局调度",
+      "canonical_evidence": "跨地理分布数据中心的机器学习训练全局调度",
+      "tldr_en": "MAST is a global scheduler that places ML training data and workloads across regions in Meta's hyperscale cloud to better match demand and hardware supply.",
+      "tldr_cn": "该论文针对公有云中用户需手动选择区域放置训练数据与负载、导致跨区域供需错配的问题，在Meta超大规模私有云中提出全局调度抽象MAST。用户只需提交训练作业，由MAST智能地将数据与计算放置到不同区域。论文阐述三条设计原则并展示其在提升硬件利用率与盈利能力方面的效果，为超大规模数据中心资源调度提供了新范式。",
+      "title_zh": "MAST：超大规模地理分布式数据中心间机器学习训练的全局调度",
+      "motivation_cn": "公有云中用户各自选择区域易造成跨区域算力供需错配，降低云厂商硬件利用率与盈利。",
+      "method_cn": "提出面向所有ML训练作业的全局调度抽象MAST，自动将数据与训练负载放置到不同区域。",
+      "result_cn": "论文给出三条设计原则，并在Meta超大规模私有云中验证了全局调度对利用率与盈利的改善。",
+      "conclusion_cn": "全局调度可缓解跨区域供需错配，为超大规模云中训练负载放置提供了可行方案。",
+      "matched_requirement_id": "req-6",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "communication optimization for distributed training workloads in data center networks"
+    },
+    {
+      "paper_id": "sosp-2024-swarm-replicating-shared-disaggregated-memory-data-in-no-time",
+      "score": 4.0,
+      "evidence_en": "replication over disaggregated memory data center architecture with single-roundtrip operations",
+      "evidence_cn": "面向解耦内存数据中心架构的单次往返复制协议",
+      "canonical_evidence": "面向解耦内存数据中心架构的单次往返复制协议",
+      "tldr_en": "SWARM is a wait-free replication scheme for disaggregated memory that achieves single-roundtrip reads and writes with linearizability, using Safe-Guess and In-n-Out techniques.",
+      "tldr_cn": "内存解耦是提升数据中心资源利用率的新兴架构，但在解耦内存中复制共享数据难以兼顾低延迟与强一致性。本文提出SWARM复制方案，包含无等待的Safe-Guess复制协议与In-n-Out原子更新技术，实现常见情况下的单次往返读写、线性一致性与无等待活性。该工作为解耦内存数据中心提供了高效可靠的复制基础，与低延迟远程内存通信机制有一定方法关联。",
+      "title_zh": "SWARM：瞬时复制共享的解耦内存数据",
+      "motivation_cn": "解耦内存数据中心需要复制共享数据以保证容错，但现有方案难以兼顾低延迟与强一致性。",
+      "method_cn": "提出SWARM复制方案，含Safe-Guess无等待协议与In-n-Out原子更新技术。",
+      "result_cn": "实现常见情况下单次往返读写，同时保证线性一致性与无等待活性。",
+      "conclusion_cn": "为解耦内存系统提供高效复制基础，与远程内存通信机制相关。",
+      "matched_requirement_id": "req-1",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "data center network architectures and communication mechanisms for large-scale clusters"
+    },
+    {
+      "paper_id": "osdi-2024-chop-chop-byzantine-atomic-broadcast-to-the-network-limit",
+      "score": 4.0,
+      "evidence_en": "Byzantine atomic broadcast communication primitive reaching network limit",
+      "evidence_cn": "达到网络极限的拜占庭原子广播通信原语",
+      "canonical_evidence": "达到网络极限的拜占庭原子广播通信原语",
+      "tldr_en": "Chop Chop is a Byzantine atomic broadcast system that uses an authenticated memory pool and distillation batching to approach line rate even for tiny messages.",
+      "tldr_cn": "针对状态机复制中原子广播需同时完成排序、认证和去重而难以达到网络极限的问题，Chop Chop提出带认证内存池的拜占庭原子广播系统。它通过蒸馏批处理摊薄排序、认证与去重开销，即使处理8字节小消息也能接近线速。该工作展示了分布式通信原语的高效实现，但其面向拜占庭容错复制而非数据中心集合通信或拓扑感知路由，对集合通信调度仅有间接参考价值。",
+      "title_zh": "Chop Chop：达到网络极限的拜占庭原子广播",
+      "motivation_cn": "状态机复制中的原子广播需对消息排序、认证和去重，现有协议难以在保持拜占庭容错时达到网络线速。",
+      "method_cn": "Chop Chop采用带认证的内存池和新式蒸馏批处理，摊薄消息排序、认证与去重的开销。",
+      "result_cn": "系统即使处理8字节小消息也能接近线速，性能接近不提供排序和拜占庭容错的通信协议。",
+      "conclusion_cn": "该工作为分布式系统提供高效拜占庭原子广播原语，但与数据中心集合通信主题仅部分相关。",
+      "matched_requirement_id": "req-2",
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "collective communication protocols and primitives for distributed systems"
+    }
+  ],
+  "llm_ranked_at": "2026-10-22T04:45:26.598672+00:00",
+  "display_min_score": 4.0,
+  "pruned_at": "2026-10-22T04:45:26.639136+00:00"
+}

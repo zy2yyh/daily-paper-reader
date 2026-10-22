@@ -1,0 +1,342 @@
+{
+  "version": 2,
+  "extractor": "pymupdf-images",
+  "figures": [
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-001.webp",
+      "caption": "",
+      "page": 5,
+      "index": 1,
+      "width": 2068,
+      "height": 1836
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-002.webp",
+      "caption": "",
+      "page": 6,
+      "index": 2,
+      "width": 1350,
+      "height": 1200
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-003.webp",
+      "caption": "",
+      "page": 6,
+      "index": 3,
+      "width": 1350,
+      "height": 1200
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-004.webp",
+      "caption": "",
+      "page": 7,
+      "index": 4,
+      "width": 2651,
+      "height": 917
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-005.webp",
+      "caption": "",
+      "page": 8,
+      "index": 5,
+      "width": 1843,
+      "height": 587
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-006.webp",
+      "caption": "",
+      "page": 9,
+      "index": 6,
+      "width": 1494,
+      "height": 818
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-007.webp",
+      "caption": "",
+      "page": 9,
+      "index": 7,
+      "width": 1350,
+      "height": 1200
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-008.webp",
+      "caption": "",
+      "page": 9,
+      "index": 8,
+      "width": 1350,
+      "height": 1200
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-009.webp",
+      "caption": "",
+      "page": 10,
+      "index": 9,
+      "width": 1350,
+      "height": 1200
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-010.webp",
+      "caption": "",
+      "page": 10,
+      "index": 10,
+      "width": 1350,
+      "height": 1200
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-011.webp",
+      "caption": "",
+      "page": 10,
+      "index": 11,
+      "width": 1350,
+      "height": 1200
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-012.webp",
+      "caption": "",
+      "page": 10,
+      "index": 12,
+      "width": 1014,
+      "height": 750
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-013.webp",
+      "caption": "",
+      "page": 10,
+      "index": 13,
+      "width": 1350,
+      "height": 1200
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-014.webp",
+      "caption": "",
+      "page": 10,
+      "index": 14,
+      "width": 1350,
+      "height": 1200
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-015.webp",
+      "caption": "",
+      "page": 10,
+      "index": 15,
+      "width": 1350,
+      "height": 1200
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-016.webp",
+      "caption": "",
+      "page": 10,
+      "index": 16,
+      "width": 1350,
+      "height": 1200
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-017.webp",
+      "caption": "",
+      "page": 11,
+      "index": 17,
+      "width": 863,
+      "height": 645
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-018.webp",
+      "caption": "",
+      "page": 11,
+      "index": 18,
+      "width": 1350,
+      "height": 1200
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-019.webp",
+      "caption": "",
+      "page": 11,
+      "index": 19,
+      "width": 1350,
+      "height": 1200
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-020.webp",
+      "caption": "",
+      "page": 11,
+      "index": 20,
+      "width": 1350,
+      "height": 1200
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-021.webp",
+      "caption": "",
+      "page": 11,
+      "index": 21,
+      "width": 1093,
+      "height": 744
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-022.webp",
+      "caption": "",
+      "page": 11,
+      "index": 22,
+      "width": 1350,
+      "height": 1200
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-023.webp",
+      "caption": "",
+      "page": 12,
+      "index": 23,
+      "width": 2100,
+      "height": 1050
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-024.webp",
+      "caption": "",
+      "page": 12,
+      "index": 24,
+      "width": 1350,
+      "height": 1200
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-025.webp",
+      "caption": "",
+      "page": 12,
+      "index": 25,
+      "width": 1350,
+      "height": 1200
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-026.webp",
+      "caption": "",
+      "page": 12,
+      "index": 26,
+      "width": 1350,
+      "height": 1200
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-027.webp",
+      "caption": "",
+      "page": 12,
+      "index": 27,
+      "width": 1350,
+      "height": 1200
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-028.webp",
+      "caption": "",
+      "page": 12,
+      "index": 28,
+      "width": 2042,
+      "height": 1458
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-029.webp",
+      "caption": "",
+      "page": 12,
+      "index": 29,
+      "width": 2100,
+      "height": 1500
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-030.webp",
+      "caption": "",
+      "page": 12,
+      "index": 30,
+      "width": 1500,
+      "height": 1350
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-031.webp",
+      "caption": "",
+      "page": 12,
+      "index": 31,
+      "width": 1500,
+      "height": 1350
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-032.webp",
+      "caption": "",
+      "page": 13,
+      "index": 32,
+      "width": 1500,
+      "height": 1350
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-033.webp",
+      "caption": "",
+      "page": 13,
+      "index": 33,
+      "width": 1500,
+      "height": 1350
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-034.webp",
+      "caption": "",
+      "page": 14,
+      "index": 34,
+      "width": 1331,
+      "height": 799
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-035.webp",
+      "caption": "",
+      "page": 14,
+      "index": 35,
+      "width": 1350,
+      "height": 1200
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-036.webp",
+      "caption": "",
+      "page": 14,
+      "index": 36,
+      "width": 1350,
+      "height": 1200
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-037.webp",
+      "caption": "",
+      "page": 14,
+      "index": 37,
+      "width": 2100,
+      "height": 1500
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-038.webp",
+      "caption": "",
+      "page": 14,
+      "index": 38,
+      "width": 1650,
+      "height": 1350
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-039.webp",
+      "caption": "",
+      "page": 14,
+      "index": 39,
+      "width": 1650,
+      "height": 1350
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-040.webp",
+      "caption": "",
+      "page": 14,
+      "index": 40,
+      "width": 1650,
+      "height": 1350
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-041.webp",
+      "caption": "",
+      "page": 14,
+      "index": 41,
+      "width": 1350,
+      "height": 1200
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-s-ze-one-network-telemetry-is-all-you-need-for-per-flow-weighted-bandwidth-allocation-at-scale/fig-042.webp",
+      "caption": "",
+      "page": 14,
+      "index": 42,
+      "width": 1350,
+      "height": 1200
+    }
+  ]
+}

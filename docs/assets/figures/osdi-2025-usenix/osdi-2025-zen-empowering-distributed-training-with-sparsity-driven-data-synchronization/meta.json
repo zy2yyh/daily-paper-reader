@@ -1,0 +1,246 @@
+{
+  "version": 2,
+  "extractor": "pymupdf-images",
+  "figures": [
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-001.webp",
+      "caption": "",
+      "page": 3,
+      "index": 1,
+      "width": 899,
+      "height": 813
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-002.webp",
+      "caption": "",
+      "page": 3,
+      "index": 2,
+      "width": 512,
+      "height": 512
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-003.webp",
+      "caption": "",
+      "page": 3,
+      "index": 3,
+      "width": 512,
+      "height": 512
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-004.webp",
+      "caption": "",
+      "page": 3,
+      "index": 4,
+      "width": 512,
+      "height": 512
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-005.webp",
+      "caption": "",
+      "page": 3,
+      "index": 5,
+      "width": 512,
+      "height": 512
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-006.webp",
+      "caption": "",
+      "page": 3,
+      "index": 6,
+      "width": 512,
+      "height": 512
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-007.webp",
+      "caption": "",
+      "page": 4,
+      "index": 7,
+      "width": 1400,
+      "height": 800
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-008.webp",
+      "caption": "",
+      "page": 4,
+      "index": 8,
+      "width": 1306,
+      "height": 827
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-009.webp",
+      "caption": "",
+      "page": 4,
+      "index": 9,
+      "width": 1355,
+      "height": 800
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-010.webp",
+      "caption": "",
+      "page": 4,
+      "index": 10,
+      "width": 1457,
+      "height": 857
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-011.webp",
+      "caption": "",
+      "page": 8,
+      "index": 11,
+      "width": 1060,
+      "height": 587
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-012.webp",
+      "caption": "",
+      "page": 13,
+      "index": 12,
+      "width": 1026,
+      "height": 610
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-013.webp",
+      "caption": "",
+      "page": 13,
+      "index": 13,
+      "width": 1026,
+      "height": 610
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-014.webp",
+      "caption": "",
+      "page": 13,
+      "index": 14,
+      "width": 1026,
+      "height": 610
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-015.webp",
+      "caption": "",
+      "page": 13,
+      "index": 15,
+      "width": 1026,
+      "height": 610
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-016.webp",
+      "caption": "",
+      "page": 13,
+      "index": 16,
+      "width": 1026,
+      "height": 610
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-017.webp",
+      "caption": "",
+      "page": 13,
+      "index": 17,
+      "width": 1026,
+      "height": 610
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-018.webp",
+      "caption": "",
+      "page": 14,
+      "index": 18,
+      "width": 1026,
+      "height": 574
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-019.webp",
+      "caption": "",
+      "page": 14,
+      "index": 19,
+      "width": 1026,
+      "height": 574
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-020.webp",
+      "caption": "",
+      "page": 14,
+      "index": 20,
+      "width": 1026,
+      "height": 574
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-021.webp",
+      "caption": "",
+      "page": 14,
+      "index": 21,
+      "width": 1050,
+      "height": 574
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-022.webp",
+      "caption": "",
+      "page": 14,
+      "index": 22,
+      "width": 1050,
+      "height": 574
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-023.webp",
+      "caption": "",
+      "page": 14,
+      "index": 23,
+      "width": 1050,
+      "height": 574
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-024.webp",
+      "caption": "",
+      "page": 14,
+      "index": 24,
+      "width": 1666,
+      "height": 711
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-025.webp",
+      "caption": "",
+      "page": 14,
+      "index": 25,
+      "width": 665,
+      "height": 377
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-026.webp",
+      "caption": "",
+      "page": 14,
+      "index": 26,
+      "width": 665,
+      "height": 377
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-027.webp",
+      "caption": "",
+      "page": 15,
+      "index": 27,
+      "width": 696,
+      "height": 413
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-028.webp",
+      "caption": "",
+      "page": 15,
+      "index": 28,
+      "width": 1553,
+      "height": 834
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-029.webp",
+      "caption": "",
+      "page": 15,
+      "index": 29,
+      "width": 924,
+      "height": 524
+    },
+    {
+      "url": "assets/figures/osdi-2025-usenix/osdi-2025-zen-empowering-distributed-training-with-sparsity-driven-data-synchronization/fig-030.webp",
+      "caption": "",
+      "page": 15,
+      "index": 30,
+      "width": 881,
+      "height": 524
+    }
+  ]
+}
