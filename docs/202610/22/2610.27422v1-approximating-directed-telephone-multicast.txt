@@ -1,0 +1,1353 @@
+Title: Approximating Directed Telephone Multicast
+
+URL Source: https://arxiv.org/pdf/2610.27422v1
+
+Published Time: Wed, 21 Oct 2026 00:31:13 GMT
+
+Number of Pages: 25
+
+Markdown Content:
+# APPROXIMATING DIRECTED TELEPHONE MULTICAST 
+
+Shahin Kamali 
+
+York University, Canada 
+
+kamalis@yorku.ca 
+
+Seyed-Mohammad Seyed-Javadi 
+
+York University, Canada 
+
+mohammad.sj2@gmail.com 
+
+# ABSTRACT 
+
+In the telephone model a message starts at a source vertex, and in every round each informed vertex may call one neighbour. Telephone multicast asks for a schedule that informs a given set of k
+
+terminals in the fewest rounds. On directed graphs, the best known ratio for this problem was ˜O(√k),due to Elkin and Kortsarz and to Hathcock, Kortsarz and Ravi. For every integer ℓ ≥ 2, we give a deterministic combinatorial algorithm with running time nO(ℓ)
+
+that computes a schedule of length O(ℓ3 log k) · (OPT + k1/ℓ ), where n is the number of vertices and OPT the optimum. Since OPT ≥ log 2(k + 1) , this gives ratio O(kϵ) in time nO(1 /ϵ ) for every fixed ϵ > 0, and ratio O(log 4 k) in quasi-polynomial time. The method rests on jump trees with additive vertex loads , a height reduction that bounds the load of every vertex, and a recursive greedy algorithm with an exponential potential. We also show that directed multicast is a special case of the degree-bounded directed Steiner tree problem on a time-expanded digraph. With known algorithms for that problem this gives randomized ratios O(log 2 n) in time nO(log n) and O(nϵ) in time nO(1 /ϵ ),which, unlike ours, grow with n.On the hardness side, directed multicast stays (1 − ϵ) ln k-hard even when OPT = O(log k), the regime in which the previous algorithms were weakest. arXiv:2610.27422v1 [cs.DS] 20 Oct 2026 1 Introduction 
+
+In the telephone model a message spreads through a network in synchronous rounds, and in every round each node that knows it can pass it on to one neighbour. How fast can it reach all nodes, or a given set of nodes? These are the telephone broadcast and multicast problems, classical problems of information dissemination [HHL88]. On undirected graphs the best approximation ratio is O(log k/ log log k) for multicast to k terminals, hence O(log n/ log log n) for broadcast, against a lower bound of 3 − ϵ. On directed graphs, which model links that work in one direction, the gaps have been much wider: for multicast the best ratio was about √k in the worst case, against a lower bound of ln k, and for broadcast it is O(log n), against a lower bound of Ω( √log n) unless NP ⊆ DTIME (nO(log n)). This paper narrows the multicast gap: in polynomial time the ratio drops to O(kϵ), and the lower bound ln k holds even on instances with a small optimum, where the previous algorithms were weakest. 
+
+The model. Let G = ( V, E ) be a directed graph with n = |V | vertices and a source s ∈ V . Communication proceeds in synchronous rounds 1, 2, . . . . At the start only s is informed . In each round, every informed vertex may call at most one of its out-neighbours; a vertex that is called becomes informed at the end of the round and may make calls from the next round on. A schedule lists the calls. In directed telephone multicast (DTM ) we are also given a set K ⊆ V \ { s}
+
+of k terminals , all reachable from s, and we want a schedule that informs every terminal; the other vertices may be used as relays or left uninformed. The objective is the number of rounds until the last terminal is informed, and OPT 
+
+denotes its minimum. Directed telephone broadcast (DTB ) is the case K = V \ { s}. The undirected problems are the special cases in which G is symmetric. In the k-multicast problem the input contains t ≥ k terminals, and any k of them must be informed. 
+
+The k-multicast problem. Hathcock, Kortsarz and Ravi [HKR26] studied k-multicast as a step toward closing the gap between multicast on undirected and on directed graphs. In approximability, undirected k-multicast lies between the two. A ratio ρ for undirected k-multicast is also one for undirected multicast, the case t = k. Conversely, as they observe using a reduction of Kortsarz and Nutov [KN22] for degree-bounded trees, a ratio ρ for directed multicast gives ratio ρ · polylog( k) for undirected k-multicast. Directed k-multicast contains all these problems. The problem also arises in keeping replicated data consistent [HKR26]: when an update must reach copies of a database at any k of t
+
+candidate sites, choosing the k sites that can be updated fastest is k-multicast. Telephone broadcast is NP-hard and solvable in linear time on trees [SCH81]. It is NP-hard already on cactus graphs of pathwidth 2, and constant-factor approximations exist for cactus graphs and for graphs of bounded pathwidth [AKSJS25]. Its approximability on general graphs has been studied for three decades. 
+
+Known results. 
+
+• Undirected graphs. For broadcast, Kortsarz and Peleg gave a schedule of length 2 OPT + O(√n),and ratio O(log n) on chordal graphs and on graphs with separators of constant size, such as series-parallel graphs [KP95]. Ravi gave ratio O(log 2 n/ log log n) via the poise of a spanning tree [Rav94]. Bar-Noy, Guha, Naor and Schieber improved this to O(log k) for multicast with k terminals, hence 
+
+O(log n) for broadcast [BNGNS00]. For multicast, Elkin and Kortsarz gave ratio O(log k/ log OPT) , hence 
+
+O(log k/ log log k) [EK06b]. Approximating broadcast, and hence multicast, within 3 − ϵ is NP-hard [EK05]. • Directed graphs. A polylogarithmic ratio for the directed problems is an open problem posed by Ravi [Rav94], as Elkin and Kortsarz note [EK05]. For broadcast they answered it: they gave an O(log n)-approximation for 
+
+DTB and proved Ω( √log n)-hardness unless NP ⊆ DTIME (nO(log n)) [EK05]. For DTM , a reduction from Set Cover by Fraigniaud [Fra01], stated for a related communication model, gives a lower bound (1 − ϵ) ln k
+
+unless NP ⊆ DTIME (nO(log log n)), and Elkin and Kortsarz observed that a variant makes ratio o(log k)
+
+NP-hard [EK06a]; with the NP-hardness of Set Cover [Mos15, DS14] the bound (1 − ϵ) ln k is NP-hard as well (Section 4). For DTM the best ratio in polynomial time has been ˜Θ( √k) in the worst case: the algorithms of Elkin and Kortsarz [EK06a] and of Hathcock, Kortsarz and Ravi [HKR26] produce schedules of length 
+
+O(log k) OPT + O(√k) and polylog( k) OPT + ˜O(√k), respectively, and the latter also applies to directed 
+
+k-multicast. Hathcock, Kortsarz and Ravi also give ratio ˜O(t1/3) for undirected k-multicast with t terminals. • Related problems. An optimal schedule informs the terminals along an out-arborescence of small height and small out-degree, so DTM resembles the directed Steiner tree problem, in which an out-arborescence of minimum cost must contain all terminals. For directed Steiner tree, ratio O(kϵ) is achievable in polynomial time for every fixed ϵ > 0 (Zelikovsky [Zel97] for acyclic digraphs, [CCC +99] in general), and O(log 3 k) in quasi-polynomial time [CCC +99]. The paper [CCC +99] claims O(log 2 k), but its analysis relies on a height-reduction lemma of Zelikovsky in its first form, which Helvig, Robins and Zelikovsky later corrected [HRZ01]; 
+
+2Problem This paper Previously                                         
+
+> DTM , polynomial time O(kϵ)in time nO(1 /ϵ ), for every fixed ϵ > 0(Cor. 3.2) ˜O(√k)[EK06a, HKR26]
+> DTM , quasi-polynomial time
+> O(log 4k)in time nO(log k)(Cor. 3.2); O(log 2n)in time nO(log n),randomized (Cor. 3.13) —
+> k-multicast O(kϵ)in time nO(1 /ϵ );O(log 4k)in time nO(log k); also directed (Cor. 3.2)
+> ˜O(t1/3), undirected;
+> ˜O(√k), directed [HKR26]
+> DTM , hardness (1 −ϵ) ln keven when OPT = O(log k)(Thm. 4.2) (1 −ϵ) ln k[Fra01, Mos15, DS14]
+
+Table 1: Summary of results. Here k is the number of terminals (for k-multicast, the number to be informed out of t). All our upper bounds except the one of Corollary 3.13 are achieved by deterministic algorithms, and their ratios do not depend on n; only the running times do. with the corrected lemma the bound is O(log 3 k) [GLL23]. Grandoni, Laekhanukit and Li improved it to 
+
+O(log 2 k/ log log k) with a randomized algorithm [GLL23], and Ghuge and Nagarajan obtained the same ratio deterministically [GN22]; this ratio is best possible in quasi-polynomial time if the Projection Games Conjecture holds and NP ̸ ⊆ T 
+
+> 0<δ< 1
+
+ZPTIME (2 nδ
+
+) [GLL23], and Halperin and Krauthgamer showed that ratio 
+
+log 2−ϵ k is hard unless NP ⊆ ZTIME (npolylog( n)), that is, unless NP has quasi-polynomial-time Las Vegas algorithms [HK03]. Our algorithm uses tools from this line of work: height reduction, and group Steiner tree on trees [GKR00, CEK06]. Unlike costs, out-degrees are maxima over vertices, and the degree-bounded version of directed Steiner tree is much less understood [KN22, GKL +22]. Bamas, Li and Rohwedder [BLR26] recently gave a general algorithm for problems whose solutions follow the recurrence of a dynamic program, under additional packing constraints, which it violates by a factor of roughly nϵ polylog( n) in time nO(1 /ϵ ); it rounds a linear program randomly, and they remark, without details, that it also handles degree bounds. 
+
+Our results. Table 1 summarizes them. 1. Directed multicast (Section 3). For every integer ℓ ≥ 2 we give a deterministic combinatorial algorithm with running time nO(ℓ) that returns a schedule of length O(ℓ3 log k)(OPT + k1/ℓ ) (Theorem 3.1). Since 
+
+OPT ≥ log 2(k + 1) , this gives ratio O(kϵ) in time nO(1 /ϵ ), which is polynomial for every fixed ϵ > 0, and 
+
+O(log 4 k) in quasi-polynomial time. So in quasi-polynomial time we answer Ravi’s question for multicast; in polynomial time it remains open (Section 5). The algorithm also handles directed k-multicast, hence undirected 
+
+k-multicast. Separately, DTM is the special case of the degree-bounded directed Steiner tree problem with zero costs on a time-expanded digraph, where a degree violation β costs at most a factor β in the schedule length (Theorem 3.12). With the algorithm of [GKL +22] this gives a randomized ratio O(log 2 n) in time 
+
+nO(log n), better than our O(log 4 k) in quasi-polynomial time when log n is small compared with log 2 k. With the algorithm of Bamas, Li and Rohwedder [BLR26], the same reduction gives a randomized ratio O(nϵ) in time nO(1 /ϵ ) (Section 3.7). We compare these bounds with Theorem 3.1 below. 2. Hardness (Section 4). The (1 − ϵ) ln k lower bound for DTM holds even on instances with OPT = O(log k),where the previous algorithms had ratio about √k.
+
+Comparison with degree-bounded Steiner tree algorithms. The ratios that the algorithms of Bamas, Li and Rohwedder and of [GKL +22] give for DTM through Theorem 3.12 differ from Theorem 3.1 in three respects, all in favour of Theorem 3.1. First, our ratio depends only on the number k of terminals, whereas theirs grow with n. The bound of Bamas, Li and Rohwedder has the factor nϵ in polynomial time, and for every running time it contains the logarithm of the number of packing constraints, which here is at least n, as every call node of the time-expanded digraph has a degree bound; the ratio obtained from [GKL +22] is O(log 2 n). This matters when k is small compared with n, as when a source must reach a few servers in a large network. Whenever k ≤ log 2 n, a single factor log 2 n is already at least 
+
+k, while the simple schedule of Lemma 3.7 has ratio at most 1 + k/ log 2(k + 1) = O(k/ log k). For example, for 
+
+k = log 2 n, Theorem 3.1 gives ratio O(kϵ) = O((log n)ϵ) in time nO(1 /ϵ ) and ratio O(log 4 k) = O((log log n)4) in time nO(log log n), whereas nϵ = 2 ϵk is exponential in k and log 2 n = k2. For k = log 2 log 2 n, even a single factor 
+
+log 2 n = 2 k is exponential in k, while our ratios are still O(kϵ) in time nO(1 /ϵ ) and O(log 4 k) in time nO(log k). Only when k ≥ nΩ(1) do the polynomial-time ratios have the same form kO(ϵ).
+
+3Second, the term k1/ℓ of Theorem 3.1 is additive, so its ratio is O(ℓ3 log k), logarithmic for fixed ℓ, whenever 
+
+OPT ≥ k1/ℓ . Through Theorem 3.12, the whole degree violation multiplies OPT .Third, our algorithm is combinatorial and deterministic: a recursive greedy algorithm with an exponential potential, which needs no linear program and meets its bound on every run. The other two algorithms solve linear programs, of size nO(1 /ϵ ) and nO(log n), and round their solutions randomly. 
+
+Organization. Section 1.1 sketches the main ideas and their limitations. Section 2 collects definitions and basic lemmas. Section 3 contains the algorithms for multicast, Section 4 the hardness result, and Section 5 discusses open problems. 
+
+1.1 Technical overview 
+
+We now sketch the main ideas, in the order in which the paper develops them. 
+
+Loads instead of degrees. A schedule is an out-arborescence together with an order of the calls at every vertex (Section 2). An arborescence of out-degree d and height h that contains the terminals can be scheduled within 
+
+d log 2 k/ log 2 d + h rounds (Lemma 2.2). So it suffices to find such an arborescence with small out-degree and height. The out-degree is a maximum over vertices, which is hard to control directly. We relax the arborescence to a jump tree :a tree of depth H = 2 ℓ − 1 whose edges carry jumps , walks in G of at most D arcs. The load of a vertex is the number of jumps that leave it. It bounds the out-degree of the union of the jumps and, unlike the out-degree, it is a sum. A jump tree with maximum load Λ ≥ k1/ℓ gives a schedule of length at most ℓΛ + HD .
+
+Height reduction for every vertex. The arborescence of an optimal schedule has out-degree and height at most 
+
+OPT . Lemma 3.4 turns it into a jump tree of depth 2ℓ − 1 in which every vertex has load O(ℓ(OPT + k1/ℓ )) . Level by level, a vertex becomes a hub once ρ = ⌈k1/ℓ ⌉ terminals or hubs of the previous level have been passed up to it, and the source is always a hub. So after ℓ − 1 levels at most ρ + 1 hubs remain, and a vertex that is not a hub is passed by fewer than ρ items per level. The height reduction of Zelikovsky [Zel97], which [CCC +99] uses and Helvig, Robins and Zelikovsky [HRZ01] corrected, bounds the total cost; here the bound holds for every vertex. 
+
+Finding a jump tree. Unfolding G into a tree U of depth H with nO(ℓ) nodes turns the search for a jump tree into a group Steiner tree problem on a tree, with the maximum load as objective. We use a variant of the recursive greedy algorithm of [CCC +99] and of Chekuri, Even and Kortsarz [CEK06]: a candidate at a node is a jump to a child together with any prefix of the list of structures (partial jump trees) that one recursive call at the child returns. So no demands are guessed for the recursive calls, and no single cutoff of their lists is chosen in advance. Every candidate is charged the increase of the potential P 
+
+> v∈V
+
+(eL(v)/Γ − 1) of the loads L, as in online load balancing [AAF +97]. A direct analysis loses a factor ℓ + log k more than our bound. Two observations remove it. In the prefix of a recursive call that the analysis uses, only the structures before the last one raise the cost of later ones, and they cover few terminals. At the top, comparing each iteration with the current potential rather than the final one moves the harmonic sum of greedy covering into the potential. The loads end up O(ℓ log k) times those of the height-reduced optimal jump tree, which gives Theorem 3.1. 
+
+Degree-bounded Steiner trees. Expanding G over T rounds, with a node for every vertex and round and a node for every possible call, turns a schedule into an out-arborescence of the expanded digraph in which every vertex node has at most two children and every call node one (Definition 3.11). Conversely, an out-arborescence in which every call node has at most β children can be replayed as a schedule of length at most βT (Theorem 3.12). So a bicriteria algorithm for degree-bounded directed Steiner tree yields an algorithm for DTM , and the one of [GKL +22] gives a randomized ratio 
+
+O(log 2 n) in quasi-polynomial time. 
+
+Hardness. The lower bounds start from Set Cover. In Fraigniaud’s gadget [Fra01] the source calls set vertices, and each set vertex informs its elements through a tree of logarithmic height. A cover of size c gives a schedule of length 
+
+c + O(log m), and in NO instances every cover is (1 − ϵ) ln m times larger. There the optimum is at least c, because the source makes one call per round. In our hub gadget the source first informs c/ℓ hubs, each of which calls ℓ set vertices. This keeps OPT = O(log k) and the gap (1 − ϵ) ln k (Theorem 4.2). 
+
+Limitations. For fixed ℓ the ratio O(ℓ3(log k + k1/ℓ )) is polynomial in k. A polylogarithmic ratio needs ℓ =Ω(log k/ log log k), and hence time nΩ(log k/ log log k), as for directed Steiner tree, and whether polynomial time suffices is open (Section 5). For broadcast, k = n − 1, and our bounds are weaker than the O(log n) of Elkin 
+
+4and Kortsarz [EK05]. Our hardness result for multicast is within the logarithmic regime: it does not exclude a polylogarithmic ratio in polynomial time. 
+
+# 2 Preliminaries 
+
+This section fixes notation and collects the facts that later sections use: how schedules correspond to out-arborescences, two ways to schedule a given arborescence, and the form of the hardness of Set Cover from which our reductions start. 
+
+Notation. Throughout, G = ( V, E ) is a digraph with n vertices and set of arcs E(G) = E, s is the source and K
+
+the set of k terminals; for broadcast K = V \ { s}. For undirected graphs every edge is read as two opposite arcs. The distance dist( u, v ) is the length of a shortest directed path. An out-arborescence rooted at r is a subdigraph that contains, for each of its vertices v, a unique directed path from r to v. Its height is the largest number of arcs on such a path, and its out-degree is the largest number of children of a vertex. For a vertex v of an arborescence, d(v) is its number of children. All logarithms without a base are natural or to base 2 where it does not matter. 
+
+Schedules and arborescences. In a schedule, call the vertex that informs v the parent of v. The arcs from parents to their children form an out-arborescence rooted at s that contains K, and the schedule is determined, up to useless calls, by this arborescence and by the order in which every vertex calls its children. Conversely, every out-arborescence T
+
+rooted at s with an order of the children of each vertex defines a schedule: every vertex calls its children in the given order, starting in the round after it is informed. For a fixed T , an optimal order can be computed in polynomial time by the tree algorithm of Slater, Cockayne and Hedetniemi [SCH81]: process T bottom-up and let every vertex call first the child whose subtree needs the most rounds. The difficulty therefore lies in choosing T (Figure 1). We use the following basic facts.                              
+
+> sabgcdef
+> 1232333round 1: s→a
+> round 2: s→b,a→c
+> round 3: s→g,a→d,b→e,c→f
+
+Figure 1: A broadcast schedule of length 3. The bold arcs are the calls, labelled with their rounds; they form an out-arborescence rooted at s. Gray dashed arcs are not used. Every vertex calls its children in consecutive rounds, starting right after it is informed. The graph has 8 = 2 3 vertices and the informed set at most doubles per round, so 3 rounds are optimal. • OPT ≥ ⌈ log 2(k + 1) ⌉, since the number of informed vertices at most doubles in each round, and OPT ≥
+
+max t∈K dist( s, t ).• The arborescence of an optimal schedule, pruned to the paths from s to the terminals, has height at most OPT 
+
+and out-degree at most OPT .• Monotonicity. If some vertices are informed earlier, every schedule stays valid and finishes no later. A call to an already informed vertex is simply wasted. Two schedules along a given arborescence are useful. The busy schedule is good when the arborescence has few leaves; we use it for the fallback schedule of Section 3 (Lemma 3.7) and inside the gadgets of Section 4. 
+
+Lemma 2.1 (after Elkin and Kortsarz [EK06a, Lemma 1.1]) . Let Q be an out-arborescence rooted at an informed vertex, with height h and leaf set L. In the busy schedule every informed vertex of Q calls, in each round, some child in 
+
+Q that it has not called yet, as long as one exists. It informs all of Q within h + |L| − 1 rounds. Proof. Elkin and Kortsarz state the bound h + |L|; their argument gives one round less. Fix a leaf x and consider, after each round, the deepest informed vertex v on the path from the root to x (Figure 2). In each round, v either calls its 
+
+5child towards x, which happens at most h times, or calls another child. The second case happens at most d(v) − 1 times for each v on the path. Since P 
+
+> v
+
+(d(v) − 1) over the internal vertices of Q equals |L| − 1, the leaf x is informed within 
+
+h + |L| − 1 rounds.                     
+
+> v0
+> v1
+> v2
+> xabc
+> 356124
+> v0:d(v0)−1 = 2 calls off the path, then v1
+> v1:d(v1)−1 = 1 call off the path, then v2
+> v2: no call off the path, then xxinformed in round h+|L| − 1 = 3 + 4 −1 = 6
+
+Figure 2: The worst case in the proof of Lemma 2.1 for the leaf x; numbers are the rounds of the calls. The arborescence has height h = 3 and the leaves a, b, c and x. In each round the deepest informed vertex v on the path from the root to 
+
+x (bold) either calls its child on the path, which happens at most h times, or another child (gray), which happens at most d(v) − 1 times at each v on the path. The second schedule is good when the arborescence has small out-degree, however many leaves it has. It turns the jump trees of Section 3 into schedules (Lemma 3.6). 
+
+Lemma 2.2 (after Ravi [Rav94, Claim 1]) . Let T be an out-arborescence with L ≥ 1 leaves, out-degree at most d ≥ 2
+
+and height h. If every vertex calls its children in non-increasing order of the number of leaves in their subtrees, all of T
+
+is informed within d log L/ log d + h rounds. The same holds with the number N of vertices in place of L, ordering by subtree sizes. 
+
+Ravi proves the bound with vertex counts; the version with leaves follows by the same induction. 
+
+Proof sketch. A child that is called late should have a small subtree. Calling the children in non-increasing order of their numbers of leaves ensures that the i-th child has at most L/i leaves. It starts i − 1 rounds late, but its smaller subtree needs about d log i/ log d fewer rounds, which is at least i − 1 for i ≤ d. So no child is worse off than the first, and induction on the height gives the bound. 
+
+Proof. For a vertex v of T let W (v) be the number of leaves of the subtree of v for the first statement of Lemma 2.2, and the number of its vertices for the second. In both cases W (v) ≥ 1, and W (v) ≥ W (c1) + · · · + W (cm) for the children c1, . . . , c m of v (for vertex counts, W (v) = 1 + W (c1) + · · · + W (cm)). Let every vertex call its children in non-increasing order of W , and let the root r be informed in round 0. We show by induction on h that every vertex of T
+
+is informed within d log W (r)/ log d + h rounds; this is Lemma 2.2, as W (r) is L or N .
+
+Base case, h = 0 . Then T is the single vertex r, informed in round 0, and the bound is at least 0, as W (r) ≥ 1.
+
+Inductive step, h ≥ 1 (Figure 3). Let the root have children c1, . . . , c m in the calling order, where 1 ≤ m ≤ d, and let Wi = W (ci). As W1 ≥ · · · ≥ Wm and W1 + · · · + Wm ≤ W (r), we have iW i ≤ W1 + · · · + Wi ≤ W (r), so 
+
+Wi ≤ W (r)/i . The vertex ci is informed in round i, and its subtree has out-degree at most d and height at most h − 1.By the induction hypothesis, every vertex of this subtree is informed within d log Wi/ log d + h − 1 further rounds, hence by round 
+
+i + d log( W (r)/i )log d + h − 1 = d log W (r)log d + h +
+
+
+
+i − 1 − d log i
+
+log d
+
+
+
+≤ d log W (r)log d + h, 
+
+because i − 1 ≤ d log i/ log d for 1 ≤ i ≤ d. Indeed, the right side is concave in i, the two sides are equal at i = 1 , and at i = d the right side is d ≥ d − 1.
+
+6c1  
+
+> 1
+> L1≤L/ 1
+
+c2  
+
+> 2
+> L2≤L/ 2
+
+c3  
+
+> 3
+> L3≤L/ 3
+
+c4                        
+
+> 4
+> L4≤L/ 4
+> child ciis informed in round i, and its subtree needs at most dlog( L/i )/log d+h−1further rounds
+> i
+> 1234
+> i−1
+> dlog i/ log dd= 4
+
+Figure 3: The inductive step in the proof of Lemma 2.2. Left: the root calls its children in non-increasing order of their numbers of leaves, so the i-th child has Li ≤ L/i leaves. Right, for d = 4 : the delay i − 1 of the i-th child (line) is at most the saving d log i/ log d from its smaller subtree (curve), since the curve is concave, the two agree at i = 1 , and at 
+
+i = d the curve is at d ≥ d − 1.
+
+Set Cover. An instance consists of a universe of m elements and sets S1, . . . , S N ; a cover is a family of sets whose union is the universe. All our reductions start from the following form of the hardness of Set Cover. Feige [Fei98] proved it unless NP ⊆ DTIME (nO(log log n)), and the reduction of Moshkovitz [Mos15] with the parallel repetition theorem of Dinur and Steurer [DS14] makes it NP-hard. This reduction goes through Label Cover; the cover in the completeness case has one set for every vertex on one side of the Label Cover graph, and the number of sets, the number of elements and the size of this cover are all polynomially related to the size of the Label Cover instance. 
+
+Theorem 2.3 ([Mos15, DS14]) . For every ϵ > 0 there is a constant C such that the following is NP-hard. Given a Set Cover instance with m elements and N ≤ mC sets, and an integer c ≥ m1/C , distinguish the case that a cover of size 
+
+c exists from the case that every cover has more than (1 − ϵ)c ln m sets. 
+
+# 3 Directed multicast: ratio k1/ℓ in time nO(ℓ)
+
+This section presents our algorithm for directed multicast. Its guarantee is the following. 
+
+Theorem 3.1. For every integer ℓ ≥ 2 there is a deterministic algorithm with running time nO(ℓ) that returns a DTM 
+
+schedule of length O(ℓ3 log k) · (OPT + k1/ℓ ). The same holds for directed k-multicast, with OPT its optimum. 
+
+The choice of ℓ trades the running time against the ratio: 
+
+Corollary 3.2. Since OPT ≥ log 2(k + 1) , the ratio is O(ℓ3(log k + k1/ℓ )) . In particular, deterministically: (a) for every fixed ϵ > 0, ratio O(kϵ) in time nO(1 /ϵ ), which is polynomial; (b) with ℓ = ⌈log 2 k⌉, ratio O(log 4 k) in time nO(log k); with ℓ = ⌈log k/ log log k⌉, ratio O(log 4 k/ (log log k)3)
+
+in time nO(log k/ log log k);(c) directed k-multicast, and hence undirected k-multicast, has ratio O(kϵ) in time nO(1 /ϵ ) and ratio O(log 4 k)
+
+in time nO(log k).
+
+The ratios depend on k only; n enters only the running time. The proof uses height reduction as in Zelikovsky [Zel97] and [CCC +99], an unfolding into a tree, and a variant of the recursive greedy algorithm of [CCC +99] and of Chekuri, Even and Kortsarz [CEK06], combined with the exponential potential of online load balancing [AAF +97]. Three points are new. We bound loads , the number of times jumps leave a vertex of G, instead of out-degrees; loads are additive, so greedy covering applies. Our height reduction bounds the load of every vertex of G, not only the total cost. And our analysis of the greedy algorithm loses only a factor O(ℓ log k) in the loads, whereas a straightforward analysis of greedy covering with an exponential potential loses an extra factor ℓ + log k; Section 3.6 explains how our analysis avoids it. Section 3.1 gives an overview of the algorithm and the role of its parameters. Sections 3.2–3.4 define it precisely, in pseudocode as Algorithms 1 and 2, and Sections 3.5 and 3.6 analyse it. 
+
+73.1 Overview of the algorithm 
+
+Before the formal definitions, we describe what the algorithm does and why each of its ingredients is needed. 
+
+What we look for. An optimal schedule informs the terminals along an out-arborescence whose height and out-degree are at most OPT . Conversely, an arborescence of height h and out-degree d that contains the terminals can be scheduled within d log 2 k/ log 2 d + h rounds (Lemma 2.2). So it suffices to find an arborescence with small height and small out-degree. The difficulty is the out-degree: it is a maximum over the vertices of G, and greedy covering algorithms control sums, not maxima. 
+
+Jump trees, and the parameters H, D and Λ. We therefore look for a jump tree : a tree of small depth H whose edges are jumps , walks in G of at most D arcs. The load of a vertex of G counts the jumps that leave it. Loads add up over jumps, so a covering algorithm can control them, and the out-degree of the union of the jumps is at most the maximum load Λ. This union has height at most HD , so the jump tree yields a schedule of length about ℓΛ + HD 
+
+(Lemma 3.6). The jump length D stands for the height of an optimal arborescence: we guess D = T for T = 1 , 2, . . . ,and the analysis uses the guess T = OPT . Guesses T ≥ k are not needed, since for OPT ≥ k a shortest-path schedule is already a 2-approximation (Lemma 3.7). 
+
+The parameter ℓ. The height reduction (Lemma 3.4) shows that the optimal arborescence can be cut into a jump tree of depth H = 2 ℓ − 1 with loads at most about ℓ(OPT + k1/ℓ ). It cuts in ℓ levels, and each level divides the number of terminals by ρ = ⌈k1/ℓ ⌉, which costs an additive ρ in the loads. A larger ℓ makes this additive term smaller, but the search more expensive: jump trees of depth H live in an unfolding of G, a tree with nO(ℓ) nodes, in which finding a jump tree becomes a group Steiner tree problem on a tree. This is where the running time nO(ℓ) comes from. 
+
+The potential and its scale Γ. To keep the maximum load small, every choice is charged the increase of the potential 
+
+Φ( L) = P 
+
+> v∈V
+
+(eL(v)/Γ − 1) of the current loads L of the vertices of G, as in online load balancing. A jump through a heavily loaded vertex of G is expensive, so the greedy choices spread the load, and if Φ stays polynomial in k, every load is at most O(Γ log k). The scale is Γ = Θ( HΛ) , where Λ = ℓ(T + k1/ℓ + 1) is the load bound of the height-reduced optimal jump tree. It must be large compared with Λ, so that adding a structure of load at most Λ changes the potential by at most a constant factor, and a factor H larger, so that the error caused by the changing potential is at most a factor 
+
+e1/H per level of the recursion, and at most a constant over all H levels. 
+
+The recursive greedy algorithm. The jump tree is built top down on the unfolding. A call at a node σ receives a demand , the number of terminals it should cover, and the set of terminals not yet covered. It repeatedly adds the 
+
+candidate with the least increase of the potential per newly covered terminal. A candidate is a jump from σ to a child τ ,followed by a prefix of the list of structures (partial jump trees) that one recursive call at τ returns; taking prefixes of one call, instead of calls with guessed demands, keeps the algorithm simple and fast. The top call covers all k terminals. 
+
+Where the factors come from. The final bound O(ℓ3 log k)(OPT + k1/ℓ ) collects four factors: ℓ in the loads of the height-reduced optimal jump tree, H = 2 ℓ − 1 in the scale Γ, log k from greedy covering (the potential grows by a polynomial in k), and ℓ when the jump tree is turned into a schedule. 
+
+3.2 Jump trees 
+
+In this subsection we define jump trees, the structures that the algorithm searches for instead of schedules, and the procedure that turns a jump tree into a schedule. Fix an integer D ≥ 1, which bounds the number of arcs of every jump. 
+
+Definition 3.3. A jump tree of depth H is a rooted tree J of depth at most H whose nodes are labelled by vertices of 
+
+G; a vertex of G may label several nodes. The root is labelled s, every terminal labels at least one node, and every edge of J from a node labelled u to a child labelled w carries a jump , which is a walk in G from u to w with at most D arcs (the empty walk if w = u). Loads are defined on the vertices of G, not on the nodes of J: the load LJ (v) of a vertex 
+
+v ∈ V is the number of pairs (jump of J, arc of that jump that leaves v), that is, the number of times the jumps on all edges of J leave v. Finally, Λ( J) = max v∈V LJ (v).If two children of a node have the same label, we may keep one of them, with its jump, and move the subtree of the other below it. This does not increase loads or depth. So we may assume that siblings have distinct labels. Figure 4 shows an example. 
+
+8digraph G and loads        
+
+> suwvt1
+> t2
+> t3
+> [2] [2] [1] [1]
+> jump tree J(depth 2)
+> sut3
+> t1t2
+> s u s w t 3
+> u t 1u v t 2
+
+Figure 4: A jump tree of depth H = 2 with D = 2 (right). Every edge of J carries a walk in G of at most D arcs, written on the edge. The bold arcs on the left are the arcs used by the jumps, and the numbers in brackets are the loads: two jumps leave s and two leave u. Every terminal has a walk from s with at most HD arcs, and the out-degree of every vertex in the bold subgraph is at most its load, which is what Lemma 3.5 uses.         
+
+> Gsabt
+> part of U2,1
+> (s)(s, a )(s, s )(s, b )(s, a, a )(s, a, t )· · · (s, b, b )(s, b, t )
+
+Figure 5: The unfolding UH,D for H = 2 and D = 1 of the digraph on the left, partly drawn. A node is a sequence starting at s in which consecutive vertices are equal or within distance D; its label is its last vertex. The group of the terminal t is shaded. A jump tree of depth 2 whose siblings have distinct labels is a subtree of U that contains the root and meets every group. 
+
+From a jump tree to a schedule. For a jump tree J, the procedure S CHEDULE (J) lets F be the set of arcs used by the jumps of J, takes a breadth-first out-arborescence of (V, F ) from s, deletes its branches that contain no terminal, and lets every vertex call its children in non-increasing order of the number of leaves in their subtrees, starting in the round after it is informed. For k-multicast it keeps k of the terminals that J covers and deletes the branches that contain none of them. It runs in time polynomial in |J| and n.
+
+3.3 The unfolding 
+
+To search for a jump tree of depth H, we unfold G into a tree whose nodes are the possible sequences of labels on a path from the root. Let H = 2 ℓ − 1. The unfolding U = UH,D is the rooted tree whose nodes are the sequences σ = ( w0, . . . , w j ) with 
+
+w0 = s, 0 ≤ j ≤ H and dist( wi−1, w i) ≤ D for all i (we allow wi = wi−1). The parent of σ is obtained by dropping 
+
+wj , and the label of σ is λ(σ) = wj . It has at most 2nH nodes. A jump tree of depth H whose siblings have distinct labels is, as a labelled tree, a subtree of U containing the root, together with a jump for every non-root node. Finding a jump tree is therefore a group Steiner tree problem on U: choose a subtree containing the root and, for every terminal t,a node of the group {σ : λ(σ) = t}. Instead of a cost, the objective is the maximum load (Figure 5). Appending to a node labelled t a chain of nodes labelled t, with empty jumps, changes neither the loads nor the depth. So we may assume that every terminal labels a node at depth exactly H, that is, a leaf of U, and we let only leaves cover terminals. 
+
+9σ height h ≥ 2, state Lcur , residual set Rcur , residual demand zcur 
+
+τ1 τ2 τ3          
+
+> P1
+> P2
+> P3
+> list of the call at τ1
+> list of the call at τ3
+> C1C2C3
+> C1, C 2, C 3: the structures returned by G REEDY (τ2, z cur , L cur +LP2, R cur ), in the order chosen
+> i= 1
+> i= 2
+> i= 3
+
+Figure 6: The candidates in one iteration of the while loop in line 3 of Algorithm 1 at a node σ of height h ≥ 2. For every child τ the procedure takes the cheapest jump P and calls itself once at τ ; the call returns the structures it chose, in the order in which it chose them (for τ2: C1, C 2, C 3). Each prefix of such a list, below τ and P , is a candidate (braces). The count of a candidate is the number of residual terminals that it covers, capped at zcur , and the candidate with the least increase per unit of count is chosen. 
+
+3.4 The algorithm 
+
+We now present the algorithm. A recursive greedy procedure builds a jump tree on the unfolding (Algorithm 1), and an outer loop tries the parameters and turns the jump trees into schedules (Algorithm 2). We first define the partial jump trees that the procedure builds and the potential that guides it. 
+
+Structures. A structure rooted at a node σ of U is a finite rooted tree with root σ whose nodes are nodes of U (a node of U may occur several times); each non-root node is a child in U of its parent and carries a jump from the label of its parent to its own label: a path with at most D arcs, or the empty path if the labels agree. For a path P in G and a vertex v ∈ V , let LP (v) be the number of arcs of P that leave v. The loads of a structure S are defined as for jump trees: LS (v) is the sum of LP (v) over the jumps P of S. Its set cov( S) of covered terminals consists of the labels of its leaves of U. For a node τ of S, the subtree of S rooted at τ , with the same jumps, is again a structure, the substructure 
+
+of S rooted at τ . A structure rooted at the root of U that covers all terminals is a jump tree of depth H.
+
+Potential. Fix a scale Γ > 0. For a load vector L = ( L(v)) v∈V , which gives every vertex of G a load, the state , let 
+
+Φ( L) = P
+
+> v∈V
+
+ eL(v)/Γ − 1, so that Φ(0) = 0 , and for a structure S let ∆L(S) = Φ( L + LS ) − Φ( L) be its increase .For a path P , the increase ∆L(P ) is the total weight of the vertices of G that P leaves, where a vertex v ∈ V has the weight eL(v)/Γ(e1/Γ − 1) . So a path with at most D arcs between two given vertices of G that minimizes ∆L(P ) is a shortest path for these weights among paths with at most D arcs, and dynamic programming over the number of arcs finds it. 
+
+The recursive greedy algorithm. The function G REEDY (Algorithm 1) takes a node σ of U of height h ≥ 1, a demand z ≥ 1, a state L and a set R of terminals still to be covered. It returns the list of the structures rooted at σ that it chooses, in the order in which it chooses them. It keeps a current state Lcur , a residual set Rcur and a residual demand 
+
+zcur , initially L, R and z, and repeats the following iteration while zcur > 0 (line 3). First it collects the candidates .For every child τ of σ it computes the cheapest jump P from the label of σ to the label of τ , that is, a path with at most 
+
+D arcs that minimizes ∆Lcur (P ) (line 6). If h = 1 , the node τ with the jump P is a candidate. If h ≥ 2, the function calls itself once at τ , with the demand zcur , the state Lcur + LP and the set Rcur (line 10), and for every i ≥ 1 the node 
+
+τ with the jump P and the first i returned structures below it is a candidate (Figure 6). The count cnt( C) of a candidate 
+
+C is the number of terminals of Rcur that it covers, capped at zcur . If no candidate has positive count, the function returns its list. Otherwise it chooses a candidate C with the least increase per unit of count, ∆Lcur (C)/cnt( C) (line 18), appends it to its list, adds its loads to Lcur , removes the terminals it covers from Rcur and subtracts its count from zcur .The increase of a candidate is computed by building it, so it is exact. When zcur reaches 0, the function returns its list. Unlike the recursive greedy algorithms of [CCC +99], which try every demand for the recursive calls, and of Chekuri, Even and Kortsarz [CEK06], which try a geometric sequence of demands and keep either the whole list of a call or its 
+
+10 first prefix that covers a 1/h fraction of the demand, it guesses no demands: every prefix of the list that a call returns is a candidate. For DTM the demand always equals the number of residual terminals: the top call (below) has z = k = |R|, a recursive call receives zcur and Rcur , and if zcur = |Rcur |, the count of a candidate is the number of residual terminals it covers, so the update keeps zcur = |Rcur |; the cap never applies. The demand is needed for k-multicast, where the top call receives all given terminals but only the demand k: a call stops once it has covered its demand, and a candidate gets credit only for the terminals still needed. 
+
+The main algorithm. The function M ULTICAST (Algorithm 2) solves both problems. It receives the instance with its set K of terminals, the number k of terminals to inform, and the integer ℓ ≥ 2; for DTM k = |K|, and for k-multicast 
+
+K is the set of all t ≥ k given terminals. It sets H = 2 ℓ − 1. It first computes the busy schedule along a shortest-path out-arborescence from s to the k terminals of K nearest to s (all of K for DTM , line 2) and keeps it as the best schedule found so far. Then it tries every value T ∈ { 1, . . . , k − 1} for the optimum (line 4). For each T it takes jumps of at most D = T arcs, the load bound Λ = ℓ (T + k1/ℓ + 1) and the scale Γ = 4 e(e − 1) HΛ, and calls G REEDY at the root of UH,D with demand k, the zero state and the set K (the top call , line 6). The returned structures share the root, and together they form a structure J. If J covers k terminals (all terminals, for DTM ), the function turns it into the schedule S CHEDULE (J), which for k-multicast keeps k of the covered terminals, and keeps the shorter of this schedule and the best one (line 8). Finally it returns the best schedule. Larger values of T are not needed: when OPT ≥ k, the first schedule is already a 2-approximation (Lemma 3.7). 
+
+Algorithm 1 The recursive greedy algorithm on U = UH,D , with scale Γ
+
+Input: 
+
+σ: a node of U of height h ≥ 1
+
+z ≥ 1: the demand, the number of terminals of R still to cover 
+
+L: the state, the current load of every vertex of GR: the set of terminals not covered yet fixed throughout: the unfolding U = UH,D and the scale Γ
+
+Output: the list of the chosen structures, rooted at σ, in the order in which they are chosen  
+
+> 1:
+
+function GREEDY (σ, z, L, R ) 
+
+> 2:
+
+S ← the empty list, Lcur ← L, Rcur ← R, zcur ← z 
+
+> 3:
+
+while zcur > 0 do  
+
+> 4:
+
+C ← ∅ ▷ the candidates  
+
+> 5:
+
+for all children τ of σ in U do  
+
+> 6:
+
+P ← a path from λ(σ) to λ(τ ) with at most D arcs that minimizes ∆Lcur (P ) 
+
+> 7:
+
+if h = 1 then  
+
+> 8:
+
+add to C the node τ with the jump P 
+
+> 9:
+
+else  
+
+> 10:
+
+(C1, . . . , C q ) ← GREEDY (τ, z cur , L cur + LP , R cur ) 
+
+> 11:
+
+for i = 1 , . . . , q , add to C the node τ with the jump P and the structures C1, . . . , C i below it  
+
+> 12:
+
+end if  
+
+> 13:
+
+end for  
+
+> 14:
+
+cnt( C) ← min {| cov( C) ∩ Rcur |, z cur } for C ∈ C ; remove the candidates with cnt( C) = 0  
+
+> 15:
+
+if C = ∅ then  
+
+> 16:
+
+return S 
+
+> 17:
+
+end if  
+
+> 18:
+
+C ← a candidate in C that minimizes ∆Lcur (C)/cnt( C) 
+
+> 19:
+
+append C to S; Lcur ← Lcur + LC ; Rcur ← Rcur \ cov( C); zcur ← zcur − cnt( C) 
+
+> 20:
+
+end while  
+
+> 21:
+
+return S 
+
+> 22:
+
+end function 3.5 Height reduction 
+
+In this subsection we show that every out-arborescence of small height and out-degree, in particular that of an optimal schedule, can be cut into a jump tree of depth 2ℓ − 1 with small loads (Lemma 3.4). The analysis compares the algorithm with the jump tree obtained from an optimal schedule; the algorithm does not compute it. 
+
+11 Algorithm 2 Directed multicast and k-multicast, for an integer ℓ ≥ 2
+
+Input: 
+
+G: a digraph with n vertices; s: the source 
+
+K: the set of terminals 
+
+k: the number of terminals to inform; k = |K| for DTM , and k ≤ | K| for k-multicast 
+
+ℓ ≥ 2: the depth parameter; jump trees have depth 2ℓ − 1
+
+Output: a schedule that informs k terminals of K 
+
+> 1:
+
+function MULTICAST (G, s, K, k, ℓ ) 
+
+> 2:
+
+best ← the busy schedule along a shortest-path out-arborescence from s to the k terminals of K nearest to s 
+
+> 3:
+
+H ← 2ℓ − 1 
+
+> 4:
+
+for T = 1 , . . . , k − 1 do  
+
+> 5:
+
+D ← T , Λ ← ℓ (T + k1/ℓ + 1) , Γ ← 4e(e − 1) HΛ 
+
+> 6:
+
+J ← the union of the structures returned by G REEDY (root of UH,D , k, 0, K ) ▷ Algorithm 1  
+
+> 7:
+
+if J covers k terminals then  
+
+> 8:
+
+best ← the shorter of best and S CHEDULE (J) 
+
+> 9:
+
+end if  
+
+> 10:
+
+end for  
+
+> 11:
+
+return best  
+
+> 12:
+
+end function 
+
+part of T    
+
+> hc1c2c3
+> uy3
+> y1y2
+> y4
+
+part of J       
+
+> hc1c2c3
+> y1y2y3c2y4
+> c1uy 1empty
+
+Figure 7: One level of the height reduction (Lemma 3.4) with ρ = 5 . Squares are items of the previous level. Each child ci of the hub h passed up fewer than ρ items, and |U (h)| = 5 . In J the hub jumps to its children (one arc each, so load at most B at h), and each child c (dashed, an intermediate node) jumps along T to the items it passed up. The paths c1uy 1 and c1uy 2 both leave u and c1, so u has load 2 and c1 has load 3, both below ρ.
+
+Lemma 3.4. Let T be an out-arborescence rooted at s that contains K, with k = |K| ≥ 2, height at most D and out-degree at most B. Let ℓ ≥ 1 and ρ = ⌈k1/ℓ ⌉. There is a jump tree J of depth at most 2ℓ − 1, all of whose jumps are paths of T from a vertex to a descendant, with 
+
+Λ( J) ≤ (ℓ − 1) max {B, ρ − 1} + ρ. 
+
+Proof sketch. The arborescence T may be as deep as OPT , but a jump tree of depth O(ℓ) suffices, because a single jump may follow a long path of T . We shrink the set of terminals level by level: pass them up T , and let a vertex keep the ones that reach it (it becomes a hub ) as soon as ρ of them have gathered. Each level divides the number of items by about ρ, so after ℓ − 1 levels at most ρ + 1 remain, and the root jumps to them directly. Within a level, a hub jumps to its children in T , at most B of them, and each child jumps down T to the items it passed up. Such a path leaves a vertex only if the item was passed up through that vertex, and a vertex that is not a hub passes up fewer than ρ items. So each level adds at most max {B, ρ − 1} to the load of every vertex of G, which is the bound. 
+
+Proof. Items. Let I0 = K. For i = 1 , . . . , ℓ − 1 we obtain Ii from Ii−1 by one pass over T from the leaves up. Every vertex v of T forms the set U (v), which consists of v itself if v ∈ Ii−1 and of the sets passed up by its children. If 
+
+|U (v)| ≥ ρ or v = s, then v becomes a level-i hub : the items of U (v) are assigned to v, and v passes nothing up. Otherwise v passes U (v) to its parent. Let Ii be the set of level-i hubs. Every item of Ii−1 is assigned to exactly one 
+
+12 path of Tsy2
+
+c2
+
+y1
+
+c1
+
+t
+
+path of J                            
+
+> root (s)
+> N2(y2)
+> M2(c2)
+> N1(y1)
+> M1(c1)
+> N0(t)
+> T-path s⇝y2
+> arc (y2, c 2)
+> T-path c2⇝y1
+> arc (y1, c 1)
+> T-path c1⇝t
+> root jumps: at most ρnonempty ones hub arcs: at most Bper hub item paths: leave only non-hubs v,at most |U(v)| ≤ ρ−1times hub arcs: at most Bper hub item paths: as above level 2 level 1
+
+Figure 8: A root-to-leaf path of the jump tree J of Lemma 3.4 for ℓ = 3 (middle) and the path of T from s to the terminal t that its jumps follow (left). The vertex y2 is a level-2 hub (double square), c2 is the child of y2 that passed the item y1 up, y1 is a level-1 hub, and c1 is its child that passed t up. Nodes Ni alternate with intermediate nodes Mi, so the depth is 2ℓ − 1 = 5 . The three kinds of jumps give the three terms of the bound Λ( J) ≤ (ℓ − 1) max {B, ρ − 1} + ρ
+
+(right). hub, and every hub other than s receives at least ρ items, so |Ii| ≤ | Ii−1|/ρ + 1 . Since |I0| = k ≤ ρℓ and ρ ≥ 2, this gives |Ii| ≤ ρℓ−i + P 
+
+> j<i
+
+ρ−j < ρ ℓ−i + 2 , and in particular |Iℓ−1| ≤ ρ + 1 .
+
+The jump tree (Figure 7). For 0 ≤ i ≤ ℓ − 1 and x ∈ Ii, J has a node Ni(x) labelled x, with the following children. • N0(t), for t ∈ K, is a leaf. • For i ≥ 1 and a level-i hub h: the child Ni−1(h) with the empty jump if h ∈ Ii−1; and, for every child c of h
+
+in T that passed up a nonempty set U (c), an intermediate child Mi(c) labelled c, with the one-arc jump (h, c ).The children of Mi(c) are the nodes Ni−1(y) for y ∈ U (c), each with the jump along the T -path from c to y
+
+(empty if y = c). • The root has the children Nℓ−1(y), y ∈ Iℓ−1, each with the jump along the T -path from s to y.The items assigned to a hub h are U (h) = ( {h} ∩ Ii−1) ∪ S 
+
+> c
+
+U (c), so every item of Ii−1 gets a parent node at level i.So every node Ni(x) belongs to J, in particular every terminal labels a node, and the depth is at most 2( ℓ − 1) + 1 .The jumps are T -paths and hence have at most D arcs. 
+
+Loads (Figure 8). Fix a level i ∈ { 1, . . . , ℓ − 1} and a vertex v of G. The level-i jumps are the arcs (h, c ) from a hub to its children, at most B per hub, and the T -paths from an intermediate node c to the items y ∈ U (c). Such a path leaves v only if v lies on it and v̸ = y; then y was passed up through v, so y ∈ U (v) and v is not a hub. Hence these paths leave no hub, and they leave any other vertex at most |U (v)| ≤ ρ − 1 times. So the level-i jumps leave v at most 
+
+max {B, ρ − 1} times. At most ρ jumps from the root are nonempty: |Iℓ−1| − 1 ≤ ρ of them if ℓ ≥ 2, since the jump to 
+
+s ∈ Iℓ−1 is empty, and k ≤ ρ if ℓ = 1 . Summing over the levels gives the bound. Apply Lemma 3.4 to the arborescence T ∗ of an optimal schedule, pruned to the paths from s to the terminals. Its out-degree is B∗ ≤ OPT and its height is D∗ ≤ OPT . Lemma 3.4 gives a jump tree, for D = D∗, with 
+
+Λ∗ := ( ℓ − 1) max {B∗, ρ − 1} + ρ ≤ ℓ  OPT + k1/ℓ + 1 . (1) The loads of this jump tree are positive only on vertices of T ∗, of which there are at most 1 + kD ∗.
+
+13 3.6 Analysis of the algorithm 
+
+In this subsection we prove Theorem 3.1 and Corollary 3.2. We bound the length of the two kinds of schedules that Algorithm 2 compares, show that one iteration of the recursive greedy algorithm chooses a cheap structure (Lemma 3.9) and that the top call finds a jump tree with small loads (Lemma 3.10), and combine these bounds. As for the recursive greedy algorithm of [CCC +99], which Chekuri, Even and Kortsarz [CEK06] analyse for group Steiner tree on trees, a candidate of a node of height h has density within a factor O(h) of the optimum (Lemma 3.9). The objective, the maximum load, is a maximum over the vertices of G rather than a sum, which is why a candidate costs the increase of an exponential potential, as in online load balancing [AAF +97]. The loads end up at most O(Γ log k),and two observations allow the scale Γ = Θ( HΛ) . In the prefix of a recursive call that the analysis uses, the structures before the last one cover only a 1/h fraction of what the optimum covers there, and spend only O(1) times its cost; only they raise the cost of a later structure. At the top, comparing every iteration with the current potential instead of the final one turns the harmonic sum of greedy covering into a factor kO(1) inside the potential, which costs only O(log k)
+
+in the loads. 
+
+The two kinds of schedules. Algorithm 2 compares the schedules S CHEDULE (J) with the schedule of line 2. We bound both. First, the arborescence that S CHEDULE builds inherits small out-degree and height from J. Let Y be the set of terminals that S CHEDULE (J) keeps: all terminals for DTM , and k of the terminals that J covers for k-multicast; so |Y | = k.
+
+Lemma 3.5. Let J be a structure rooted at the root of UH,D that covers every terminal of Y . The out-arborescence that 
+
+SCHEDULE (J) builds contains Y , has height at most HD and out-degree at most Λ( J), and has at most |Y | leaves. Proof. Let F be the set of arcs used by the jumps of J. Every arc of F that leaves a vertex v of G is an arc of a jump of 
+
+J that leaves v, so v has out-degree at most LJ (v) ≤ Λ( J) in the digraph (V, F ), and hence in every subgraph of it. For t ∈ Y , some node of J is labelled t, and the jumps on the path from the root of J to this node form a walk from s to 
+
+t in (V, F ). The path has at most H edges and every jump at most D arcs, so the walk has at most HD arcs, and t
+
+lies at depth at most HD in the breadth-first out-arborescence of (V, F ) from s. Deleting the branches that contain no terminal of Y keeps the paths from s to Y , so every remaining vertex has depth at most HD , and every leaf of the result is in Y .The schedule along this arborescence is short: 
+
+Lemma 3.6. Let J be as in Lemma 3.5, and let Λ ≥ 2 with Λ( J) ≤ Λ. Then SCHEDULE (J) informs Y within 
+
+Λ log 2 k/ log 2 Λ + HD rounds. Proof. By Lemma 3.5, the arborescence contains Y , has out-degree at most Λ, height at most HD , and at most |Y | = k
+
+leaves. Every vertex calls its children in non-increasing order of their numbers of leaves, so Lemma 2.2, with leaf counts and d = Λ , gives the bound. For Λ = max {Λ( J), k 1/ℓ , 2} we have log 2 Λ ≥ log 2 k/ℓ , so the length is at most 
+
+ℓ · max {Λ( J), k 1/ℓ , 2} + HD. (2) When OPT is large compared with k, jump trees are not needed: the fallback schedule of line 2 of Algorithm 2 is already a 2-approximation. 
+
+Lemma 3.7. Let Y be the set of terminals (for k-multicast, the k terminals nearest to s). The busy schedule along a shortest-path out-arborescence from s to Y , computed in line 2 of Algorithm 2, informs Y within OPT + k rounds. In particular it is a 2-approximation when OPT ≥ k.Proof. Every terminal of Y is within distance OPT of s. For k-multicast, an optimal schedule informs k terminals within distance OPT , so the k nearest are also within OPT . The pruned arborescence therefore has height at most 
+
+OPT and at most k leaves, and Lemma 2.1 applies. 
+
+Linear cost. For a structure S and a state L let 
+
+cL(S) = 1Γ
+
+X
+
+> v∈V
+
+eL(v)/ΓLS (v)
+
+14 be its linear cost ; for a path P , the linear cost cL(P ) is defined in the same way, with LP in place of LS . Here L is the state, the loads that the structures chosen so far put on the vertices of G, and LS are the loads of S alone. Every unit of load that S adds at a vertex v ∈ V is priced at eL(v)/Γ/Γ, the derivative of Φ at L in the coordinate v; so cL(S) is the linear approximation of the increase ∆L(S) = Φ( L + LS ) − Φ( L). Since the loads of a structure are the sums of the loads of its jumps, its linear cost is the sum of the linear costs of its jumps, and it is nondecreasing in L. Lemma 3.8 bounds the increase of a structure with small loads by a constant times its linear cost, and shows that when the state grows, the linear cost of such a structure grows at most Λ/Γ times as much as the potential. 
+
+Lemma 3.8. Let Q be a structure with maximum load at most Λ ≤ Γ, and let L ≤ L′ be states (coordinatewise). Then (a) ∆L(Q) ≤ (e − 1) cL(Q), and (b) cL′ (Q) − cL(Q) ≤ ΛΓ
+
+ Φ( L′) − Φ( L).Proof. Both parts are checked vertex by vertex. (a) The increase is ∆L(Q) = P 
+
+> v∈V
+
+eL(v)/Γ(eLQ(v)/Γ − 1) . For every 
+
+v ∈ V the exponent y = LQ(v)/Γ lies in [0 , 1] , since LQ(v) ≤ Λ ≤ Γ, and on [0 , 1] the convex function ey lies below its chord from (0 , 1) to (1 , e ), so ey − 1 ≤ (e − 1) y. Hence the term of v is at most (e − 1) eL(v)/ΓLQ(v)/Γ, and summing over v gives (a). (b) Every difference eL′(v)/Γ − eL(v)/Γ is nonnegative, as L ≤ L′, and LQ(v) ≤ Λ, so 
+
+cL′ (Q) − cL(Q) = 1Γ
+
+X
+
+> v∈V
+
+ eL′(v)/Γ − eL(v)/ΓLQ(v) ≤ ΛΓ
+
+X
+
+> v∈V
+
+ eL′(v)/Γ − eL(v)/Γ = ΛΓ
+
+ Φ( L′) − Φ( L).
+
+The core of the analysis bounds the candidate that one iteration of the while loop in line 3 of Algorithm 1 chooses: its increase per counted terminal is at most O(h) times the linear cost per terminal of any structure with small loads. This is the counterpart, for loads, of the density bound of Chekuri, Even and Kortsarz [CEK06, Lemma 3.4]. 
+
+Lemma 3.9. Let bh = ( e − 1) e(h−1) /H and βh = h b h, so that βh < e (e − 1) h, and suppose Γ ≥ 4e(e − 1) HΛ.Consider an iteration of the while loop in line 3 of Algorithm 1 at a node σ of height h ≥ 1, with state Lcur , residual set Rcur and residual demand zcur ≥ 1. If some structure Q rooted at σ with maximum load at most Λ covers x ≥ 1
+
+terminals of Rcur , then some candidate has positive count, and the chosen candidate C satisfies 
+
+∆Lcur (C) ≤ βh cnt( C) cLcur (Q)/¯x, ¯x = min {x, z cur }.
+
+Proof sketch. We compare the greedy choice with an arbitrary structure Q of small load, by induction on the height. At height 1 a candidate is a single jump, and the cheapest jump costs at most e − 1 times the linear cost of Q’s jump, by Lemma 3.8(a). At height h, some child τ1 of σ carries a branch of Q, the jump to τ1 and everything of Q below 
+
+τ1, that covers some number y of the residual terminals and is as cheap per terminal as Q itself, and by induction the recursive call at τ1 chooses structures that are cheap compared with this branch. Two things could go wrong, and the proof handles both by looking only at the shortest prefix of the call’s list that counts y/h terminals. First, the call might spend its demand on terminals that are not the ones Q covers; but before this prefix nothing is capped, so the branch of 
+
+Q still covers most of its terminals and the induction applies. Second, every chosen structure raises the potential and so makes the later ones more expensive; but the structures before the last one count fewer than y/h terminals, so by induction their total increase is at most a constant times the cost of the branch of Q, and by Lemma 3.8(b) they raise the cost of the last structure by only a factor 1 + O(Λ /Γ) . The choice Γ = Θ( HΛ) keeps this factor below e1/H , so it compounds to at most e over the H levels, and stopping at a 1/h fraction of the terminals costs the factor h in βh.
+
+Proof. We prove Lemma 3.9 by induction on the height h of σ. Throughout we write c = cLcur , ∆ = ∆ Lcur and 
+
+z = zcur .
+
+A branch of Q that is as cheap as Q. Split Q into branches Qτ , one for each child τ of σ in Q: the branch Qτ consists of the jump P ∗ 
+
+> τ
+
+that Q uses from σ to τ , followed by the substructure Q′ 
+
+> τ
+
+of Q rooted at τ . By additivity of the linear cost, c(Qτ ) = c(P ∗ 
+
+> τ
+
+) + c(Q′ 
+
+> τ
+
+) and c(Q) = P 
+
+> τ
+
+c(Qτ ). Let yτ = min {| cov( Qτ ) ∩ Rcur |, z }. Then P 
+
+> τ
+
+yτ ≥ ¯x: if some branch has yτ = z, this term alone is at least ¯x, and otherwise P 
+
+> τ
+
+yτ = P 
+
+> τ
+
+|cov( Qτ ) ∩ Rcur | ≥ x, since every terminal that Q covers is covered by one of its branches. Hence some child τ1 with y := yτ1 ≥ 1 satisfies 
+
+c(Qτ1 )/y ≤ c(Q)/¯x (Figure 9): otherwise c(Qτ ) > y τ c(Q)/¯x for every child τ with yτ ≥ 1, and summing over these children gives c(Q) > c (Q), as costs are nonnegative. We write P ∗ = P ∗ 
+
+> τ1
+
+and Q′ = Q′ 
+
+> τ1
+
+, so that Qτ1 is the jump P ∗
+
+followed by Q′, and c(Qτ1 ) = c(P ∗) + c(Q′). Note that Q′ covers at least y terminals of Rcur , and that y ≤ z.
+
+The jump to τ1. The candidates at τ1 do not use P ∗, but the jump P that line 6 of Algorithm 1 chooses for τ1, the one with the least increase. So ∆( P ) ≤ ∆( P ∗), and ∆( P ∗) ≤ (e − 1) c(P ∗) by Lemma 3.8(a), applied to the jump P ∗,whose loads are at most those of Q.
+
+15 στ1 τ τ ′             
+
+> P∗
+> Q′
+> Qτ1
+> covers yof the residual terminals
+> c(Qτ1)/y ≤c(Q)/¯x,branch Qτ1= jump P∗and substructure Q′
+
+Figure 9: The proof of Lemma 3.9. The structure Q splits into branches, one for each child of σ, and the branch Qτ1 of some child τ1 (dotted), the jump P ∗ together with the substructure Q′, is at least as cheap per covered terminal as Q.
+
+It suffices to find one good candidate. We show that some candidate ˆC has cnt( ˆC) > 0 and 
+
+∆( ˆC)cnt( ˆC) ≤ βh
+
+c(Qτ1 )
+
+y . (3) This proves Lemma 3.9. Indeed, ˆC shows that some candidate has positive count, so line 18 of Algorithm 1 chooses a candidate C, and as C minimizes the ratio among the candidates with positive count, 
+
+∆( C)cnt( C) ≤ ∆( ˆC)cnt( ˆC) ≤ βh
+
+c(Qτ1 )
+
+y ≤ βh
+
+c(Q)¯x ;
+
+multiplying by cnt( C) gives the inequality of Lemma 3.9. 
+
+Height 1. If h = 1 , then τ1 is a leaf of U labelled by a terminal of Rcur , so y = 1 , and Qτ1 is the jump P ∗.The node τ1 with the jump P is a candidate that covers this terminal; its count is 1, as z ≥ 1, and its ratio is 
+
+∆( P ) ≤ (e − 1) c(P ∗) = β1c(Qτ1 )/y , since β1 = b1 = e − 1.
+
+Height h ≥ 2: the recursive call at τ1. Let h ≥ 2, assume Lemma 3.9 for height h − 1, and write b = bh−1; note that 
+
+e − 1 ≤ b < e (e − 1) . The candidates at τ1 come from one recursive call, made in line 10 of Algorithm 1 at τ1 with the demand z, the state Lcur + LP and the set Rcur . It returns structures C1, . . . , C q , in the order in which it chooses them, and for every i ≤ q the node τ1 with the jump P and the structures C1, . . . , C i is a candidate at σ. The structure Cj is the one that the recursive call chooses in the j-th iteration of its own while loop, in line 3 of Algorithm 1 run at τ1. For this iteration let L(j) be the state of the recursive call at its start, cj the count of Cj and ∆j = ∆ L(j) (Cj ) its increase, and let 
+
+Sj = Φ( L(j)) − Φ( Lcur ), mj = c1 + · · · + cj ,
+
+the increase of the potential so far, measured from the state at σ, and the count so far, with m0 = 0 . The recursive call starts in the state L(1) = Lcur + LP , so S1 = ∆( P ), and every iteration adds the loads of the chosen structure, so 
+
+Sj+1 = Sj + ∆ j . In particular S1 ≤ S2 ≤ · · · , as increases are nonnegative. 
+
+While fewer than y/h terminals are counted, the induction applies. Let j ≥ 1 with mj−1 < y/h . In the recursive call, a count is capped only when the chosen structure covers at least as many residual terminals as the residual demand; then the count equals the residual demand, the residual demand drops to 0, and the call ends. The first j − 1 counts add up to 
+
+mj−1 < y/h ≤ y ≤ z, so the residual demand is still z − mj−1 > 0, and none of these counts was capped. Hence each of them is the number of terminals that its structure removed from the residual set of the call, and the call has removed exactly mj−1 terminals so far. As Q′ covers at least y terminals of Rcur , it still covers x′ > y − y/h = y(h − 1) /h 
+
+terminals of the residual set of the call, and the residual demand z − mj−1 is also more than y(h − 1) /h , as y ≤ z. So Lemma 3.9 for height h − 1 applies to iteration j of the recursive call, with the state L(j) and the structure Q′, which is rooted at τ1 and has maximum load at most Λ; its ¯x is ¯x′ = min {x′, z − mj−1} > y (h − 1) /h . Lemma 3.9 for height 
+
+h − 1 shows that some candidate of this iteration has positive count, so the iteration takes place and chooses Cj with 
+
+cj ≥ 1, and that 
+
+∆j ≤ βh−1
+
+cj
+
+¯x′ cL(j) (Q′) ≤ βh−1
+
+cj
+
+y(h − 1) /h cL(j) (Q′) = h b cj
+
+y cL(j) (Q′),
+
+16 since βh−1 = ( h − 1) b. Loads only grow during the call, so Lcur ≤ L(j), and Λ ≤ Γ; so Lemma 3.8(b) gives 
+
+cL(j) (Q′) ≤ c(Q′) + ΛΓ
+
+ Φ( L(j)) − Φ( Lcur ) = c(Q′) + ΛΓ Sj . Together, 
+
+∆j ≤ h b cj
+
+y
+
+
+
+c(Q′) + ΛΓ Sj
+
+
+
+whenever mj−1 < y/h. (4) 
+
+The candidate ˆC. As long as mj−1 < y/h , iteration j takes place and adds cj ≥ 1 to the count, so the counts reach 
+
+y/h after at most ⌈y/h ⌉ iterations: there is a first index p with mp ≥ y/h . Let ˆC be the candidate consisting of τ1, the jump P and the structures C1, . . . , C p, and let m = mp and m◦ = mp−1; so m◦ < y/h ≤ m and m = m◦ + cp (with 
+
+m◦ = 0 if p = 1 ). The counted terminals are distinct terminals of Rcur that ˆC covers, and m ≤ z, since the counts of the call add up to at most its demand z. So cnt( ˆC), the number of terminals of Rcur that ˆC covers, capped at z, is at least m ≥ y/h > 0. The increase of ˆC is the increase of the potential from Lcur to the state after the p-th iteration of the call, that is, ∆( ˆC) = Sp + ∆ p.
+
+The structures before the last one. Let S = Sp and κ = bΛ/Γ. As b < e (e − 1) and Γ ≥ 4e(e − 1) HΛ, we have 
+
+κ < 1/(4 H). The increase S = ∆( P ) + P 
+
+> j<p
+
+∆j is due to the jump P and to the structures before Cp. We bound every ∆j with j < p by (4), which applies as mj−1 ≤ m◦ < y/h , and use Sj ≤ S, P 
+
+> j<p
+
+cj = m◦ and hm ◦/y < 1:
+
+S ≤ ∆( P ) + hb m◦
+
+y c(Q′) + hb m◦
+
+y · ΛΓ S ≤ ∆( P ) + hb m◦
+
+y c(Q′) + κS. 
+
+We solve for S, and then use ∆( P ) ≤ (e − 1) c(P ∗) ≤ b c (P ∗) and hm ◦/y < 1 once more: 
+
+S ≤ 11 − κ
+
+
+
+∆( P ) + hb m◦
+
+y c(Q′)
+
+
+
+≤ b
+
+1 − κ
+
+ c(P ∗) + c(Q′). (5) So the jump P and the structures before the last one raise the potential by at most a constant times the cost of the branch 
+
+Qτ1 .
+
+The last structure. By (4) for j = p, which applies as mp−1 = m◦ < y/h , and by the second bound in (5), with  
+
+> ΛΓ
+
+· b 
+
+> 1−κ
+
+= κ 
+
+> 1−κ
+
+,
+
+∆p ≤ hb cp
+
+y
+
+
+
+c(Q′) + ΛΓ S
+
+
+
+≤ hb cp
+
+y
+
+
+
+c(Q′) + κ
+
+1 − κ
+
+ c(P ∗) + c(Q′)
+
+= hb y · cp · κ c (P ∗) + c(Q′)1 − κ .
+
+The ratio of ˆC. We divide ∆( ˆC) = S + ∆ p by m, using the first bound in (5) for S. As m ≥ y/h , we have 
+
+∆( P )/m ≤ h∆( P )/y ≤ hb c (P ∗)/y , so 
+
+Sm ≤ hb y · c(P ∗) + c(Q′) m◦/m 
+
+1 − κ , ∆p
+
+m ≤ hb y · cp
+
+m · κ c (P ∗) + c(Q′)1 − κ .
+
+Adding the two bounds, and using m◦ + cp = m and cp ≤ m, gives 
+
+∆( ˆC)
+
+m ≤ hb y · (1 + κc p/m ) c(P ∗) + c(Q′)1 − κ ≤ hb y · 1 + κ
+
+1 − κ
+
+ c(P ∗) + c(Q′) = hb y · 1 + κ
+
+1 − κ c(Qτ1 ).
+
+Finally 1+ κ 
+
+> 1−κ
+
+= 1 + 2κ 
+
+> 1−κ
+
+≤ 1 + 24 11 κ < 1 + 1 
+
+> H
+
+≤ e1/H , as κ < 14H ≤ 112 (recall H = 2 ℓ − 1 ≥ 3). Since cnt( ˆC) ≥ m,the ratio of ˆC is at most ∆( ˆC)/m ≤ hb h−1e1/H c(Qτ1 )/y = hb hc(Qτ1 )/y = βhc(Qτ1 )/y , which is (3). Lemma 3.10 applies Lemma 3.9 to all iterations of the top call. It compares the greedy covering with any structure J′
+
+of small loads, and bounds the loads of the result in terms of the number of vertices of G on which J′ has positive loads. Theorem 3.1 uses it. 
+
+Lemma 3.10 (top call) . Let D ≥ 1 and Λ > 0, let Γ = 4 e(e − 1) HΛ, and let the demand k be at most the number of terminals in K. Suppose that a structure J′ rooted at the root of UH,D covers at least k terminals, has maximum load at most Λ, and has positive loads on a set V ′ of at most N vertices of G. Then the structures returned by 
+
+GREEDY (root of UH,D , k, 0, K ) together form a structure J that covers at least k terminals, and every load of J is at most Γ ln N + (1 + ln k)/4.
+
+17 Proof sketch. The top call is a greedy covering of k terminals, which we compare in every iteration with J′. Measured by the linear cost at the current state, J′ is cheap: at most Λ/Γ times the current potential plus N . So each greedy step multiplies the potential, shifted by N , by at most exp(cnt /(4 zj )) , and the exponents add up to a harmonic sum, which is O(log k). Hence the final potential is at most N k O(1) , and every load is O(Γ(log N + log k)) .
+
+Proof. Let Lj , zj and Cj be the state, the residual demand and the chosen candidate in the j-th iteration of the while loop (line 3 of Algorithm 1) of the call, and Φj = Φ( Lj ), so that Φ1 = Φ(0) = 0 .
+
+Every iteration finds a candidate. A capped count makes the residual demand 0 and ends the call. So as long as the call runs, no count has been capped, the call has removed exactly k − zj terminals from its residual set before iteration j,and at least zj of the terminals that J′ covers are still residual. Hence in every iteration Lemma 3.9 applies with Q = J′
+
+and ¯x = zj : the call is at the root of U, of height H, and Γ = 4 e(e − 1) HΛ. In particular every iteration has a candidate with positive count, so the call ends only when zj reaches 0, after counting k terminals. The returned structures share the root, and together they form a structure J that covers these k terminals. 
+
+The linear cost of J′ at the current state. By definition, cLj (J′) = 1Γ
+
+P 
+
+> v∈V
+
+eLj (v)/ΓLJ′ (v). Only the vertices of V ′
+
+contribute, and LJ′ (v) ≤ Λ. Write eLj (v)/Γ = ( eLj (v)/Γ − 1) + 1 ; the potential Φj is the sum of the nonnegative terms 
+
+eLj (v)/Γ − 1 over all v ∈ V . So 
+
+cLj (J′) ≤ ΛΓ
+
+X 
+
+> v∈V′
+
+eLj (v)/Γ ≤ ΛΓ
+
+ Φj + |V ′|.
+
+The potential stays small. We apply Lemma 3.9 with the current state Lj , not with the final one; this is what allows the bound above in terms of the current potential Φj . Since βH = H(e − 1) e(H−1) /H < e (e − 1) H and Γ = 4 e(e − 1) HΛ,we have βH Λ/Γ < 14 , so 
+
+Φj+1 − Φj = ∆ Lj (Cj ) ≤ βH
+
+cnt( Cj )
+
+zj
+
+cLj (J′) ≤ cnt( Cj )4zj
+
+ Φj + |V ′|.
+
+Adding Φj + |V ′| to both sides and using 1 + y ≤ ey gives Φj+1 + |V ′| ≤ (Φ j + |V ′|) exp(cnt( Cj )/(4 zj )) .Multiplying over all iterations, starting from Φ1 + |V ′| = |V ′|, the final loads Lf , which are the loads of J, satisfy 
+
+Φ( Lf ) + |V ′| ≤ | V ′| exp   14
+
+P 
+
+> j
+
+cnt( Cj )/z j
+
+. The residual demand starts at z1 = k, drops by cnt( Cj ) in iteration j,and ends at 0. Each term cnt( Cj )/z j is at most the sum of 1/i over the cnt( Cj ) integers i with zj+1 < i ≤ zj , since each of them is at most zj . Summing over j gives P 
+
+> j
+
+cnt( Cj )/z j ≤ Pki=1 1/i ≤ 1 + ln k. The source s is in V ′, since a jump path from s to a covered terminal leaves s; so 1 ≤ | V ′| ≤ N and 
+
+1 + Φ( Lf ) ≤ Φ( Lf ) + |V ′| ≤ | V ′| e(1+ln k)/4 ≤ N e (1+ln k)/4.
+
+The loads of J. For every v ∈ V the term eLf (v)/Γ − 1 is at most Φ( Lf ), so Lf (v) ≤ Γ ln(1 + Φ( Lf )) ≤
+
+Γ ln N + (1 + ln k)/4.
+
+Proof of Theorem 3.1. We show that Algorithm 2 has the stated guarantee. 
+
+The case OPT ≥ k. This includes the case k = 1 . The schedule of line 2 has length at most 2OPT by Lemma 3.7, and the returned schedule is not longer. 
+
+The comparison jump tree. Otherwise OPT < k , so k ≥ 2, and the loop in line 4 has an iteration with T = OPT ; we consider it. There D = OPT ≥ D∗ and, by (1), Λ = ℓ(OPT+ k1/ℓ +1) ≥ Λ∗. For k-multicast, T ∗ is the arborescence of an optimal schedule pruned to the k terminals that it informs. Let J∗ be the jump tree that Lemma 3.4 gives for T ∗,with siblings of equal label merged, so that it is a structure rooted at the root of UH,D . It covers the k terminals of T ∗,and its maximum load is at most Λ∗ ≤ Λ. Let V ∗ be the set of vertices of G with positive load in J∗. Every jump of J∗
+
+is a path of T ∗, so it leaves only vertices of T ∗. The arborescence T ∗ is the union of k paths from s with at most D∗
+
+arcs each, so it has at most 1 + kD ∗ vertices, and D∗ ≤ OPT ≤ k − 1. Hence |V ∗| ≤ 1 + kD ∗ ≤ 1 + k(k − 1) ≤ k2.
+
+The loads of J and the schedule. By Lemma 3.10 with J′ = J∗ and N = k2, the top call returns a structure J
+
+that covers k terminals (all terminals for DTM , so J is then a jump tree of depth H), and every load of J is at most 
+
+Γ(2 ln k + (1 + ln k)/4) ≤ 3Γ ln k, as k ≥ 2. Since Γ = 4 e(e − 1)(2 ℓ − 1) ℓ (OPT + k1/ℓ + 1) and OPT ≥ 1, this gives Λ( J) = O(ℓ2 log k)(OPT + k1/ℓ ). By Lemma 3.6 and (2), with HD = (2 ℓ − 1)OPT , S CHEDULE (J) informs k
+
+terminals within ℓ max {Λ( J), k 1/ℓ , 2} + (2 ℓ − 1)OPT = O(ℓ3 log k)(OPT + k1/ℓ ) rounds. Line 8 keeps the shortest schedule found, so the returned schedule is not longer. 
+
+18 Running time. Every iteration of the while loop (line 3 of Algorithm 1) counts at least one terminal and the demand is at most k, so a call makes at most k iterations. In an iteration, each of the at most n children of σ in U needs one shortest-path computation and, at height h ≥ 2, one call at height h − 1, whose list has at most k structures, since each counts at least one terminal; so the child gives at most k candidates. Hence a call at height h takes time th ≤ kn (th−1 + poly( n)) , line 6 of Algorithm 2 takes time (kn )H poly( n) = nO(ℓ), and the loop in line 4 of Algorithm 2 makes k − 1 iterations. 
+
+Proof of Corollary 3.2. Divide the bound by OPT ≥ log 2(k + 1) : the term k1/ℓ /OPT is at most k1/ℓ / log 2 k. For (a) take ℓ = max {2, ⌈1/ϵ ⌉} : then ℓ is a constant, k1/ℓ ≤ kϵ and log k = O(kϵ). For (b), k1/ℓ ≤ 2 when ℓ = ⌈log 2 k⌉, and 
+
+k1/ℓ ≤ log k when ℓ = ⌈log k/ log log k⌉. Part (c) is Theorem 3.1 for k-multicast; an undirected graph is a symmetric digraph. 
+
+3.7 A second route: degree-bounded Steiner trees 
+
+This subsection presents a second algorithm for DTM , by a reduction to a Steiner tree problem with degree bounds. Its ratio depends on n rather than on k, so it complements Theorem 3.1. In the degree-bounded directed Steiner tree problem (DB-DST) the input is a digraph with arc costs c ≥ 0, a root, a set of k terminals and a bound dv ≥ 0 for every vertex v. A solution is an out-arborescence rooted at the root that contains all terminals and in which every vertex v has at most dv children; its cost, the sum of the costs of its arcs, is to be minimized. An (α, β )-bicriteria algorithm returns, whenever a solution exists, an out-arborescence rooted at the root that contains all terminals, has cost (for a randomized algorithm, expected cost) at most α times the optimum and gives every vertex v at most βd v children. Guo, Kortsarz, Laekhanukit, Li, Vaz and Xian [GKL +22] give a randomized 
+
+(O(log n log k), O (log 2 n)) -bicriteria algorithm with running time nO(log n), where n is the number of vertices. We show that DTM is the special case of DB-DST with zero costs on a time-expanded digraph, in which a violation of the degree bounds by a factor β costs at most a factor β in the number of rounds. 
+
+Overview. The idea is to make time explicit. For a guess T of the optimum, the time-expanded digraph has a copy of every vertex for every round, and a node for every call that a vertex can make in a round. A schedule then becomes an out-arborescence in which every round of every vertex either waits or makes one call, which are degree bounds 2 and 1,and the costs play no role. So a DB-DST algorithm can search for the schedule. It may exceed the degree bounds by a factor β, that is, ask a vertex for β calls in one round; the procedure C ONVERT spreads these calls over consecutive rounds, which stretches every informing time by the factor β and no more. 
+
+Definition 3.11. For an integer T ≥ 1 the time-expanded digraph GT has a state node (v, t ) for every v ∈ V and 
+
+0 ≤ t ≤ T (vertex v at the end of round t), a call node c(v, t ) for every v ∈ V and 0 ≤ t < T (the call of v in round 
+
+t + 1 ), and a sink ˆx for every terminal x ∈ K. Its arcs are (v, t ) → (v, t + 1) and (v, t ) → c(v, t ) for every v ∈ V and 
+
+t < T , c(v, t ) → (w, t + 1) for every arc (v, w ) ∈ E(G) and t < T , and (x, T ) → ˆx for every x ∈ K. The root is 
+
+(s, 0) , the terminals are the sinks, all costs are 0, state nodes have degree bound 2 and call nodes have degree bound 1.The digraph GT has O(nT ) vertices and O(( n + |E(G)|)T ) arcs, and every arc goes from layer t to layer t or t + 1 .Figure 10 shows an example. 
+
+The algorithm. The function M ULTICAST DBDST (Algorithm 3) takes as a parameter any algorithm DBDST for DB-DST. It first computes the busy schedule along a shortest-path out-arborescence from s to K, as in Algorithm 2, and keeps it as the best schedule found so far (line 11). Then, for every T = 1 , . . . , k , it builds the time-expanded digraph 
+
+GT of Definition 3.11 (line 13) and calls DBDST on it (line 14). If the result A′ is an out-arborescence rooted at (s, 0) 
+
+that contains all sinks, the function turns it into a schedule with C ONVERT and keeps the shorter of this schedule and the best one (line 16). Finally it returns the best schedule. The function C ONVERT reads a schedule off A′. For every vertex v of G that has a state node in A′, let τ (v) be the least t with (v, t ) ∈ A′ (line 3). For v̸ = s, the parent of (v, τ (v)) in A′ is a call node c(u, τ (v) − 1) , since the only other arc into (v, τ (v)) comes from the state node (v, τ (v) − 1) , which is not in A′; the vertex u becomes the parent 
+
+p(v) of v (line 6). In the schedule, every vertex v of G calls the vertices w with p(w) = v in non-decreasing order of 
+
+τ (w), one per round, starting in the round after it is informed (line 8). The time-expanded digraph captures DTM exactly when the degree bounds hold, and an arborescence that violates them by a factor β still gives a schedule that is only a factor β longer: 
+
+Theorem 3.12. Let T ≥ 1.
+
+19 Algorithm 3 Directed multicast through degree-bounded Steiner trees, for a given DB-DST algorithm DBDST 
+
+Input: 
+
+A′: an out-arborescence of the time-expanded digraph GT , rooted at (s, 0) , that contains all sinks 
+
+Output: a schedule that informs all terminals  
+
+> 1:
+
+function CONVERT (A′) 
+
+> 2:
+
+for all vertices v of G with a state node in A′ do  
+
+> 3:
+
+τ (v) ← min {t : ( v, t ) ∈ A′} 
+
+> 4:
+
+end for  
+
+> 5:
+
+for all such vertices v̸ = s do  
+
+> 6:
+
+p(v) ← the vertex u such that c(u, τ (v) − 1) is the parent of (v, τ (v)) in A′ 
+
+> 7:
+
+end for  
+
+> 8:
+
+return the schedule in which every vertex v of G calls the vertices w with p(w) = v in non-decreasing order of 
+
+τ (w), one per round, starting in the round after it is informed  
+
+> 9:
+
+end function Input: 
+
+G: a digraph with n vertices; s: the source; K: the set of k terminals fixed throughout: an algorithm DBDST for DB-DST, as in Corollary 3.13 
+
+Output: a schedule that informs all terminals  
+
+> 10:
+
+function MULTICAST DBDST( G, s, K ) 
+
+> 11:
+
+best ← the busy schedule along a shortest-path out-arborescence from s to K 
+
+> 12:
+
+for T = 1 , . . . , k do  
+
+> 13:
+
+build the time-expanded digraph GT of Definition 3.11  
+
+> 14:
+
+A′ ← DBDST( GT ) 
+
+> 15:
+
+if A′ is an out-arborescence rooted at (s, 0) that contains all sinks then  
+
+> 16:
+
+best ← the shorter of best and C ONVERT (A′) 
+
+> 17:
+
+end if  
+
+> 18:
+
+end for  
+
+> 19:
+
+return best  
+
+> 20:
+
+end function                 
+
+> s, 0s, 1s, 2
+> a, 0a, 1a, 2
+> b, 0b, 1b, 2ˆa
+> ˆb
+> round 1 round 2
+
+Figure 10: The time-expanded digraph G2 for the digraph with arcs sa , sb and ab and terminals a and b (the call nodes of b, which has no out-arcs, are omitted). Grey squares are call nodes, with degree bound 1. Bold: the arborescence of the schedule in which s calls a in round 1 and b in round 2. The state node (s, 0) uses its degree bound 2: it waits and calls. 
+
+(i) If OPT ≤ T , then GT has a solution of DB-DST, that is, an out-arborescence rooted at (s, 0) that contains all sinks and respects all degree bounds. (ii) If A′ is an out-arborescence of GT rooted at (s, 0) that contains all sinks and in which every call node has at most β ≥ 1 children, then CONVERT (A′) is a schedule of length at most βT , computed in polynomial time. In particular, OPT is the least T for which GT has a solution. 
+
+Proof sketch. For (i), draw the schedule over time: a vertex waits from round to round, and each of its calls passes through one call node. For (ii), the j call nodes of v for the first j rounds after τ (v) have at most βj children in total, so 
+
+20 the child that v calls r-th was meant for a round at least r/β rounds after v. By induction along the arborescence, every vertex w is then informed by round βτ (w).
+
+Proof. (i) Take a schedule of length at most T and let τv be the round in which v is informed, with τs = 0 . For every informed vertex v of G take the arcs (v, t ) → (v, t + 1) for τv ≤ t < T . For every call by which v informs w in round 
+
+r (calls to informed vertices are ignored) take (v, r − 1) → c(v, r − 1) → (w, r ); here τv ≤ r − 1 and r = τw ≤ T .Finally take (x, T ) → ˆx for every terminal x. Each chosen node other than (s, 0) has exactly one entering arc: (w, τ w)
+
+from the call node of its caller, (v, t ) with t > τ v from (v, t − 1) , a call node from its state node, and a sink from (x, T ).Every arc goes from layer t to layer t + 1 , or within a layer from a state node to a call node, so the chosen arcs form an out-arborescence rooted at (s, 0) , and it contains all sinks. A state node has at most two children, the next state node and one call node, because v calls at most once per round, and every call node has one child. (ii) Line 3 of Algorithm 3 gives τ (s) = 0 . For v̸ = s, the arc of A′ that enters (v, τ (v)) does not come from (v, τ (v)−1) ,by the choice of τ (v), so it comes from a call node c(u, τ (v) − 1) ∈ A′ with (u, v ) ∈ E(G); hence p(v) in line 6 is well defined. The only arc into this call node comes from (u, τ (v) − 1) , which is therefore in A′, so τ (p(v)) ≤ τ (v) − 1.Since τ increases from parent to child, the arcs (p(v), v ) form an out-arborescence T ′ of G rooted at s, and the calls of line 8 form a schedule along T ′. The arborescence T ′ contains every terminal x: the sink ˆx is in A′, hence so is (x, T ).Fix a vertex v of T ′ and an integer j ≥ 1. A child w of v in T ′ with τ (w) ≤ τ (v) + j is a child in A′ of the call node 
+
+c(v, τ (w) − 1) , and this call node is in A′ only if (v, τ (w) − 1) is, so τ (v) ≤ τ (w) − 1 ≤ τ (v) + j − 1. These are j
+
+call nodes with at most β children each, so 
+
+{w child of v in T ′ : τ (w) ≤ τ (v) + j} ≤ βj. (6) We show by induction on τ that every vertex w of T ′ is informed by round βτ (w). For s this holds. Let w be the r-th child that its parent v calls in line 8 of Algorithm 3, and j = τ (w) − τ (v) ≥ 1. The first r children called have τ at most τ (w), so r ≤ βj by (6). As v is informed by round βτ (v), the child w is informed by round 
+
+βτ (v) + r ≤ β(τ (v) + j) = βτ (w) ≤ βT . C ONVERT clearly runs in time polynomial in the size of GT . The last claim of Theorem 3.12 is (i) together with (ii) for β = 1 .Combined with a bicriteria algorithm for DB-DST, Theorem 3.12 gives an approximation algorithm for DTM :
+
+Corollary 3.13. Suppose DBDST , given a DB-DST instance with N vertices that has a solution, returns in time R(N )
+
+an out-arborescence that contains all terminals and gives every vertex v at most β(N )dv children, of any cost. Then Algorithm 3 is a β(O(nk )) -approximation for DTM with running time O(k R (O(nk ))) + nO(1) . With the algorithm of [GKL +22], DTM has a randomized O(log 2 n)-approximation with running time nO(log n).Proof. If OPT ≥ k, the schedule of line 11 of Algorithm 3 has length at most 2OPT by Lemma 3.7. If OPT < k ,consider the iteration T = OPT of the loop in line 12. By Theorem 3.12(i) the instance GT has a solution, so line 14 returns an out-arborescence that contains all sinks and in which every call node has at most β(N ) children, and by Theorem 3.12(ii) line 16 yields a schedule of length at most β(N ) OPT . Each GT with T ≤ k has N = O(nk ) vertices, which gives the running time. For the algorithm of [GKL +22], β(N ) = O(log 2 N ) and R(N ) = N O(log N ), and 
+
+log N = O(log n) since k ≤ n. Their algorithm meets the terminal and degree requirements with constant probability; as both can be checked, O(log n) repetitions succeed with high probability. The ratio of Corollary 3.13 depends on n, and the algorithm is randomized and solves linear programs. It is better than Corollary 3.2(b) when log n is small compared with log 2 k. The reduction uses only zero costs, degree bounds 1 and 2
+
+and layered digraphs, so any algorithm for DB-DST with a smaller degree violation, even one that works only on such instances, gives DTM the same ratio. Corollary 3.13 also turns polynomial-time algorithms for DB-DST into algorithms for DTM . Bamas, Li and Rohwed-der [BLR26] solve problems whose solutions follow the recurrence of a dynamic program under additional packing constraints, which they satisfy approximately, by randomized rounding of a linear program. They remark, without details, that their framework handles the degree bounds of DB-DST and gives a polynomial-time O(N ϵ)-approximation for DB-DST on N vertices, for every fixed ϵ > 0. This follows from their algorithm for robust directed Steiner tree cover [BLR26, Theorem 1.5], with one packing constraint for the out-degree of every vertex, repeated until all terminals are covered: the degree bounds are violated by a factor N O(ϵ), in time N O(1 /ϵ ). In Corollary 3.13, after rescaling 
+
+ϵ, this means β(N ) = O(N ϵ) and R(N ) = N O(1 /ϵ ). As N = O(nk ) = O(n2), Corollary 3.13 then gives DTM arandomized ratio O(n2ϵ) in time nO(1 /ϵ ), that is, ratio O(nϵ) in time nO(1 /ϵ ) for every fixed ϵ > 0. Corollary 3.2(a) has ratio O(kϵ) in the same time, with a deterministic combinatorial algorithm, and by Theorem 3.1 the ratio is even 
+
+21 sx1 x2 x3 x4     
+
+> e1e2e3e4e5
+> set tree of Sj
+> terminals (sinks)
+
+Figure 11: Fraigniaud’s gadget for S1 = {e1, e 2}, S2 = {e2, e 3, e 4}, S3 = {e3, e 5} and S4 = {e4, e 5}. The source calls one set vertex per round, so the set vertices informed by round T form a cover with at most T sets. The set trees add only O(log m) rounds. 
+
+O(ℓ3 log k) when OPT ≥ k1/ℓ , because the term k1/ℓ there is additive. The introduction compares the bounds in more detail, in particular when k is small compared with n.
+
+# 4 Hardness of directed multicast 
+
+This section proves our lower bound: directed multicast stays (1 − ϵ) ln k-hard even when OPT = O(log k) (Theo-rem 4.2). The reduction starts from Set Cover, through the gadgets below. 
+
+4.1 Gadgets 
+
+In this subsection we describe the gadgets from which our reduction is built, and bound the optimum of the hub gadget (Lemma 4.1). A gadget lets the source choose sets, and every chosen set then informs its elements. All gadgets use out-trees in which every vertex has at most two children. In such a tree, if every vertex calls its children in the two rounds after it is informed, a vertex at depth d is informed within 2d rounds after the root; a tree with at most m leaves can be chosen with height ⌈log 2 m⌉.Both gadgets use set trees . For a set Sj , its set tree is an out-tree rooted at a vertex xj , whose leaves are the terminals of the elements of Sj , whose other vertices are new, and in which every vertex has at most two children. Its height is at most ⌈log 2 m⌉ + 1 , so it is informed within 2⌈log 2 m⌉ + 2 rounds after xj . Element terminals have no out-arcs. A terminal can be informed only through the set tree of a set that contains it. 
+
+Fraigniaud’s gadget [Fra01] (Figure 11) has a source s, a vertex xj with the arc (s, x j ) for every set, and the set trees. Fraigniaud states his reduction for another communication model, in which a call may follow a path and simultaneous calls use vertex-disjoint paths, and under the assumption NP ̸ ⊆ DTIME (nO(log log n)). He uses binomial trees as set trees and attaches about log m/ϵ copies of the digraph to the source, which makes the additive O(log m) negligible; one copy suffices here, since c ≥ m1/C in Theorem 2.3. His schedules for the YES case use only single arcs, and every schedule of the telephone model is one of his model, so his argument applies verbatim. The source calls one set vertex per round, and the set vertices informed by round T must form a cover. Hence 
+
+OPT ≤ c + 2 ⌈log 2 m⌉ + 2 if a cover of size c exists, and OPT ≥ c′ if every cover has at least c′ sets. With Theorem 2.3 this gives (1 − ϵ) ln k-hardness of DTM , by combining Fraigniaud’s reduction with the NP-hardness of Set Cover. These instances have a large optimum: in the NO case OPT > (1 − ϵ)c ln m ≥ m1/C . The hub gadget (Figure 12) spreads the calls over many vertices and so brings OPT down to O(log k).In Fraigniaud’s gadget the source calls the set vertices itself, so the optimum is at least the size of a cover, which is polynomial in m. Our hub gadget delegates these calls to many hubs, which makes the optimum logarithmic and keeps the gap. The hub gadget for a Set Cover instance and parameters ℓ, H consists of the source s; an out-tree from s of height 
+
+⌈log 2 H⌉ in which every vertex has at most two children and whose leaves are H hubs h1, . . . , h H ; a set vertex xj for every set, with the arcs (hi, x j ) for all i, j ; and the set trees. It is acyclic and has k = m terminals. Its optimum is about the size of a smallest cover divided by the number of hubs: 
+
+22 sh1 h2 h3          
+
+> x1x2x3x4
+> e1e2e3e4e5
+> out-tree from s
+> to the Hhubs every hub may call every set vertex set trees
+
+Figure 12: The hub gadget for the sets S1 = {e1, e 2}, S2 = {e2, e 3, e 4}, S3 = {e3, e 5} and S4 = {e4, e 5}. In T
+
+rounds the H hubs make at most HT calls, and the called set vertices must form a cover. With H = ⌈c/ℓ ⌉ hubs, a cover of size c is called within ℓ rounds after the hubs are informed. 
+
+Lemma 4.1. Let H = ⌈c/ℓ ⌉. If a cover of size c exists, the hub gadget has OPT ≤ 2⌈log 2 H⌉ + ℓ + 2 ⌈log 2 m⌉ + 2 .If every cover has at least c′ sets, then OPT ≥ c′/H .Proof. The hubs are informed by round 2⌈log 2 H⌉. Split the cover into H groups of at most ℓ sets each; every hub calls its group in its next ℓ rounds, and the set trees finish within 2⌈log 2 m⌉ + 2 further rounds. Conversely, a set vertex can be informed only by a hub, and in T rounds every hub makes at most T calls, so at most HT set vertices are informed. The informed set vertices form a cover, so HT ≥ c′.
+
+4.2 Multicast with a small optimum 
+
+In this subsection we show that the logarithmic lower bound for directed multicast holds already on instances with 
+
+OPT = O(log k). These are the instances on which the bound O(log k)OPT + O(√k) of Elkin and Kortsarz [EK06a] gives its largest ratio, O(√k/ log k).
+
+Theorem 4.2. For every ϵ > 0 there is a constant Cϵ such that it is NP-hard to distinguish acyclic DTM instances with 
+
+OPT ≤ Cϵ log 2 k from those with OPT ≥ (1 − ϵ) ln k · Cϵ log 2 k.Proof. Let δ = ϵ/ 3, and take the instances of Theorem 2.3 for δ in place of ϵ, with their constant C. We may assume 
+
+c ≤ N ≤ mC : if c > N , the instance is a YES instance exactly when all N sets together cover the universe, which is easy to check. Let 
+
+λ =
+
+l 2C + 3 
+
+δ
+
+m
+
+, Cϵ = λ + 2 C + 3 , ℓ = λ⌈log 2 m⌉,
+
+and build the hub gadget with H = ⌈c/ℓ ⌉ ≤ c hubs; it is acyclic, and k = m. In the YES bound below, the hubs contribute λ log 2 m rounds, and the tree to the hubs and the set trees about (2 C + 3) log 2 m more. The choice of λ
+
+makes the second part at most a δ fraction of the first: 2C + 3 ≤ δλ , hence Cϵ ≤ (1 + δ)λ, that is, 
+
+λ ≥ Cϵ
+
+1 + δ . (7) 
+
+YES case. By Lemma 4.1, OPT ≤ 2⌈log 2 H⌉ + ℓ + 2 ⌈log 2 m⌉ + 2 . Here ⌈log 2 H⌉ ≤ C log 2 m + 1 , as H ≤ c ≤ mC ;
+
+⌈log 2 m⌉ ≤ log 2 m + 1 ; and ℓ ≤ λ log 2 m + λ. So 
+
+OPT ≤ (λ + 2 C + 2) log 2 m + λ + 6 ≤ Cϵ log 2 k
+
+as soon as log 2 m ≥ λ + 6 .
+
+NO case. Every cover has more than (1 − δ)c ln m sets, so OPT ≥ (1 − δ)c ln m/H by Lemma 4.1. Here H ≤
+
+c/ℓ + 1 = ( c/ℓ )(1 + ℓ/c ), and ℓ ≥ λ log 2 m ≥ Cϵ log 2 m/ (1 + δ) by (7). Hence 
+
+OPT ≥ (1 − δ) ln m · ℓ
+
+1 + ℓ/c ≥ 1 − δ
+
+1 + δ · 11 + ℓ/c · ln m · Cϵ log 2 m. 
+
+23 As c ≥ m1/C grows polynomially in m and ℓ = O(log m), we have ℓ/c ≤ δ for large m, and then 1/(1 + ℓ/c ) ≥ 1 − δ.Moreover (1 − δ)/(1 + δ) ≥ (1 − δ)2, as (1 − δ)(1 + δ) ≤ 1. So, for large m,
+
+OPT ≥ (1 − δ)3 ln m · Cϵ log 2 m ≥ (1 − 3δ) ln k · Cϵ log 2 k = (1 − ϵ) ln k · Cϵ log 2 k. 
+
+Instances with fewer elements than these thresholds have constant size and are solved directly. So an algorithm that distinguishes the two cases of Theorem 4.2 decides the Set Cover instances of Theorem 2.3. 
+
+# 5 Open problems 
+
+We close with the main questions that remain open. • Directed multicast. In polynomial time the ratio is now O(kϵ), against the lower bound (1 − ϵ) ln k. This is the situation of directed Steiner tree. Is there a polylogarithmic ratio in polynomial time? By Corollary 3.2(b), any NP-hardness of a ratio ω(log 4 k), under polynomial reductions, would put NP into quasi-polynomial time. In quasi-polynomial time the ratio is O(log 2 n) (Corollary 3.13). By Theorem 3.12, a degree violation 
+
+O(log n) for degree-bounded directed Steiner tree would give DTM ratio O(log n), within a constant of the lower bound when k ≥ nΩ(1) ; the algorithm of [GKL +22] achieves degree violation O(log n) for its special case, the degree-bounded group Steiner tree problem on trees. • Directed broadcast. The ratio O(log n) against Ω( √log n) of Elkin and Kortsarz [EK05] is unchanged; for 
+
+k = n − 1 our bounds are weaker. 
+
+# Acknowledgments 
+
+We used the AI system Claude (Anthropic) [Ant26] in preparing this paper. The algorithms and results were developed through interaction with it. The authors reviewed the entire paper and take full responsibility for its content. 
+
+# References 
+
+[AAF +97] James Aspnes, Yossi Azar, Amos Fiat, Serge Plotkin, and Orli Waarts. On-line routing of virtual circuits with applications to load balancing and machine scheduling. Journal of the ACM , 44(3):486–504, 1997. 
+
+doi:10.1145/258128.258201 .[AKSJS25] Aida Aminian, Shahin Kamali, Seyed-Mohammad Seyed-Javadi, and Sumedha. On the complexity of telephone broadcasting from cacti to bounded pathwidth graphs. In Proceedings of the 52nd International Colloquium on Automata, Languages, and Programming (ICALP) , volume 334 of LIPIcs , pages 10:1– 10:17, 2025. doi:10.4230/LIPIcs.ICALP.2025.10 .[Ant26] Anthropic. Claude. https://claude.ai , 2026. Large language model. [BLR26] Étienne Bamas, Shi Li, and Lars Rohwedder. Randomized rounding over dynamic programs. In 
+
+Proceedings of the 58th Annual ACM Symposium on Theory of Computing (STOC) , pages 1857–1868, 2026. doi:10.1145/3798129.3800892 .[BNGNS00] Amotz Bar-Noy, Sudipto Guha, Joseph Naor, and Baruch Schieber. Message multicasting in heteroge-neous networks. SIAM Journal on Computing , 30(2):347–358, 2000. Preliminary version in STOC 1998. 
+
+doi:10.1137/S0097539798347906 .[CCC +99] Moses Charikar, Chandra Chekuri, To-yat Cheung, Zuo Dai, Ashish Goel, Sudipto Guha, and Ming Li. Approximation algorithms for directed Steiner problems. Journal of Algorithms , 33(1):73–91, 1999. 
+
+doi:10.1006/jagm.1999.1042 .[CEK06] Chandra Chekuri, Guy Even, and Guy Kortsarz. A greedy approximation algorithm for the group Steiner problem. Discrete Applied Mathematics , 154(1):15–34, 2006. doi:10.1016/j.dam.2005.07.010 .[DS14] Irit Dinur and David Steurer. Analytical approach to parallel repetition. In Proceedings of the 46th Annual ACM Symposium on Theory of Computing (STOC) , pages 624–633, 2014. doi:10.1145/2591796. 2591884 .[EK05] Michael Elkin and Guy Kortsarz. A combinatorial logarithmic approximation algorithm for the directed telephone broadcast problem. SIAM Journal on Computing , 35(3):672–689, 2005. Preliminary version in STOC 2002. doi:10.1137/S0097539704440740 .
+
+24 [EK06a] Michael Elkin and Guy Kortsarz. An approximation algorithm for the directed telephone multicast problem. Algorithmica , 45(4):569–583, 2006. Preliminary version in ICALP 2003. doi:10.1007/ s00453-005-1196-4 .[EK06b] Michael Elkin and Guy Kortsarz. Sublogarithmic approximation for telephone multicast. Journal of Computer and System Sciences , 72(4):648–659, 2006. Preliminary version in SODA 2003. doi: 10.1016/j.jcss.2005.12.002 .[Fei98] Uriel Feige. A threshold of ln n for approximating set cover. Journal of the ACM , 45(4):634–652, 1998. 
+
+doi:10.1145/285055.285059 .[Fra01] Pierre Fraigniaud. Approximation algorithms for minimum-time broadcast under the vertex-disjoint paths mode. In Proceedings of the 9th Annual European Symposium on Algorithms (ESA) , volume 2161 of 
+
+LNCS , pages 440–451, 2001. doi:10.1007/3-540-44676-1_37 .[GKL +22] Xiangyu Guo, Guy Kortsarz, Bundit Laekhanukit, Shi Li, Daniel Vaz, and Jiayi Xian. On approximating degree-bounded network design problems. Algorithmica , 84(5):1252–1278, 2022. doi:10.1007/ s00453-022-00924-0 .[GKR00] Naveen Garg, Goran Konjevod, and R. Ravi. A polylogarithmic approximation algorithm for the group Steiner tree problem. Journal of Algorithms , 37(1):66–84, 2000. Preliminary version in SODA 1998. 
+
+doi:10.1006/jagm.2000.1096 .[GLL23] Fabrizio Grandoni, Bundit Laekhanukit, and Shi Li. O(log 2 k/ log log k)-approximation algorithm for di-rected Steiner tree: A tight quasi-polynomial time algorithm. SIAM Journal on Computing , 52(2):STOC19-298–STOC19-322, 2023. Preliminary version in STOC 2019. doi:10.1137/20M1312988 .[GN22] Rohan Ghuge and Viswanath Nagarajan. Quasi-polynomial algorithms for submodular tree orienteering and directed network design problems. Mathematics of Operations Research , 47(2):1612–1630, 2022. Preliminary version in SODA 2020. doi:10.1287/moor.2021.1181 .[HHL88] Sandra M. Hedetniemi, Stephen T. Hedetniemi, and Arthur L. Liestman. A survey of gossiping and broad-casting in communication networks. Networks , 18(4):319–349, 1988. doi:10.1002/net.3230180406 .[HK03] Eran Halperin and Robert Krauthgamer. Polylogarithmic inapproximability. In Proceedings of the 35th Annual ACM Symposium on Theory of Computing (STOC) , pages 585–594, 2003. doi:10.1145/ 780542.780628 .[HKR26] Daniel Hathcock, Guy Kortsarz, and R. Ravi. The telephone k-multicast problem. Algorithmica ,88(2):Article 25, 2026. Preliminary version in APPROX/RANDOM 2024, LIPIcs 317, 21:1–21:16. 
+
+doi:10.1007/s00453-026-01377-5 .[HRZ01] C. S. Helvig, Gabriel Robins, and Alexander Zelikovsky. An improved approximation scheme for the group Steiner problem. Networks , 37(1):8–20, 2001. doi:10.1002/1097-0037(200101)37:1<8:: AID-NET2>3.0.CO;2-R .[KN22] Guy Kortsarz and Zeev Nutov. The minimum degree group Steiner problem. Discrete Applied Mathemat-ics , 309:229–239, 2022. doi:10.1016/j.dam.2021.12.003 .[KP95] Guy Kortsarz and David Peleg. Approximation algorithms for minimum-time broadcast. SIAM Journal on Discrete Mathematics , 8(3):401–427, 1995. doi:10.1137/S0895480193245923 .[Mos15] Dana Moshkovitz. The projection games conjecture and the NP-hardness of ln n-approximating set-cover. Theory of Computing , 11(7):221–235, 2015. Preliminary version in APPROX 2012. doi: 10.4086/toc.2015.v011a007 .[Rav94] R. Ravi. Rapid rumor ramification: Approximating the minimum broadcast time. In Proceedings of the 35th Annual Symposium on Foundations of Computer Science (FOCS) , pages 202–213, 1994. 
+
+doi:10.1109/SFCS.1994.365693 .[SCH81] Peter J. Slater, Ernest J. Cockayne, and Stephen T. Hedetniemi. Information dissemination in trees. SIAM Journal on Computing , 10(4):692–701, 1981. doi:10.1137/0210052 .[Zel97] Alexander Zelikovsky. A series of approximation algorithms for the acyclic directed Steiner tree problem. 
+
+Algorithmica , 18(1):99–110, 1997. doi:10.1007/BF02523690 .
+
+25

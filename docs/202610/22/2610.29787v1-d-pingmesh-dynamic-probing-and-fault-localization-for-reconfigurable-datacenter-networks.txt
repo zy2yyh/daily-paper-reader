@@ -1,0 +1,762 @@
+Title: D-Pingmesh: Dynamic Probing and Fault Localization for Reconfigurable Datacenter Networks
+
+URL Source: https://arxiv.org/pdf/2610.29787v1
+
+Published Time: Thu, 22 Oct 2026 01:23:55 GMT
+
+Number of Pages: 15
+
+Markdown Content:
+# D-Pingmesh: Dynamic Probing and Fault Localization for Reconfigurable Datacenter Networks 
+
+## Yunze Wei 1,2 Kaicheng Yang 2 Xiaohui Xie 1 Dunkai Mao 1 Peiying Tao 2 Yikai Zhao 2
+
+## Bolong Cui 2 Chen Sun 2∗ Bingyang Liu 2 Kun Tan † Kai Chen 3 Yong Cui 1∗ 
+
+> 1
+
+Tsinghua University 2Huawei 3Hong Kong University of Science and Technology 
+
+## Abstract 
+
+Pingmesh monitors datacenter networks through periodic pings between servers. In reconfigurable datacenter net-works, topology engineering (TPE) and traffic engineering (TE) make uniform server-pair probing inefficient: a pinglist wastes budget retesting common paths while missing low-probability interfaces. Frequent control-plane updates fur-ther require rapid pinglist refresh, and cause path ambigu-ity at control-plane boundaries for fault localization. We present D-Pingmesh, a probing and fault-localization system co-designed with the TPE/TE control plane. Its control-plane-aware generator builds task-efficient pinglists by greedily admitting probes with high interface coverage under the current TPE/TE snapshot. An incremental replay-and-repair mechanism updates pinglists across reconfigurations rather than recomputing from scratch. At control-plane bound-aries, a Rho-EM localizer jointly infers per-task old/new-path mixture weights and the fault set through EM-style iteration. We evaluate D-Pingmesh on an 8-pod reconfig-urable topology under dynamic TPE/TE. At a 0.99 coverage target, D-Pingmesh uses 17.7 × fewer tasks than Pingmesh and generates each pinglist about 5.1 × faster than RD-Probe. In ns-3 simulation, boundary-aware localization improves micro F1 from 0.871 to 0.953 over the deTector PLL baseline. A testbed deployment demonstrates second-scale fault local-ization with low host overhead. These results demonstrate that D-Pingmesh is practical for reconfigurable datacenter networks with control-plane-aware monitoring. 
+
+CCS Concepts: • Networks → Data center networks ;
+
+Network monitoring .
+
+Keywords: Reconfigurable datacenter networks, Active prob-ing, Fault localization 
+
+> ∗Co-corresponding authors: Chen Sun (sunchen48@huawei.com) and Yong Cui (cuiyong@tsinghua.edu.cn).
+> †Kun Tan is an independent researcher.
+> This work is licensed under a Creative Commons Attribution 4.0 Interna-tional License.
+> SIGOPS ATC 2026, Hong Kong, China
+> © 2026 Copyright held by the owner/author(s). ACM ISBN 979-8-4007-2818-1/2026/11
+> https://doi.org/10.1145/3828523.3857045
+
+ACM Reference Format: 
+
+Yunze Wei, Kaicheng Yang, Xiaohui Xie, Dunkai Mao, Peiying Tao, Yikai Zhao, Bolong Cui, Chen Sun, Bingyang Liu, Kun Tan, Kai Chen, and Yong Cui. 2026. D-Pingmesh: Dynamic Probing and Fault Localization for Reconfigurable Datacenter Networks. In The 2026 ACM SIGOPS Annual Technical Conference (SIGOPS ATC 2026), November 15–18, 2026, Hong Kong, China. ACM, New York, NY, USA, 15 pages. https://doi.org/10.1145/3828523.3857045 
+
+## 1 Introduction 
+
+Network faults remain a critical source of availability inci-dents in modern datacenters. Even when per-component failure rates appear small, they become operationally sig-nificant at cluster scale: measurements of Google’s TPUv4 deployment report average daily failure rates of 0.005% for interconnect cables and 0.04% for optical circuit switches (OCSes) [37]. In clusters with thousands to tens of thou-sands of devices, such rates make online network testing and accurate fault localization necessary rather than optional. Active probing remains one of the most practical mech-anisms for this purpose. By sending probe traffic between servers, it provides direct end-to-end evidence about reacha-bility and latency without requiring pervasive switch instru-mentation or changes to production applications. Pingmesh established this model for large datacenter networks [11]. Subsequent systems have improved probe placement, cover-age guarantees, service awareness, and fault localization for different settings [9, 12, 21, 24, 30]. These systems, however, largely assume that the network state used to plan probes remains stable within a measurement window: once a task is selected, its observations can be associated with a small set of expected paths. This assumption breaks down in modern datacenters, which increasingly treat the network as a reconfigurable resource driven by two architectural control-plane mechanisms. Topol-ogy engineering (TPE) reconfigures the OCS to align con-nectivity with traffic demand [3, 5, 16, 20, 25, 29]. Traffic engineering (TE) adjusts weighted forwarding splits over that topology to accommodate shorter-term demand fluc-tuations [22, 23, 33]. These mechanisms can change which physical interfaces a given packet traverses at sub-minute to minute timescales [23]. AI training and inference clusters further reinforce this trend: their recurring communication patterns make TPE and TE especially effective at adapting the network to demand [14, 31]. 
+
+> 1arXiv:2610.29787v1 [cs.NI] 21 Oct 2026
+
+However, probing systems such as Pingmesh were de-signed and have evolved independently of these control loops. They treat the network as a static underlay and plan probes in terms of server pairs, without consuming the current TPE/TE state as input. Consider a TE update that changes the forwarding weights between two pods: a probe task between the same two servers can resolve to different interfaces before and after the update. A monitor seeing only the server pair cannot determine whether a loss observation belongs to the old path or the new one. Across our measure-ment traces, 15–28% of probe tasks change their resolved path across a single TE update on average. The server pair, which traditional probing uses as the stable unit of diagnosis, loses its anchoring power once TE remaps the same pair to different interfaces. A single timely detection may suffice for a persistent hard failure, but diagnosing gray packet loss requires repeated observations, and transient faults may disappear before the next stable window. These observation requirements mo-tivate continuous probing that gathers sufficient evidence while faults are present and correctly interprets observations across reconfigurations. Meeting these requirements calls for co-designing net-work monitoring with the TPE/TE control plane to overcome three challenges. First, TPE and TE induce asymmetry in interface hit probability. Under uniform server-pair selection, probes concentrate on high-probability interfaces and may starve others in the same network state. Second, TPE/TE updates introduce dynamics : a pinglist optimized for one snapshot may lose coverage after the next update, yet re-generating from scratch discards the coverage contribution of tasks that remain valid. Third, TPE/TE transitions create 
+
+boundary inconsistency for diagnosis. Because TE updates deploy at pod granularity rather than atomically, different parts of the network transiently operate under different TE snapshots, so probe observations in the same probe window may correspond to different path states. To address these challenges, we present D-Pingmesh, a probing and fault-localization system co-designed with the TPE/TE control plane. D-Pingmesh consumes current topol-ogy and TPE/TE snapshots, and uses reconfiguration timing to schedule probe windows at ping agents. For each candi-date ping task, D-Pingmesh determines the interfaces that the task can observe under the current control-plane state and uses this information for both task planning and fault interpretation. D-Pingmesh tackles the asymmetry challenge by formu-lating probe generation as an interface multicover problem under the current control-plane state. It scores pod pairs by their expected coverage contribution, samples candidate five-tuples from high-scoring pairs, and greedily admits tasks that advance the multicover objective. To handle TPE/TE dynamics, D-Pingmesh maintains this multicover solution incrementally: it replays the previous pinglist under the new OCS 1 OCS 2 OCS k ... ... 
+
+> Core Agg ToR Server
+
+(a) A reconfigurable datacenter network model with OCSes. Optical Circuit Switch (OCS) ……
+
+> Cross Connections Bidirectional Links
+> ………
+> Tx/Rx Tx/Rx Tx/Rx Tx/Rx Tx/Rx Tx/Rx Tx/Rx Tx/Rx
+
+(b) OCS abstrac-tion. 
+
+Figure 1. OCS-based reconfigurable datacenter network. snapshot, repairs residual coverage deficits, and prunes re-dundant tasks without reducing achieved coverage. D-Pingmesh further addresses boundary inconsistency with Rho-EM, a fault localizer that considers both pre- and post-update path hypotheses. For aggregate probe results collected around a TE transition, Rho-EM assigns each task a path-mixture weight 𝜌 𝑞 , evaluates candidate faulty links through a likelihood model that estimates per-interface loss rates, covering both complete link failures and gray packet-loss faults, and refines the weights and fault set jointly via EM-style iteration. We evaluate D-Pingmesh on an 8-pod, 2,048-server OCS-based topology, comparing it with Pingmesh, deTector, and RD-Probe. Our evaluation includes TE updates and con-trolled TPE transitions, with a separate scalability study extending to 64 pods and 16,384 servers. At a 0.99 cover-age target, D-Pingmesh reduces task count by 17.7 × over Pingmesh and generation time by an estimated 5.1 × over RD-Probe. In ns-3 simulation, Rho-EM improves F1 score of fault localization from 0.871 with deTector PLL to 0.953 across varying fault counts and loss rates. A testbed prototype fur-ther shows that D-Pingmesh localizes faults at second scale with low host overhead. We make the following contributions: 
+
+• We identify three monitoring challenges in reconfig-urable datacenter networks driven by TPE and TE: interface-hit asymmetry, coverage changes across snap-shots, and boundary inconsistency. 
+
+• We design a control-plane-aware probe generation and incremental update approach. It scores pod pairs by their expected coverage contribution under the current TPE/TE snapshot, and incrementally repairs pinglists across TPE/TE changes. 
+
+• We design Rho-EM, a boundary-aware fault localizer that jointly refines per-task old/new-path probabilities and a fault set via EM-style iteration, supporting both link failures and gray packet-loss faults. 
+
+• We evaluate D-Pingmesh under dynamic TPE/TE inputs. It achieves target coverage with fewer tasks and lower generation time than Pingmesh, deTector, and RD-Probe. A testbed prototype demonstrates second-scale fault localization with low host overhead. 
+
+> 2
+
+Table 1. Comparison of monitoring systems from the perspective of reconfigurable datacenter networks. 
+
+Monitoring Requirement Pingmesh [11] deTector [24] RD-Probe [9] D-Pingmesh 
+
+Probe-efficient coverage under current TPE/TE state × △ △ ✓
+
+Low-cost update after reconfiguration × × △ ✓
+
+Robust diagnosis at reconfiguration boundaries × × × ✓  
+
+> ✓: supported, △: partial support, ×: not supported.
+
+## 2 Background and Motivation 
+
+2.1 Reconfigurable Datacenter Networks 
+
+We focus on reconfigurable datacenter networks that com-bine an electrical intra-pod hierarchy with optical inter-pod connectivity, as sketched in Figure 1(a). Within each pod, traffic is forwarded through servers, Top-of-Rack switches (ToRs), and aggregation (Agg) switches. Across pods, OC-Ses connect Agg uplinks to remote Agg ports, replacing the fixed electrical spine of a conventional Clos network. Such OCS-based designs appear in Google’s Jupiter Evolving [25] and TROD [5]. Operating such a network requires two coupled control-plane decisions: TPE, which establishes optical circuits, and TE, which splits traffic over the resulting connectivity. Both are driven by traffic demand to improve network utilization under changing workloads [5, 25, 33]. Measurements from production datacenters confirm that inter-server traffic ex-hibits significant locality and stability [28], supporting the feasibility of demand-driven reconfiguration. TPE changes inter-pod optical connectivity by program-ming the OCS’s internal cross-connects, while the physical Agg-to-OCS uplinks remain fixed. These cross-connects pair selected OCS ports to form duplex optical circuits, as shown in Figure 1(b) [25]. TE determines how traffic is split over the resulting con-nectivity, installing weighted next-hop groups at ToRs and Aggs. Recent TE systems compute these weights to bal-ance load and improve utilization under dynamic traffic de-mand [22, 23, 33]. TE can operate on short timescales: recent work reports split-ratio adjustment periods from 10 seconds to 15 minutes [23]. These weighted groups can be realized via weighted-cost multipath (WCMP), where a switch hashes a five-tuple (source/destination IP, ports, and protocol) to one member of the weighted group [36]. Consequently, two packets between the same server pair may traverse different interfaces. Direct OCS links match persistent traffic trends, but direct-only forwarding cannot absorb bursty deviations. Existing designs therefore use TE to steer selected traffic over one-hop detours through intermediate pods [5, 25]. We call a path direct when it uses an active optical circuit toward the destination pod, and a detour when it passes through an intermediate pod before reaching the destination. From a monitoring perspective, detours increase path uncertainty: the same server pair may resolve to paths with different sets of switch interfaces depending on whether the probe takes a direct or detour route. Together, TPE and TE introduce within-snapshot asymme-try and across-snapshot dynamics, challenging the uniform, stable forwarding assumptions of conventional Pingmesh (Section 2.3). 
+
+2.2 Limitations of Prior Monitoring Systems 
+
+Prior systems have made substantial progress in datacenter monitoring and fault localization. Pingmesh [11] demon-strates the feasibility of always-on, server-based measure-ment at production scale, but its uniform server-pair probing spends a large task budget to obtain broad visibility. deTec-tor [24] reduces probing overhead by selecting a topology-aware probe matrix that jointly considers coverage and loss localization, but computing such matrices becomes expen-sive at large scale. RD-Probe [9] further targets sufficient Layer-2 coverage in complex production networks by com-bining randomized probing with deterministic repair, but its randomized phase can still spend probes on already well-covered components before the repair phase fills remain-ing gaps. These systems are not designed around TPE and TE awareness, limiting their ability to generate and update pinglists efficiently and to localize faults accurately in dy-namic reconfigurable networks. Systems for explicit path control or path tracking, such as NetBouncer [30] and Byte-Tracker [12], are not directly applicable in OCS-based re-configurable fabrics. We treat them as complementary path-visibility mechanisms rather than direct baselines. Production reports also illustrate the cost of increasing uni-form probing. Microsoft’s IMC’18 study reports that Pingmesh limits full-mesh measurements to servers within the same rack because of scaling concerns [27]. RD-Probe reports that, in the production datacenter it studied, increasing a prior Pingmesh-like system from three to four probe tasks per server pair would overload some agents [9]. Table 1 compares prior systems along three dimensions: probe-efficient coverage under current TPE/TE state, low-cost pinglist update after reconfiguration, and robust diagno-sis at reconfiguration boundaries. Repeated measurements are needed to diagnose gray packet loss, while transient faults may disappear before the next stable window. These dimensions are coupled: low-hit interfaces can accumulate evidence slowly under repeated uniform probing, a pinglist        
+
+> 3PoD 0
+> PoD 1 Agg 0 Agg 1 ToR 0 ToR 1
+> 0.7 0.3 0.7 0.3
+> PoD 2 Agg Agg
+> detour direct
+> detour
+> Servers Servers
+
+(a) Example asym-metric forwarding state. HP ToR LP ToR HP Agg LP Agg 
+
+> 0% 20% 40% 60% 80% 100%
+> relative coverage
+> >99% 82.4% >99% 54.8%
+
+(b) Uneven coverage un-der Pingmesh-style uni-form probing. 
+
+Figure 2. Topology and forwarding asymmetry make uni-form server-pair probing less efficient. efficient for one snapshot may lose coverage after TPE or TE changes, and observations near a boundary may reflect paths from either side of the change. 
+
+2.3 Challenges Challenge 1: Topology and Forwarding Asymmetry. Re-configurable datacenter networks introduce both topology asymmetry and forwarding asymmetry. Topology asymme-try comes from TPE, which determines which cross-pod optical links are available in the current snapshot, so direct connectivity can be uneven across pod pairs. Forwarding asymmetry comes from TE on top of this topology: TE in-stalls weighted next-hop groups and may split traffic between direct and one-hop detour paths. As a result, interface hit probabilities can be highly skewed: some interfaces lie on high-probability forwarding paths, while interfaces on low-weight next hops may be traversed by only a small fraction of candidate probes. Endpoint-uniform probing then cre-ates redundant observations on high-probability interfaces, while low-probability interfaces may fail to reach the target coverage count needed for diagnosis. Figure 2 illustrates this effect with a toy forwarding state. Traffic from pod 0 to pod 1 can either use Agg 0 to reach pod 1 directly, or use Agg 1 to reach pod 2 and then take a one-hop detour to pod 1. The ToR-to-Agg forwarding split is 7:3: Agg 0 leads to the direct path, while Agg 1 leads to the one-hop detour path. For an interface with per-probe hit probability 𝑝 , Figure 2(b) shows the probability of meeting a two-hit coverage target after 20 probes, i.e., Pr [𝑋 ≥ 2]
+
+for 𝑋 ∼ Binomial (20 , 𝑝 ). Under this target, high-probability interfaces exceed 99% coverage, while low-probability ToR and Agg interfaces reach only 82.4% and 54.8% coverage, respectively. This gap shows why blind uniform pinging is inefficient in the presence of topology and forwarding asymmetry. time       
+
+> tt+1 t+2
+> boundary boundary
+> TE/TPE window Pingmesh-style probe window
+> cross cross
+> within one TE/TPE window crosses boundary TE/TPE switching
+
+Figure 3. Probe windows can overlap TE/TPE boundaries. 10 30 60 120 300 600 
+
+> Recovery time (s)
+> 0% 50% 100%
+> Recovered
+> n=1463; <=30s 96.4%
+
+Figure 4. Link-flap recovery times in production. S1 S2 S3 
+
+> 0% 20% 40% 60%
+> Changed Tasks
+
+(a) Path changes at TE boundaries. F1 Recall  
+
+> 70% 80% 90% 100%
+> rate
+> 95.3% 91.0% 88.9% 80.0%
+> Steady TE Boundary window
+
+(b) Fault localization degrada-tion. 
+
+Figure 5. Boundary inconsistency affects probe paths and fault localization. 
+
+Challenge 2: Topology and Forwarding Dynamics. After a TPE or TE update, a pinglist optimized for the prior snap-shot may lose coverage: the same five-tuple can resolve to different interfaces under the new state. TE updates occur on timescales of 10 seconds to 15 minutes [23], so recomputing the full pinglist from scratch after each change is expensive. Yet simply reusing the old pinglist leaves newly exposed or remapped interfaces uncovered. The challenge is to update the pinglist incrementally while preserving still-valid tasks, repairing coverage deficits, and pruning redundancy with low overhead. 
+
+Challenge 3: Boundary Inconsistency. Traditional data-center probing systems often operate under a comparatively stable topology and forwarding model. In that setting, a probe degradation signal can be interpreted against a rela-tively well-defined forwarding path. Reconfigurable datacen-ter networks break this assumption. As shown in Figure 3, ping agents collect repeated probe results over each probe window, such as 30 seconds, and report the aggregate to the controller for analysis and fault localization, rather than 
+
+> 4
+
+reporting each probe independently. Although a 30-second probe window is short, it can occupy a significant fraction of a TE window when TE is updated within 15 minutes [23]. Moreover, TE decisions may be deployed at pod granularity rather than as a single global update, as in Google’s Jupiter Evolving [25]. Around a TE boundary, the resulting global ob-servation is therefore a mixture of multiple local forwarding states rather than a snapshot of one consistent network-wide state. We refer to this mismatch as boundary inconsistency. Boundary-window observations can be the only evidence of a transient fault. Among 1,463 link flaps recorded over 30 days in our production dataset, 96.4% recovered within 30 seconds (Figure 4), the example probe-window duration in Figure 3. Waiting for a stable window can therefore miss the fault. Continuous probing can retain and correctly inter-pret observations collected across the boundary. Figure 5 quantifies the effect: across TE boundaries in three represen-tative scenarios (S1–S3), 15.25–28.29% of tasks change their resolved paths on average, and fault localization F1 drops from 95.3% to 88.9% under a TE-boundary window compared to steady state. These measurements require careful inter-pretation: if analyzed only with the latest forwarding state, the localizer can assign loss evidence to the wrong candidate interfaces. 
+
+## 3 System Overview 
+
+Figure 6 gives an overview of D-Pingmesh and its control-plane-aware probing and diagnosis loop. The Software-Defined Networking (SDN) control plane computes TPE and TE deci-sions from traffic demand and installs TPE configurations in the optical circuit switched core and TE weighted next-hop groups in the electrical switching hierarchy. D-Pingmesh runs alongside this control plane and, for each reconfigu-ration slot, receives the current TPE snapshot, TE forward-ing state, and the schedule of upcoming TPE/TE updates. It also receives static inputs, including the network topol-ogy and the WCMP hash functions used by the switches. With this control-plane awareness, the D-Pingmesh con-troller generates slot-specific pinglists, aligns probe windows with TPE/TE updates, and localizes faulty interfaces from aggregate probe results. Ping agents on host servers execute controller-computed pinglists in synchronized windows and return aggregate attempt and failure counts. Scheduling, in-cremental replay and repair, and localization reside at the controller; D-Pingmesh requires no switch modifications. 
+
+Hash-aware path resolution. D-Pingmesh uses hash-aware path resolution to determine the expected forwarding path of a candidate probe before the probe is executed. Com-modity switch WCMP hash functions can be modeled as deterministic header-to-next-hop mappings [35]. Given a concrete probe five-tuple and a control-plane snapshot, the controller uses the hash functions to resolve the next hop OCS 1 OCS 2 OCS k ... ... 
+
+> Core Agg ToR Server
+> Global/Local SDN Controller
+> TPE/TE Rules Traffic Matrix
+> D-Pingmesh Controller
+> Dynamic Incremental Probe Update ( §4.4) Control-Plane-Aware Probe Generation ( §4.3) Boundary Aware Fault Localization ( §5) TPE/TE Rules Ping Agents Ping Results Ping Task Lists
+> Probe Window Sync. Static inputs: Topology + WCMP Hash Functions
+
+Figure 6. System overview of D-Pingmesh. at each forwarding stage and reconstruct the complete ex-pected path. The generator uses this resolved path to decide whether a candidate task improves interface coverage. The localizer uses the same resolver to associate aggregate probe outcomes with candidate faulty interfaces. §4.1 describes this path-resolution procedure. 
+
+Control-plane-aware probe generation. D-Pingmesh’s probe generator uses the current TPE and TE state to produce a probe-efficient task list for each probe window. We formu-late this as an interface multicover problem under skewed interface hit probabilities (§2.3): each candidate five-tuple covers its resolved interfaces, and the objective is to meet each target interface’s coverage requirement with as few tasks as possible. D-Pingmesh uses a probability-guided al-gorithm that iteratively selects the pod pair with the highest expected coverage gain, generates candidate tasks, and uses hash-aware path resolution to accept only those that improve coverage. §4.2 and §4.3 present the multicover formulation and the probability-guided generation algorithm. 
+
+Dynamic incremental probe update. TPE and TE updates can change the resolved paths of existing probe tasks and the interfaces they cover. Regenerating the full pinglist after every update wastes the coverage already provided by tasks that remain useful under the new snapshot. D-Pingmesh therefore maintains the pinglist incrementally: it re-resolves the previous list under the new snapshot, repairs the remain-ing coverage deficits, and removes redundancy from the merged list. The controller distributes the updated pinglist to ping agents and synchronizes probe windows with the TPE/TE update cycle. §4.4 details the incremental update algorithm. 
+
+Boundary-aware fault localization. To handle the bound-ary uncertainty introduced by frequent TPE and TE updates (§2.3), we design Rho-EM, a boundary-aware fault localiza-tion algorithm. Rho-EM operates on aggregate probe results from each probe window. When a probe window contains a control-plane update boundary, the same logical probe task may correspond to either the pre-update path or the post-update path, while the aggregate result does not ex-pose the per-attempt path state. For each task, the algorithm resolves both path hypotheses and maintains a per-task mix-ture over the old and new paths. It scores candidate faulty 
+
+> 5
+
+interfaces using a likelihood over aggregate probe counts and jointly refines the fault set and per-task path mixtures through EM-style iteration. §5 details the likelihood model and the Rho-EM algorithm. 
+
+## 4 Probe Generation and Update with Control-Plane Awareness 
+
+This section addresses the first two challenges from §2.3. D-Pingmesh first obtains the current TPE/TE snapshot and uses hash-aware path resolution to map candidate five-tuples to their link-level paths (§4.1). The probe generator then se-lects probe tasks that improve interface multicover under that snapshot (§4.3). To handle TPE/TE dynamics, we de-sign an incremental probe update algorithm that re-resolves the previous pinglist under the new snapshot, repairs resid-ual coverage deficits, and prunes redundant tasks without reducing achieved coverage (§4.4). 
+
+4.1 Hash-Aware Path Resolution 
+
+D-Pingmesh uses hash-aware path resolution to interpret a concrete probe task under a control-plane snapshot. Let 
+
+𝐺 denote the physical topology, T𝑡 the TPE snapshot at slot 
+
+𝑡 , E𝑡 the TE snapshot at slot 𝑡 , and 𝑞 a probe task with a concrete five-tuple. The resolver returns 
+
+𝑅 𝑡 (𝑞 ) = ResolvePath (𝑞, 𝐺, T𝑡 , E𝑡 ),
+
+where 𝑅 𝑡 (𝑞 ) is the set of forward-path interfaces traversed by 𝑞 under slot 𝑡 .ResolvePath combines offline hash awareness with the online TPE/TE snapshot. The controller obtains the WCMP hash functions of ToR and Agg switches. These can be mod-eled as deterministic header-to-next-hop mappings [10, 35]. Given the hash functions and the current snapshot, ResolvePath uses the TE-installed WCMP groups to resolve the egress port for 𝑞 at each ToR or Agg. At an Agg egress connected to the OCS, the TPE snapshot maps the local port to the re-mote pod and Agg reached by the configured optical circuit. Repeating these steps reconstructs the complete path. Probe generation, incremental update, and fault localiza-tion all use 𝑅 𝑡 (𝑞 ) under the assumption that the supplied TPE/TE state and switch hash behavior match active forward-ing. This consistency underpins interface coverage account-ing and path-based fault attribution. If actual forwarding differs from the resolved paths, D-Pingmesh may count un-traversed interfaces as covered or attribute loss to the wrong interfaces. Complementary runtime verification systems, in-cluding VeriDP and Hydra, check consistency between spec-ified and actual forwarding behavior [26, 34]. 
+
+4.2 Probe Task Generation Problem 
+
+The probe task generation problem is to choose a pinglist that covers each target interface at least 𝑘 times under the current control-plane snapshot. This 𝑘 -coverage target provides mul-tiple observations with overlapping paths for each interface, giving fault localization the evidence needed to distinguish candidate faulty interfaces. For each slot 𝑡 , the physical topol-ogy and the current TPE/TE snapshot induce a path-resolved probe hypergraph: target interfaces are vertices, and each feasible five-tuple 𝑞 contributes the hyperedge 𝑅 𝑡 (𝑞 ). We model probe task generation as interface multicover over this snapshot-specific hypergraph. Let 𝐼 𝑡 be the reachable target interface set for slot 𝑡 , and let 𝑐 𝑖 be the current coverage count for interface 𝑖 ∈ 𝐼 𝑡 . D-Pingmesh uses an end-to-end target set 𝐼 𝑡 = 𝐼 up  
+
+> 𝑡
+
+∪𝐼 down  
+
+> 𝑡
+
+. For a task from pod 𝑠 to pod 𝑑 , 𝐼 up  
+
+> 𝑡
+
+contains the forward interfaces from the source server to the OCS, including server-to-ToR, ToR-to-Agg, and the Agg uplink selected under the current TPE/TE snapshot. 𝐼 down  
+
+> 𝑡
+
+contains the forward interfaces from the destination Agg to the destination server, including Agg-to-ToR and ToR-to-server links. For detour paths, the transit Agg uplink is included in the upstream target set. Only inter-faces reachable by at least one bidirectionally valid candidate under the current snapshot are included. In the generation problem, interface 𝑖 is satisfied once its coverage counter reaches 𝑘 . Given the current counters 𝑐 𝑖 ,the generator seeks a minimum cardinality task set 𝑄 that brings every reachable target interface to the 𝑘 -coverage target: min  
+
+> 𝑄
+
+|𝑄 |
+
+s.t. 𝑐 𝑖 +∑︁  
+
+> 𝑞 ∈𝑄
+
+1[𝑖 ∈ 𝑅 𝑡 (𝑞 )] ≥ 𝑘, ∀𝑖 ∈ 𝐼 𝑡 . (1) Here 1[𝑖 ∈ 𝑅 𝑡 (𝑞 )] is one when interface 𝑖 lies on the resolved path of task 𝑞 and zero otherwise. Finding an exact minimum task set is NP-hard: even when 
+
+𝑘 = 1 and all candidate hyperedges are pre-enumerated, the problem generalizes Set Cover. In our setting, full enumer-ation is also impractical at datacenter scale because useful hyperedges are revealed only after path resolution under the current TPE/TE snapshot. D-Pingmesh therefore uses a probability-guided greedy approximation, described next, to search for high-gain tasks without precomputing the full candidate space. 
+
+4.3 Asymmetry-Aware Probe Generation 
+
+Algorithm 1 presents D-Pingmesh’s probability-guided greedy generator for approximating the multicover objective in (1). The generator repeatedly scores source-destination pod pairs by their expected contribution to unsatisfied interfaces, re-solves candidate five-tuples for the selected pair, and accepts the probe task with the largest resolved marginal coverage. 
+
+Interface hit probabilities. The pod pair scores in Algo-rithm 1 are built from interface hit probabilities. For each target interface 𝑖 and ordered pod pair (𝑠, 𝑑 ), D-Pingmesh computes a pair-specific hit probability 𝑊 𝑠,𝑑 (𝑖 ) as the prob-ability that probes from 𝑠 to 𝑑 expose 𝑖 under the current 
+
+> 6
+
+Algorithm 1: Asymmetry-Aware Probe Generation                                                                                                                                   
+
+> Input: snapshots (𝐺, T𝑡 ,E𝑡 ), target set 𝐼 𝑡 , initial counters
+> {𝑐 𝑖 }𝑖 ∈𝐼 𝑡 , pair weights 𝑊 𝑠,𝑑 (𝑖 ), target 𝑘 , candidate budget 𝐵
+> Output: accepted task list 𝑄
+> 1𝑄 ← ∅ ;
+> 2foreach valid pod pair (𝑠, 𝑑 )do
+> 3𝑆 (𝑠, 𝑑 ) ← Í𝑖 ∈𝐼 𝑡 :𝑐 𝑖 <𝑘 𝑊 𝑠,𝑑 (𝑖 );
+> 4while ∃𝑖 ∈𝐼 𝑡 with 𝑐 𝑖 <𝑘 do
+> 5(𝑠, 𝑑 ) ← arg max (𝑠 ′,𝑑 ′)𝑆 (𝑠 ′, 𝑑 ′);
+> 6if 𝑆 (𝑠, 𝑑 ) ≤ 0then
+> 7break ;
+> 8𝑞 ∗← ⊥ ;𝑔 ∗←0;
+> 9for 𝑏 ←1to 𝐵 do
+> 10 sample a candidate five-tuple 𝑞 for (𝑠, 𝑑 );
+> 11 𝑅 𝑡 (𝑞 ) ← ResolvePath (𝑞, 𝐺, T𝑡 ,E𝑡 );
+> 12 if 𝑅 𝑡 (𝑞 )=∅then
+> 13 continue ;
+> 14 𝑔 ←Í𝑖 ∈𝑅 𝑡 (𝑞 )∩ 𝐼 𝑡 1[𝑐 𝑖 <𝑘 ];
+> 15 if 𝑔 >𝑔 ∗then
+> 16 𝑞 ∗←𝑞 ;𝑔 ∗←𝑔 ;
+> 17 if 𝑞 ∗=⊥then
+> 18 𝑆 (𝑠, 𝑑 ) ← 0;
+> 19 continue ;
+> 20 𝑄 ←𝑄 ∪ { 𝑞 ∗};
+> 21 𝑐 𝑖 ←𝑐 𝑖 +1 for each 𝑖 ∈𝑅 𝑡 (𝑞 ∗) ∩ 𝐼 𝑡 ;
+> 22 update 𝑆 (𝑠 ′, 𝑑 ′)for pairs affected by newly satisfied interfaces;
+> 23 return 𝑄 ;
+
+TPE/TE snapshot. Let TEWeight (𝑥, 𝑎, 𝑑 ) denote the normal-ized forwarding probability assigned by the current TE snap-shot to egress interface 𝑎 at switch 𝑥 for traffic toward des-tination pod 𝑑 . For both ToR uplinks and Agg uplinks, the hit probability equals the probability of reaching the switch multiplied by the corresponding TEWeight term. For a ToR uplink interface 𝑖 = (𝑣, 𝑎 ) on ToR switch 𝑣 in source pod 𝑠 , let 𝑃 𝑠 (𝑣 ) = Pr [source ToR = 𝑣 | 𝑠 ] denote the probability that the source server selected from pod 𝑠 
+
+attaches to ToR 𝑣 . Then 
+
+𝑊 𝑠,𝑑 (𝑖 ) = 𝑃 𝑠 (𝑣 ) · TEWeight (𝑣, 𝑎, 𝑑 ).
+
+Let ToR (𝑠 ) be the ToR switches in pod 𝑠 . When servers are selected uniformly in a homogeneous pod, 𝑃 𝑠 (𝑣 ) simplifies to 1 /| ToR (𝑠 )| .For an Agg uplink interface 𝑖 = (𝑢, 𝑎 ) from Agg switch 𝑢 to the OCS, the switch arrival probability is determined by the ToR-to-Agg choices in pod 𝑠 . Let 𝜋 𝑢 (𝑠, 𝑑 ) be the probability of reaching 𝑢 :
+
+𝜋 𝑢 (𝑠, 𝑑 ) =∑︁   
+
+> 𝑣 ∈ToR (𝑠 )
+
+𝑃 𝑠 (𝑣 ) · TEWeight (𝑣, 𝑣 → 𝑢, 𝑑 ).
+
+Multiplying the arrival probability by the local TE weight gives 
+
+𝑊 𝑠,𝑑 (𝑖 ) = 𝜋 𝑢 (𝑠, 𝑑 ) · TEWeight (𝑢, 𝑎, 𝑑 ).
+
+For destination side downlinks, once a probe reaches the destination pod’s Agg switch, the remaining path to the target server follows a single ToR-to-server link determined by the server’s rack placement, with no additional TE choices. When destination servers are sampled uniformly, the hit probability is spread uniformly across the corresponding downlink interfaces. The hit probabilities are recomputed once per control-plane snapshot. 
+
+Pod pair scoring. Using the hit probabilities defined above, the generator scores each ordered pod pair (𝑠, 𝑑 ) by its ex-pected contribution to interfaces that remain below the 𝑘 -coverage target: 
+
+𝑆 (𝑠, 𝑑 ) =∑︁    
+
+> 𝑖 ∈𝐼 𝑡 :𝑐 𝑖 <𝑘
+
+𝑊 𝑠,𝑑 (𝑖 ).𝑆 (𝑠, 𝑑 ) estimates the expected number of unsatisfied inter-faces that a task from 𝑠 to 𝑑 would cover. The generator uses these scores to prioritize pod pairs likely to advance the multicover objective. The scores serve as a ranking heuristic: after selecting a pod pair, D-Pingmesh samples candidate tasks within that pair, resolves their paths, and credits cov-erage according to 𝑅 𝑡 (𝑞 ).Because 𝑆 (𝑠, 𝑑 ) changes as interfaces reach 𝑘 , D-Pingmesh maintains pod pair scores in a max-priority queue. Pair-to-interface and interface-to-pair indexes identify scores af-fected by newly satisfied interfaces, and outdated entries are recomputed lazily at the top of the queue. The candidate budget 𝐵 controls how many candidate tasks are sampled for the selected pod pair. D-Pingmesh sam-ples up to 𝐵 candidates, resolves each, and accepts the one with the largest marginal gain under the current counters. This budget balances coverage quality against generation overhead: sampling a single task can miss high-gain candi-dates, while sampling many increases resolution cost. The search concentrates on pod pairs with high expected cov-erage gain. We conducted a sensitivity analysis and found that budgets above 𝐵 = 3 offer only modest additional task reduction at higher per-task computation cost; we therefore use 𝐵 = 3 by default. 
+
+4.4 Dynamic Incremental Probe Update 
+
+A straightforward approach is to discard the existing pinglist after each TPE/TE reconfiguration and invoke Algorithm 1 from empty counters. This cold-start approach is wasteful, since many tasks from the prior pinglist typically remain useful under the new snapshot. D-Pingmesh instead formu-lates probe update as dynamic multicover maintenance : given a base pinglist 𝑄 base and the current snapshot (T 𝑡 , E𝑡 ), the objective is to produce an updated pinglist 𝑄 𝑡 that reuses useful tasks from 𝑄 base , fills residual coverage deficits, and removes redundancies through coverage-preserving pruning. 
+
+> 7
+
+Algorithm 2: Dynamic Incremental Probe Update 
+
+Input: base pinglist 𝑄 base , snapshots (𝐺, T𝑡 , E𝑡 ), target set 
+
+𝐼 𝑡 , target 𝑘 , pair weights 𝑊 𝑠,𝑑 (𝑖 ), candidate budget 𝐵 
+
+Output: updated pinglist 𝑄 𝑡 
+
+/* Phase 1: Re-resolution */  
+
+> 1
+
+𝑄 keep ← ∅ ; 𝑐 𝑖 ← 0 for all 𝑖 ∈ 𝐼 𝑡 ; 
+
+> 2
+
+foreach 𝑞 ∈ 𝑄 base do  
+
+> 3
+
+𝑅 𝑡 (𝑞 ) ← ResolvePath (𝑞, 𝐺, T𝑡 , E𝑡 ); 
+
+> 4
+
+if 𝑅 𝑡 (𝑞 ) ∩ 𝐼 𝑡 ≠ ∅ then  
+
+> 5
+
+𝑄 keep ← 𝑄 keep ∪ { 𝑞 }; 
+
+> 6
+
+𝑐 𝑖 ← 𝑐 𝑖 + 1 for each 𝑖 ∈ 𝑅 𝑡 (𝑞 ) ∩ 𝐼 𝑡 ;
+
+/* Phase 2: Repair */  
+
+> 7
+
+𝑄 repair ← ProbeGenerate (𝐺, T𝑡 , E𝑡 , 𝐼 𝑡 , {𝑐 𝑖 },𝑊 𝑠,𝑑 , 𝑘, 𝐵 );
+
+/* Phase 3: Pruning */  
+
+> 8
+
+𝑄 all ← deduplicate 𝑄 keep ∪ 𝑄 repair ; 
+
+> 9
+
+ˆ𝑐 𝑖 ← min { 𝑘, |{ 𝑞 ∈ 𝑄 all : 𝑖 ∈ 𝑅 𝑡 (𝑞 )}| } for all 𝑖 ∈ 𝐼 𝑡 ; 
+
+> 10
+
+𝑄 𝑡 ← ∅ ; 𝑐 ′ 
+
+> 𝑖
+
+← 0 for all 𝑖 ∈ 𝐼 𝑡 ; 
+
+> 11
+
+while ∃𝑖 ∈ 𝐼 𝑡 with 𝑐 ′ 
+
+> 𝑖
+
+< ˆ𝑐 𝑖 do  
+
+> 12
+
+𝑞 ∗ ← arg max 𝑞 ∈𝑄 all \𝑄 𝑡 
+
+Í𝑖 : 𝑐 ′   
+
+> 𝑖 <ˆ𝑐 𝑖
+
+1[𝑖 ∈ 𝑅 𝑡 (𝑞 )] ; 
+
+> 13
+
+if Í𝑖 : 𝑐 ′   
+
+> 𝑖 <ˆ𝑐 𝑖
+
+1[𝑖 ∈ 𝑅 𝑡 (𝑞 ∗)] = 0 then  
+
+> 14
+
+break ; 
+
+> 15
+
+𝑄 𝑡 ← 𝑄 𝑡 ∪ { 𝑞 ∗}; 
+
+> 16
+
+𝑐 ′ 
+
+> 𝑖
+
+← 𝑐 ′ 
+
+> 𝑖
+
++ 1 for each 𝑖 ∈ 𝑅 𝑡 (𝑞 ∗) ∩ 𝐼 𝑡 ; 
+
+> 17
+
+if ∃𝑖 ∈ 𝐼 𝑡 with 𝑐 ′ 
+
+> 𝑖
+
+< ˆ𝑐 𝑖 then  
+
+> 18
+
+𝑄 𝑡 ← 𝑄 all ; 
+
+> 19
+
+return 𝑄 𝑡 ;
+
+Algorithm 2 accomplishes this in three phases: re-resolution, repair, and pruning. 
+
+Re-resolution. In the re-resolution phase (Phase 1 of Al-gorithm 2), each task 𝑞 ∈ 𝑄 base is re-resolved against the current TPE/TE snapshot, after the target interface set 𝐼 𝑡 has been recomputed for that snapshot. Tasks whose re-resolved paths still intersect 𝐼 𝑡 are retained in 𝑄 keep , with their cov-ered interfaces credited to counters 𝑐 𝑖 . Tasks whose paths no longer intersect any target interface are discarded. The resulting counters capture the residual coverage of the prior pinglist under the new snapshot. 
+
+Repair. The repair phase (Phase 2) invokes ProbeGenerate (Algorithm 1) with the inherited counters. Since the genera-tor scores pod pairs only over interfaces with 𝑐 𝑖 < 𝑘 , repair focuses on filling the residual deficits, producing 𝑄 repair that complements 𝑄 keep .
+
+Pruning. The merged set 𝑄 all = 𝑄 keep ∪ 𝑄 repair may contain redundant tasks, since the two phases independently cover overlapping interfaces and some interfaces may exceed 𝑘 
+
+coverage. The pruning phase (Phase 3) eliminates this re-dundancy while preserving the achieved coverage level for every interface. For each interface 𝑖 ∈ 𝐼 𝑡 , let 𝑛 𝑖 = |{ 𝑞 ∈ 𝑄 all : 𝑖 ∈ 𝑅 𝑡 (𝑞 )}| 
+
+be the number of tasks in the merged set that cover 𝑖 . The pruning target is ˆ 𝑐 𝑖 = min (𝑘, 𝑛 𝑖 ), which caps the preserved coverage at 𝑘 . D-Pingmesh then greedily selects a subset 
+
+𝑄 𝑡 ⊆ 𝑄 all to meet these targets, as shown in Phase 3 of Algorithm 2. If the greedy selection terminates before all targets are met, D-Pingmesh defaults to 𝑄 all , guaranteeing that pruning never reduces the coverage achieved by re-resolution and repair. 
+
+## 5 Fault Localization Across Reconfiguration Boundaries 
+
+Probe generation selects which tasks to measure, while fault localization inverts the resulting aggregate observations into a ranked list of likely faulty interfaces. Traditional datacen-ter networks map each probe to a deterministic path, but reconfigurable networks break this assumption: around a TPE or TE update, the same task can traverse different paths, and an observation near a reconfiguration boundary could belong to either the pre- or post-update state. This ambiguity arises because TE updates deploy at pod granularity rather than atomically across the network. D-Pingmesh addresses this with Rho-EM, a boundary-aware localizer that maintains both pre- and post-update path hypotheses for each task. Rho-EM treats the per-attempt path as a hidden variable and jointly refines per-task mix-ture weights and the fault set through EM-style iteration. It consumes only aggregate success and failure counts per task within each probe window together with the corresponding control-plane snapshots, and returns a predicted fault set with a ranked suspicion list. 
+
+5.1 Observation Model 
+
+Let 𝑄 be the set of probe tasks in one probe window. Each task 𝑞 ∈ 𝑄 carries a concrete five-tuple and an aggregate ob-servation 𝑦 𝑞 = (𝑛 𝑞 , 𝑘 𝑞 ), where 𝑛 𝑞 is the number of attempts and 𝑘 𝑞 is the number of failed or timed-out attempts within the probe window. In our setting, each task is probed once per second over a 30-second probe window, so the aggregate observation summarizes up to 30 attempts whose paths can differ around a boundary. For each task, D-Pingmesh resolves two path hypotheses 
+
+𝑅 𝑜 𝑞 and 𝑅 𝑛 𝑞 under the pre- and post-update snapshots using the hash-aware path resolver from §4.1. For a changed task, Rho-EM maintains a mixture weight 𝜌 𝑞 ∈ [ 0, 1], the probabil-ity that a given attempt followed the complete post-update path. The aggregate observation can mix attempts on these two paths. An individual attempt traversing a hybrid path with old and new forwarding states at different hops falls outside this model. Let 𝐸 be the candidate faulty interface set comprising monitored interfaces traversed by probe tasks under either the pre- or post-update forwarding state. This union retains interfaces present in only one of the two states’ task paths. For a candidate fault set 𝐹 ⊆ 𝐸 , let 𝜃 𝑒 be the estimated loss rate of interface 𝑒 . The failure probability of a task path 𝑅 is 
+
+> 8
+
+Algorithm 3: Rho-EM Fault Localization                                                                                        
+
+> Input: aggregate task records 𝑄 , snapshots (𝐺, T𝑜 ,E𝑜 )and
+> (𝐺, T𝑛 ,E𝑛 ), candidate interfaces 𝐸 traversed by probe tasks under either snapshot, initial mixture
+> 𝜌 0, iteration cap 𝑀
+> Output: predicted fault set 𝐹 and ranked suspicion list
+> /* Phase 1: Boundary path hypotheses */
+> 1foreach 𝑞 ∈𝑄 do
+> 2𝑅 𝑜 𝑞 ←ResolvePath (𝑞, 𝐺, T𝑜 ,E𝑜 );
+> 3𝑅 𝑛 𝑞 ←ResolvePath (𝑞, 𝐺, T𝑛 ,E𝑛 );
+> 4𝜌 𝑞 ←𝜌 0if 𝑅 𝑜 𝑞 ≠𝑅 𝑛 𝑞 , otherwise 𝜌 𝑞 ←0;
+> /* Phase 2: Greedy selection and rho refinement */
+> 5for 𝑟 ←0to 𝑀 do
+> 6(𝐹, Θ) ← GreedySelect (𝑄, 𝐸, {𝑅 𝑜 𝑞 , 𝑅 𝑛 𝑞 , 𝜌 𝑞 }) ;
+> 7compute ranked suspicion scores from the marginal gains;
+> 8if 𝑟 =𝑀 then
+> 9break ;
+> 10 foreach changed task 𝑞 do
+> 11 𝜌 𝑞 ←UpdateRho (𝑛 𝑞 , 𝑘 𝑞 , 𝑅 𝑜 𝑞 , 𝑅 𝑛 𝑞 , 𝐹, Θ);
+> 12 if max 𝑞 |Δ𝜌 𝑞 |<𝜏 then
+> 13 break ;
+> 14 return 𝐹 and all candidates ranked by suspicion score ;
+
+modeled by interface survivals: 
+
+𝑝 𝑞 (𝐹, 𝑅 ) = 1 −
+
+Ö  
+
+> 𝑒 ∈𝐹 ∩𝑅
+
+(1 − 𝜃 𝑒 ).
+
+Each faulty interface on the path independently contributes to the failure probability, so the model naturally handles paths that traverse multiple faults. For a changed task, the failure probability under the mix-ture is 𝑝 𝑞 (𝐹 ; 𝜌 𝑞 ) = (1 − 𝜌 𝑞 )𝑝 𝑞 (𝐹, 𝑅 𝑜 𝑞 ) + 𝜌 𝑞 𝑝 𝑞 (𝐹, 𝑅 𝑛 𝑞 ). The log-likelihood of the observed counts is 
+
+ℓ𝑞 (𝐹 ; 𝜌 𝑞 ) = 𝑘 𝑞 log 𝑝 𝑞 (𝐹 ; 𝜌 𝑞 )+( 𝑛 𝑞 −𝑘 𝑞 ) log  1−𝑝 𝑞 (𝐹 ; 𝜌 𝑞 ). (2) Successful attempts weaken the evidence for interfaces on paths that largely succeeded, while failures strengthen the evidence for interfaces on the old or new paths. 
+
+5.2 Rho-EM Fault Localization Algorithm 
+
+Rho-EM jointly refines the fault candidates and per-task path mixture weights 𝜌 𝑞 through an EM-style coordinate procedure [8]. In each iteration, Rho-EM first selects a small fault set 𝐹 that improves the aggregate log-likelihood under the current 𝜌 𝑞 , then updates each changed task’s 𝜌 𝑞 toward the hypothesis that better explains its counts under the se-lected 𝐹 . Algorithm 3 outlines the full procedure; the two key subroutines are detailed below. 
+
+Greedy fault selection. The GreedySelect subroutine starts from an empty fault set 𝐹 = ∅ and iteratively adds the candidate interface that yields the largest marginal log-likelihood gain. For a candidate 𝑒 ∉ 𝐹 , the marginal gain of adding 𝑒 to the current fault set is 
+
+Δ(𝑒 | 𝐹 ) =∑︁  
+
+> 𝑞 ∈𝑄
+
+ℓ𝑞 (𝐹 ∪ { 𝑒 }; 𝜌 𝑞 ) − ∑︁  
+
+> 𝑞 ∈𝑄
+
+ℓ𝑞 (𝐹 ; 𝜌 𝑞 ).
+
+Selection stops when the best gain falls below a threshold or a maximum fault count is reached. 
+
+Rho update. After selection, the UpdateRho subroutine recomputes each changed task’s old- and new-path failure probabilities under the fixed fault set b𝐹 and its estimated loss rates, denoted 𝑝 𝑜 𝑞 = 𝑝 𝑞 (b𝐹, 𝑅 𝑜 𝑞 ) and 𝑝 𝑛 𝑞 = 𝑝 𝑞 (b𝐹, 𝑅 𝑛 𝑞 ). Rho-EM then chooses 𝜌 𝑞 as the maximum a posteriori (MAP) estimate: the first line is the log-likelihood from Eq. (2) with 
+
+𝜌 as the variable, and the second line is a beta prior that prevents degenerate estimates when evidence is weak. 
+
+𝜌 ★ 
+
+> 𝑞
+
+= arg max    
+
+> 𝜌 ∈ [ 𝜌 min ,𝜌 max ]
+
+𝑘 𝑞 log 𝑝 𝑞 (𝜌 ) + ( 𝑛 𝑞 − 𝑘 𝑞 ) log  1 − 𝑝 𝑞 (𝜌 )
+
++ ( 𝛼 − 1) log 𝜌 + ( 𝛽 − 1) log (1 − 𝜌 ).
+
+where 𝑝 𝑞 (𝜌 ) = (1 − 𝜌 )𝑝 𝑜 𝑞 + 𝜌𝑝 𝑛 𝑞 . The update is damped by blending with the previous 𝜌 𝑞 value for numerical stability. Iterations stop when the maximum rho change drops be-low a threshold or a small cap 𝑀 is reached. With 𝑀 = 0, only the initial rho-weighted selection runs, giving the fixed-mixture fallback used in our iteration ablation (§6.3). 
+
+## 6 Evaluation 
+
+We evaluate D-Pingmesh’s probe-generation efficiency (§6.2), localization accuracy across TE reconfiguration boundaries (§6.3), and practicality on a physical testbed (§6.4). 
+
+6.1 Experimental Setup Topology and traces. The main experiments use an 8-pod reconfigurable network. Each pod has 8 ToR switches and 8 Agg switches, both radix 64 with 32 downlinks and 32 uplinks, and 32 servers per ToR, for 2,048 servers in total. 16 OCSes with 128 100 Gbps ports each interconnect the pods; OCSes are grouped by Agg index, so that Agg 𝑖 of every pod is wired to the same pair of OCSes. In total, the network comprises 2,192 nodes (2,048 servers, 64 ToR switches, 64 Agg switches, and 16 OCSes) and 12,288 interfaces. We synthesize pod-to-pod traffic matrices from the 22 production traffic-skew CDFs reported in Figure 5 of Gem-ini [33]. Each trace spans one day at one-second granularity, with average and peak offered loads of 30% and 70% of net-work capacity, and is aggregated into 96 fifteen-minute TE windows. For each trace, we run Gemini to jointly optimize topology and routing, producing the day-level TPE snapshot and 96 per-window TE snapshots that drive all probe gen-eration algorithms. The main experiments use three CDFs spanning a range of inter-pod traffic skew: F5, F12, and F20. Within-trace transition experiments evaluate TE changes under fixed TPE. We separately test incremental generation           
+
+> 9F5 F12 F20 0.95 0.96 0.97 0.98 0.99 1.00
+> Coverage
+> Coverage
+> F5 F12 F20 010K 20K 30K 680K 700K 720K
+> Tasks / Slot
+> Tasks / Slot
+> F5 F12 F20 05s 10s 20s 30s 200s
+> Runtime / Slot
+> Runtime / Slot
+> Pingmesh RD-Probe* deTector* D-Pingmesh (Cold Start) D-Pingmesh
+
+Figure 7. Probe generation comparison under three representative traces (F5, F12, and F20) across 96 slots. across controlled TPE transitions, which change OCS cross-connects together with their associated TE state. 
+
+Algorithms and baselines. We compare five probe gen-eration algorithms, all targeting 𝑘 = 4 coverage per inter-face per slot: (1) Pingmesh , the conventional server-pair-oriented probing baseline [11]; (2) deTector* , which adapts deTector [24] by applying the PMC component to resolved inter-switch paths and adding a server–ToR supplement of local same-ToR server pairs so that the task set matches our end-to-end coverage objective; (3) RD-Probe* , which adapts RD-Probe [9] by preserving the two-phase structure: Phase-I randomized coverage followed by Phase-II per-interface deficit-driven repair approximated via hash-based path reso-lution; (4) D-Pingmesh (Cold Start) , which runs Algorithm 1 from scratch in each slot; and (5) D-Pingmesh , which runs the incremental update of Algorithm 2, reusing and repairing the prior pinglist. deTector* and RD-Probe* run under the same accepted-path model as the other generators. 
+
+Implementation. D-Pingmesh’s probe generator with incre-mental update is implemented in about 3.9K lines of Python. The Rho-EM localizer is implemented in about 2.4K lines of Python. We use ns-3 [1] to replay TPE, TE, and probe tasks for packet-level simulation. The ns-3 replay implementation is about 3.3K lines of C++. All generation and localization algorithms, as well as the ns-3 simulation, run on a machine with Ubuntu 22.04.5 LTS, a server-grade CPU at 2.60 GHz, and 256 GiB of memory. We also deploy a physical testbed comprising one 192 ×192 OCS and four pods, each containing a datacenter switch and an x86 server (Section 6.4). 
+
+6.2 Main Generator Comparison Overall comparison. Figure 7 compares the five algorithms under their default configurations across 96 slots of each F5, F12, and F20 trace. All five algorithms reach near-perfect end-to-end coverage, with trace-level averages ranging from 99.95% to 100%. They differ in probe volume and generation time. Pingmesh generates roughly 712K tasks per slot on av-erage, while deTector* and RD-Probe* reduce this to roughly 16.4K and 29.8K, respectively. D-Pingmesh maintains this near-perfect coverage with an average of 10,036 tasks per slot. Pingmesh, RD-Probe*, and deTector* use 71.0 ×, 2.97 ×,1x 2x 5x 10x 20x 50x 100x  
+
+> Ratio to D-Pingmesh at 0.99 coverage
+> Pingmesh deTector* RD-Probe* D-Pingmesh (CS)
+> Tasks Time (est.)
+
+(a) Same 0.99 coverage 0.1x 0.5x 1x 5x 10x 50x100x  
+
+> Ratio to D-Pingmesh under same task budget
+> Pingmesh deTector* RD-Probe* D-Pingmesh (CS)
+> Coverage Time
+
+(b) Same task budget 
+
+Figure 8. Controlled probe-generation comparisons, nor-malized to D-Pingmesh. and 1.63 × as many tasks as D-Pingmesh, respectively. RD-Probe* and deTector* require an average of about 10 s and 208 s per slot, respectively, while D-Pingmesh averages only 2.462 s. Averaged across all 22 traces, D-Pingmesh achieves 99.99% coverage using 10.11K tasks and 2.50 s of generation time per slot. 
+
+Controlled comparisons. We isolate coverage target and task budget by running two experiments on the F20 trace (Figure 8), normalizing every ratio to D-Pingmesh: a same-coverage experiment where each generator reaches at least 0.99 end-to-end coverage, and a same-budget experiment where each generator is capped at D-Pingmesh’s per-slot task count. For Figure 8(a), we estimate and subtract each method’s coverage-checking overhead from its generation time. Under the 0.99 coverage target, deTector* is 95.7 ×
+
+slower, exposing the computational cost of PMC-style greedy selection. Pingmesh needs 17.7 × more tasks, confirming that uniform server-pair probing is fundamentally mismatched with reconfigurable path structures. RD-Probe* needs 2.73 ×         
+
+> 10 10% 20% 30% 40% 50% 60% 70% 80% 90%
+> TE change ratio
+> 0.90 0.95 1.00
+> E2E coverage
+> 1.0x 1.4x 1.8x 2.2x
+> Speedup over Cold Start E2E coverage Paired speedup
+
+Figure 9. D-Pingmesh robustness under controlled TE changes. 4 8 16 32 64        
+
+> Pods
+> 10 0
+> 10 1
+> 10 2
+> 10 3
+> 10 4
+> s / slot
+> Generation Time
+> 4816 32 64
+> Pods
+> 10K 100K 1M 10M
+> tasks / slot
+> Task Count
+> Pingmesh RD-Probe* deTector* D-Pingmesh
+
+Figure 10. Topology scalability across 4–64 pods. more tasks and 5.11 × more time. Under the same task bud-get, Pingmesh takes 0.269 × the time but reaches only 0.063 ×
+
+of D-Pingmesh’s coverage; deTector* and RD-Probe* reach 0.681 × and 0.807 × coverage. 
+
+Incremental-update ablation. To demonstrate the effec-tiveness of incremental update, we compare D-Pingmesh with a Cold Start variant that disables incremental update and regenerates probes from scratch in each slot. In the main comparison, incremental update maintains near-perfect cov-erage, reduces probe task volume, and achieves a 2.37 ×
+
+speedup, cutting average generation time from 5.827 s/slot to 2.462 s/slot (Figure 7). The controlled experiments con-firm this advantage (Figure 8): Cold Start needs an estimated 2.16 × more time under the same coverage target and 1.82 ×
+
+more time under the same task budget. 
+
+Robustness to TE changes. We evaluate D-Pingmesh under controlled TE changes on F20. Each slot keeps the TPE and TE next-hop/interface set fixed while we randomly vary the weights of a fraction of eligible TE groups between consecu-tive slots, from 10% to 90% over 95 updates per setting, exclud-ing the initial slot (Figure 9). The per-group weight-change magnitude is calibrated to the average change observed in the F20 trace with unchanged next-hop sets. Coverage remains near 100% throughout. Generation time grows gradually, but compared with Cold Start on the same TE states, incremen-tal update is 2.21 × faster at 10% group change and remains 1.32 × faster even when 90% of groups change weight. 
+
+Topology scalability. We further evaluate the scalability of D-Pingmesh by varying the number of pods from 4 to 64 on the F20 trace. For D-Pingmesh, each scale uses 12 dis-tinct Gemini TE snapshots over a demand-weighted TPE; the plotted values average the 10 update slots 2–11. The Pingmesh, RD-Probe*, and deTector* curves retain their orig-inal control-plane inputs and results. D-Pingmesh achieves above 99% coverage in every measured slot at every scale, so Figure 10 focuses on generation time and task count. D-Pingmesh scales from 4.9K tasks and 1.54 s/slot at 4 pods to 79.9K tasks and 43.78 s/slot at 64 pods. RD-Probe* also scales smoothly, growing from 15.4K tasks and 3.82 s/slot to 254.0K tasks and 119.2 s/slot. Pingmesh expands to 30.5M tasks/slot at 64 pods, and deTector* reaches 42,510 s/slot. Both become impractical at this scale. Assuming continuous probing with one 64-byte aggregate record per task every 30 seconds, the 64-pod lists imply 5.62 TB/day for Pingmesh versus 14.73 GB/day for D-Pingmesh. 
+
+Incremental generation across TPE transitions. We evaluate 21 independently initialized transitions from F1 to F2 through F21 to F22 on the 8-pod topology. Each transition updates the source trace’s slot-95 pinglist under the next trace’s TPE and slot-0 TE snapshots, changing both OCS con-nectivity and routing. Across these controlled transitions, incremental generation achieves mean end-to-end 𝑘 = 4 cov-erage of 99.97%, with 10,620 tasks and 3.995 s per update on average. The results demonstrate that D-Pingmesh remains effective for TPE changes. 
+
+6.3 Fault Localization 
+
+We use ns-3 packet-level simulation to evaluate D-Pingmesh’s fault localization algorithm Rho-EM. We use the same 8-pod topology and TPE/TE snapshots as the generation exper-iments. We evaluate on the F20 trace because it exhibits substantial TE-boundary churn, using a fixed D-Pingmesh probe list for the localization experiments. Faults are injected on randomly selected ToR and Agg switch interfaces. Each probe task executes once per second over a 30-second window. The localizer uses the aggregate per-task attempt and failure counts at the end of each window. We compare two scenarios: in the stable-TE scenario, the TE snapshot remains fixed throughout the window; in the boundary sce-nario, the TE state transitions from the old TE snapshot to the new one in four equal batches of pods, so the aggregate loss count for each task reflects a mixture of measurements taken under the old and new path hypotheses. We compare four localization variants. Stable TE and Bound-ary TE + New Path are simplified variants of Rho-EM with the per-task 𝜌 fixed to 1.0 for the new-TE path. Stable TE runs under the stable-TE scenario, where this single-path assumption holds. Boundary TE + New Path runs under the boundary scenario, where fixing 𝜌 to 1.0 discards old-path evidence. Boundary TE + deTector PLL applies deTector’s PLL algorithm [24] on the same new-TE path view. Bound-ary TE + Rho-EM runs under the boundary scenario and applies the Rho-EM algorithm to estimate each task’s un-known old/new path mixture. We evaluate under two fault configurations, each repeated over ten random seeds for fault                   
+
+> 11 12510 20 30
+> # of Fault Links
+> 0.70 0.85 1.00
+> Rate
+> F1
+> 12510 20 30
+> # of Fault Links
+> 0.70 0.85 1.00
+> Precision
+> 12510 20 30
+> # of Fault Links
+> 0.70 0.85 1.00
+> Recall
+> Stable TE Boundary TE + New Path Boundary TE + deTector PLL Boundary TE + Rho-EM
+
+Figure 11. Fault localization with varying number of faulty links. 5 10 20 30 50 100               
+
+> Loss Rate (%)
+> 0.50 0.75 1.00
+> Rate
+> F1
+> 510 20 30 50 100
+> Loss Rate (%)
+> 0.70 0.85 1.00
+> Precision
+> 510 20 30 50 100
+> Loss Rate (%)
+> 0.25 0.50 0.75 1.00 Recall
+> Stable TE Boundary TE + New Path Boundary TE + deTector PLL Boundary TE + Rho-EM
+
+Figure 12. Fault localization with varying loss rate. placement. In the first, we vary the number of faulty links over {1, 2, 5, 10 , 20 , 30 } at 10% loss. In the second, we vary the loss rate over {5, 10 , 20 , 30 , 50 , 100 }% with 10 faulty links. Figures 11 and 12 show localization results under varying fault counts and loss rates. Across all 120 cases, Rho-EM achieves 0.953 micro F1, compared with 0.871 for deTector PLL and 0.907 for New Path. Across both sweeps, Rho-EM maintains high precision and achieves higher recall than the boundary single-path baselines. The advantage is more pro-nounced at low loss rates, where weak observations amplify boundary ambiguity. We further examine Rho-EM’s sensitivity to the iteration cap. Across all 120 cases, micro F1 increases from 0.946 with 
+
+𝑀 = 0 to 0.953 with 𝑀 = 1. Modeling both paths with fixed mixture weights therefore already captures most of the average gain over the single-path baseline. At 5% per-link loss with 10 faulty links, increasing the iteration cap from 
+
+𝑀 = 0 to 𝑀 = 1 yields a larger micro F1 improvement, from 0.630 to 0.742. Over the full evaluation grid, mean localization time is 1.070 s per case for 𝑀 = 0 and 1.235 s per case for 𝑀 = 1. Larger iteration caps yield no further micro F1 improvement in this evaluation. 
+
+6.4 Physical Testbed Validation 
+
+We validate D-Pingmesh on a physical testbed with one 192 ×192 OCS and four minimal pods, each consisting of a datacenter switch and an x86 server. Each run uses 30-second observation windows, with a TE transition in the middle window, 30–60s. Each probe is a UDP echo packet with a per-task five-tuple and DSCP tag. Figure 13 shows the results for two fault scenarios: persistent packet loss and transient link flap. 
+
+Persistent packet-loss. Packet loss is emulated by MQC CAR rate limiting on the switch, combined with business Fault TE        
+
+> TE and fault timeline (packet loss)
+> TE0 TE0→TE1 TE1
+> packet loss active: t >= 46s
+> 030 60 90 120 150
+> experiment time (s)
+> 015 30
+> probe loss (%) fault link
+> Probe loss and localization report (packet loss)
+> report: no fault report: fault link
+
+(a) Persistent packet-loss fault Fault TE         
+
+> TE and fault timeline (flap)
+> TE0 TE0→TE1 TE1
+> flap active: 43-54s
+> 0510
+> probe loss (%)  fault link
+> Probe loss and localization report (flap)
+> report: no fault report: fault link
+> 030 60 90 120 150
+> experiment time (s)
+> 0.0 0.2
+> traffic (Mbps)
+> Endpoint overhead
+> TX+RX CPU
+> 012
+> CPU (%)
+
+(b) Transient link flap fault 
+
+Figure 13. Physical testbed validation with 30-second obser-vation windows. traffic that shares the same DSCP-marked behaviors as the probes. Before injection, D-Pingmesh reports no fault. Once the fault becomes active during the TE transition, D-Pingmesh localizes it to the injected inter-pod link in that same win-dow, despite only 4.8% measured probe loss, and continues to report the fault in subsequent windows. 
+
+Transient link flap. The link flap is emulated by inserting and then removing MQC deny rules on the switch that match the probe’s five-tuple and DSCP. The link flap is active only during the TE-transition window. D-Pingmesh localizes the fault to the injected inter-pod link in that window with 10.1% measured probe loss, and returns to no-fault reports in the following stable-TE windows. 
+
+Time to localization. D-Pingmesh provides second-scale fault localization. In both scenarios, the fault becomes ef-fective roughly 15 seconds into the TE-boundary window and is localized at the window boundary, with the result available within 2 seconds, dominated by result collection and aggregation. Shorter observation windows can further reduce fault detection latency. 
+
+Host overhead. Host overhead is small. During the exper-iment, average CPU utilization is 0.43% and average per-server TX+RX traffic is 0.10 Mbps. The testbed runs 34 probes per round across four servers, or 8.5 per server on average, whereas the main 8-pod experiment averages 10,036 tasks across 2,048 servers, or about 4.9 per server. 
+
+12 7 Related Work 
+
+Datacenter active probing and diagnosis. Pingmesh [11] established production-scale active probing for datacenter monitoring. R-Pingmesh [21] extended this to RoCE net-works with service-aware probing and in-network drop dif-ferentiation. For fault diagnosis, 007 [2] aggregates end-host observations to localize packet-drop faults, NetBouncer [30] uses IP-in-IP bouncing to probe designated paths, and Byte-Tracker [12] tracks probe paths with centralized probers and switch mirroring. deTector [24] selects topology-aware probe matrices for joint coverage and loss localization, and RD-Probe [9] combines randomized and deterministic gen-eration to guarantee L2 coverage at scale. These earlier sys-tems assume stable forwarding paths. OmniPath Ping [32] uses switch-host co-design for service tracing under packet spraying, whereas D-Pingmesh targets path changes across TPE/TE reconfigurations. 
+
+Runtime forwarding verification. VeriDP [34] moni-tors consistency between control-plane policies and actual packet forwarding, while Hydra [26] verifies packet pro-cessing against specifications at runtime. Both complement D-Pingmesh’s probing and fault localization. 
+
+Traffic engineering. Recent work on precise datacenter TE [7] studied realizing desired weight distributions under constrained hardware resources. Gemini [33] jointly opti-mizes inter-pod topology and routing for reconfigurable datacenter networks. FIGRET [22] enhances TE robustness against traffic bursts with fine-grained per-source-destination-pair protection. SSDO [23] accelerates large-scale TE via a sequential solver-free algorithm. We use TE output as the forwarding state for probe generation and fault localization. 
+
+Reconfigurable datacenter networks. OSA [6] established the case for optical reconfiguration, while Sirius [3] demon-strated a flat fabric with nanosecond switching. Jupiter Evolv-ing [25] and Lightwave [20] demonstrated production OCS fabrics. TPUv4 [13] deployed OCS to reconfigure machine-learning interconnects, while InfiniteHBD [29] uses OCS transceivers to build high-bandwidth domains for LLM train-ing. TROD [4, 5] co-designs threshold-based routing and topology for optical datacenters. NegotiaToR [19] uses dis-tributed on-demand scheduling. OpenOptics [16] provides an open framework for optical architectures, and SyncWise [17] studies time synchronization for reconfigurable networks. 
+
+## 8 Discussion 
+
+Generality. D-Pingmesh formulates probe generation and fault localization over the abstractions of topology, TE weights, and WCMP hash behavior, without relying on properties spe-cific to OCS hardware. The approach applies to any network in which forwarding paths change on timescales shorter than the measurement window, including Low Earth Or-bit (LEO) satellite constellations, where inter-satellite links reconfigure under orbital motion [15, 18]. 
+
+Fault model and observation granularity. Rho-EM’s like-lihood model assumes per-interface independent loss with a stable rate within one probe window. The model does not capture failures with shared-risk structure, such as an OCS port affecting multiple circuits, nor time-varying loss rates. Task-level 𝜌 𝑞 accommodates heterogeneous old/new path mixtures using the existing aggregate counters. A per-pod commit-time model uses fewer parameters, but ties the mixtures to a shared transition time within each pod. Sub-window reporting divides a probe window into shorter inter-vals and reports per-task attempt and failure counts for each interval. This provides finer temporal evidence, but increases reporting volume and reduces samples per interval at a fixed probing rate. 
+
+Deployment trade-off. D-Pingmesh preserves deployment simplicity: agents execute pinglists and report aggregate counters, while switches remain unchanged. Additional com-putation and state reside at the controller. D-Pingmesh suits large, frequently reconfigured fabrics; Pingmesh-style mon-itoring remains simpler for small, mostly static networks when probing and reporting costs are acceptable. 
+
+Towards faster TE cadences. Our evaluation uses 15-minute TE windows [23]. At the 8-pod scale, D-Pingmesh averages 2.462 s/slot for probe generation (Figure 7). Faster TE ca-dences may require shortening the 30-second observation window, reducing probe attempts per interface. Raising the per-interface coverage target 𝑘 could help compensate, at the cost of additional probing. 
+
+More frequent TPE reconfiguration. If TPE reconfigu-ration moves to hourly or minute-level operation, changes in optical connectivity would create more frequent pinglist invalidation and boundary ambiguity, increasing the impor-tance of Challenges 2 and 3. Our controlled TPE-transition experiment tests incremental generation after the new state is available; handling observations during optical switching requires further evaluation. 
+
+## 9 Conclusion 
+
+D-Pingmesh co-designs probing and fault localization with the TPE/TE control plane for reconfigurable datacenter net-works. It combines probability-guided probe generation, in-cremental pinglist updates, and Rho-EM, which jointly re-fines per-task old/new-path mixtures and the fault set to resolve boundary ambiguity. Compared with prior systems, D-Pingmesh achieves equivalent coverage with fewer tasks and lower generation time, while improving fault localiza-tion under continuous reconfiguration. 
+
+## Acknowledgments 
+
+We thank our shepherd, Cheng Tan, and the anonymous re-viewers for their helpful feedback. This work was supported by the National Natural Science Foundation of China (NSFC) under Grants 62132009, 62221003, and 62602347. 
+
+> 13
+
+## References 
+
+[1] 2026. Network Simulator 3. https://www.nsnam.org/ .[2] Behnaz Arzani, Selim Ciraci, Luiz Chamon, Yibo Zhu, Hongqiang Liu, Jitu Padhye, Boon Thau Loo, and Geoff Outhred. 2018. 007: Democrat-ically Finding the Cause of Packet Drops. In 15th USENIX Symposium on Networked Systems Design and Implementation (NSDI 18) . 419–435. 
+
+https://www.usenix.org/conference/nsdi18/presentation/arzani 
+
+[3] Hitesh Ballani, Paolo Costa, Raphael Behrendt, Daniel Cletheroe, Istvan Haller, Krzysztof Jozwik, Fotini Karinou, Sophie Lange, Benn Thomsen, Kai Shi, and Hugh Williams. 2020. Sirius: A Flat Datacenter Network with Nanosecond Optical Switching. In Proceedings of ACM SIGCOMM 2020 . https://www.microsoft.com/en-us/research/publication/sirius-a-flat-datacenter-network-with-nanosecond-optical-switching/ 
+
+[4] Peirui Cao, Shizhen Zhao, Min Yee Teh, Yunzhuo Liu, and Xinbing Wang. 2021. TROD: Evolving From Electrical Data Center to Optical Data Center. In 29th IEEE International Conference on Network Protocols (ICNP 2021) . 1–11. https://dblp.org/rec/conf/icnp/CaoZTLW21 
+
+[5] Peirui Cao, Shizhen Zhao, Dai Zhang, Zhuotao Liu, Mingwei Xu, Min Yee Teh, Yunzhuo Liu, Xinbing Wang, and Chenghu Zhou. 2023. Threshold-Based Routing-Topology Co-Design for Optical Data Cen-ter. IEEE/ACM Transactions on Networking 31, 6 (2023), 2870–2885. doi: 10.1109/TNET.2023.3265276 
+
+[6] Kai Chen, Ankit Singla, Atul Singh, Kishore Ramachandran, Lei Xu, Yueping Zhang, Xitao Wen, and Yan Chen. 2012. OSA: An Optical Switching Architecture for Data Center Networks with Unprecedented Flexibility. In 9th USENIX Symposium on Networked Systems Design and Implementation (NSDI 12) . 239– 252. https://collaborate.princeton.edu/en/publications/osa-an-optical-switching-architecture-for-data-center-networks-wi-3/ 
+
+[7] Shawn Shuoshuo Chen, Keqiang He, Rui Wang, Srinivasan Seshan, and Peter Steenkiste. 2024. Precise Data Center Traffic Engineering with Constrained Hardware Resources. In 21st USENIX Symposium on Networked Systems Design and Implementation (NSDI 24) . https: //www.usenix.org/conference/nsdi24/presentation/chen-shawn 
+
+[8] Arthur P Dempster, Nan M Laird, and Donald B Rubin. 1977. Maximum likelihood from incomplete data via the EM algorithm. Journal of the Royal Statistical Society: Series B (Methodological) 39, 1 (1977), 1–22. [9] Rui Ding et al. 2024. RD-Probe: Scalable Monitoring With Sufficient Coverage in Complex Datacenter Networks. In Proceedings of ACM SIGCOMM 2024 . doi: 10.1145/3651890.3672256 
+
+[10] Zihao Fan, Xing Li, Ye Yang, Bo Jiang, Bowen Yang, Yilong Lv, Yuke Hong, Yinian Zhou, Junnan Cai, Jiayue Xu, et al. 2026. Bifrost: Alibaba’s Next-Generation VPC Network with High-Performance Multipath Reliable Transport. In 23rd USENIX Symposium on Networked Systems Design and Implementation (NSDI 26) . 571–590. [11] Chuanxiong Guo, Lihua Yuan, Dong Xiang, Yingnong Dang, Ray Huang, Dave Maltz, Zhaoyi Liu, Vin Wang, Bin Pang, Hua Chen, Zhi-Wei Lin, and Varugis Kurien. 2015. Pingmesh: A Large-Scale System for Data Center Network Latency Measurement and Analysis. In Proceedings of the ACM SIGCOMM 2015 Conference . https: //www.microsoft.com/en-us/research/publication/pingmesh-large-scale-system-data-center-network-latency-measurement-analysis/ 
+
+[12] Shixian Guo, Kefei Liu, Yulin Lai, Yangyang Bai, Ziwei Zhao, Songlin Liu, Jianghang Ning, Gen Li, Jianwei Hu, Yongbin Dong, et al. 2025. ByteTracker: An Agentless and Real-time Path-aware Network Probing System. In Proceedings of the ACM SIGCOMM 2025 Conference . 541– 553. [13] Norm Jouppi, George Kurian, Sheng Li, Peter Ma, Rahul Nagarajan, Lifeng Nai, Nishant Patil, Suvinay Subramanian, Andy Swing, Brian Towles, et al. 2023. TPU v4: An optically reconfigurable supercom-puter for machine learning with hardware support for embeddings. In 
+
+Proceedings of the 50th annual international symposium on computer architecture . 1–14. [14] Mehrdad Khani, Manya Ghobadi, Mohammad Alizadeh, Ziyi Zhu, Madeleine Glick, Keren Bergman, Amin Vahdat, Benjamin Klenk, and Eiman Ebrahimi. 2021. SiP-ML: high-bandwidth optical network in-terconnects for machine learning training. In Proceedings of the 2021 ACM SIGCOMM 2021 Conference . 657–675. [15] Zeqi Lai, Zonglun Li, Qian Wu, Hewu Li, Jihao Li, Xin Xie, Yuanjie Li, Jun Liu, and Jianping Wu. 2025. LeoCC: Making Internet Congestion Control Robust to LEO Satellite Dynamics. In Proceedings of the ACM SIGCOMM 2025 Conference . 129–146. [16] Yiming Lei, Federico De Marchi, Jialong Li, Raj Joshi, Shu-Ting Wang, Xiaoqi Chen, Balakrishnan Chandrasekaran, and Yiting Xia. 2026. OpenOptics: Enabling Open Research and Implementation of Opti-cal Data Center Networks. In 23rd USENIX Symposium on Networked Systems Design and Implementation (NSDI 26) . 987–1004. [17] Yiming Lei, Jialong Li, Zhengqing Liu, Raj Joshi, and Yiting Xia. 2026. SyncWise: Error-Aware Time Synchronization for Reconfigurable Data Center Networks. In 23rd USENIX Symposium on Networked Systems Design and Implementation (NSDI 26) . 951–967. [18] Yuanjie Li, Yimei Chen, Jiabo Yang, Jinyao Zhang, Bowen Sun, Lixin Liu, Hewu Li, Jianping Wu, Zeqi Lai, Qian Wu, et al. 2025. Small-scale LEO Satellite Networking for Global-scale Demands. In Proceedings of the ACM SIGCOMM 2025 Conference . 917–931. [19] Cong Liang, Xiangli Song, Jing Cheng, Mowei Wang, Yashe Liu, Zhen-hua Liu, Shizhen Zhao, and Yong Cui. 2024. NegotiaToR: Towards a simple yet effective on-demand reconfigurable datacenter network. In 
+
+Proceedings of the ACM SIGCOMM 2024 Conference . 415–432. [20] Hong Liu, Ryohei Urata, Kevin Yasumura, Xiang Zhou, Roy Bannon, Jill Berger, Pedram Dashti, Norman P. Jouppi, Cedric F. Lam, Sheng Li, Erji Mao, Daniel Nelson, George Papen, Mukarram Tariq, and Amin Vahdat. 2023. Lightwave Fabrics: At-Scale Optical Circuit Switching for Datacenter and Machine Learning Systems. In Proceedings of ACM SIGCOMM 2023 . 499–515. doi: 10.1145/3603269.3604836 
+
+[21] Kefei Liu, Zhuo Jiang, Jiao Zhang, Shixian Guo, Xuan Zhang, Yangyang Bai, Yongbin Dong, Feng Luo, Zhang Zhang, Lei Wang, Xiang Shi, Haohan Xu, Yang Bai, Dongyang Song, Haoran Wei, Bo Li, Yongchen Pan, Tian Pan, and Tao Huang. 2024. R-Pingmesh: A Service-Aware RoCE Network Monitoring and Diagnostic System. In Proceedings of ACM SIGCOMM 2024 . https://conferences.sigcomm.org/sigcomm/ 2024/program/ 
+
+[22] Ximeng Liu, Shizhen Zhao, Yong Cui, and Xinbing Wang. 2024. FI-GRET: Fine-Grained Robustness-Enhanced Traffic Engineering. In 
+
+Proceedings of the ACM SIGCOMM 2024 Conference . Association for Computing Machinery, New York, NY, USA, 117–135. doi: 10.1145/ 3651890.3672258 
+
+[23] Yingming Mao, Qiaozhu Zhai, Ximeng Liu, Zhen Yao, Xia Zhu, and Yuzhou Zhou. 2026. A Fast Solver-Free Algorithm for Traffic Engi-neering in Large-Scale Data Center Network. In 23rd USENIX Sym-posium on Networked Systems Design and Implementation (NSDI 26) .USENIX Association, Renton, WA, 1919–1937. https://www.usenix. org/conference/nsdi26/presentation/mao 
+
+[24] Yanghua Peng, Ji Yang, Chuan Wu, Chuanxiong Guo, Chengchen Hu, and Zongpeng Li. 2017. deTector: a topology-aware monitoring system for data center networks. In 2017 USENIX Annual Technical Conference (USENIX ATC 17) . 55–68. [25] Leon Poutievski, Omid Mashayekhi, Joon Ong, Arjun Singh, Mukar-ram Tariq, Rui Wang, Jianan Zhang, Virginia Beauregard, Patrick Conner, Steve Gribble, Rishi Kapoor, Stephen Kratzer, Nanfang Li, Hong Liu, Karthik Nagaraj, Jason Ornstein, Samir Sawhney, Ryohei Urata, Lorenzo Vicisano, Kevin Yasumura, Shidong Zhang, Junlan Zhou, and Amin Vahdat. 2022. Jupiter Evolving: Transforming Google’s Datacenter Network via Optical Circuit Switches and Software-Defined Networking. In Proceedings of ACM SIGCOMM 2022 . https://research.google/pubs/jupiter-evolving-transforming-
+
+> 14
+
+googles-datacenter-network-via-optical-circuit-switches-and-software-defined-networking/ 
+
+[26] Sundararajan Renganathan, Benny Rubin, Hyojoon Kim, Pier Luigi Ventre, Carmelo Cascone, Daniele Moro, Charles Chan, Nick McKeown, and Nate Foster. 2023. Hydra: Effective runtime network verification. In Proceedings of the ACM SIGCOMM 2023 Conference . 182–194. [27] Arjun Roy, Deepak Bansal, David Brumley, Harish Kumar Chandrappa, Parag Sharma, Rishabh Tewari, Behnaz Arzani, and Alex C. Snoeren. 2018. Cloud Datacenter SDN Monitoring: Experiences and Challenges. In Proceedings of the Internet Measurement Conference 2018 . 464–470. doi: 10.1145/3278532.3278572 
+
+[28] Arjun Roy, Hongyi Zeng, Jasmeet Bagga, George Porter, and Alex C Snoeren. 2015. Inside the social network’s (datacenter) network. In 
+
+Proceedings of the 2015 ACM Conference on Special Interest Group on Data Communication . 123–137. [29] Chenchen Shou, Guyue Liu, Hao Nie, Huaiyu Meng, Yu Zhou, Yimin Jiang, Wenqing Lv, Yelong Xu, Yuanwei Lu, Zhang Chen, et al. 2025. InfiniteHBD: building datacenter-scale high-bandwidth domain for LLM with optical circuit switching transceivers. In Proceedings of the ACM SIGCOMM 2025 Conference . 1–23. [30] Cheng Tan, Ze Jin, Chuanxiong Guo, Tianrong Zhang, Haitao Wu, Karl Deng, Dongming Bi, and Dong Xiang. 2019. NetBouncer: Active device and link failure localization in data center networks. In 16th USENIX Symposium on Networked Systems Design and Implementation (NSDI 19) . 599–614. [31] Weiyang Wang, Moein Khazraee, Zhizhen Zhong, Manya Ghobadi, Zhihao Jia, Dheevatsa Mudigere, Ying Zhang, and Anthony Kewitsch. 2023. TopoOpt: Co-optimizing network topology and parallelization strategy for distributed training jobs. In 20th USENIX Symposium on Networked Systems Design and Implementation (NSDI 23) . 739–767. [32] Kaicheng Yang, Zongwei Lv, Peijun Huang, Kaitai Zhang, Qiuheng Yin, Yaoming Li, Feiyu Wang, Zhuochen Fan, Yikai Zhao, Chen Sun, et al. 2026. OmniPath Ping: Active Network Measurement in the Era of Packet Spraying. In Proceedings of the ACM SIGCOMM 2026 Conference .940–965. [33] Mingyang Zhang, Jianan Zhang, Rui Wang, Ramesh Govindan, Jef-frey C Mogul, and Amin Vahdat. 2021. Gemini: Practical reconfigurable datacenter networks with topology and traffic engineering. arXiv preprint arXiv:2110.08374 (2021). [34] Peng Zhang, Hao Li, Chengchen Hu, Liujia Hu, Lei Xiong, Ruilong Wang, and Yuemei Zhang. 2016. Mind the gap: Monitoring the control-data plane consistency in software defined networks. In Proceedings of the 12th International on Conference on emerging Networking EXperi-ments and Technologies . 19–33. [35] Zhehui Zhang, Haiyang Zheng, Jiayao Hu, Xiangning Yu, Chenchen Qi, Xuemei Shi, and Guohui Wang. 2021. Hashing linearity enables relative path control in data centers. In 2021 USENIX Annual Technical Conference (USENIX ATC 21) . 855–862. [36] Junlan Zhou, Malveeka Tewari, Min Zhu, Abdul Kabbani, Leon Poutievski, Arjun Singh, and Amin Vahdat. 2014. WCMP: Weighted cost multipathing for improved fairness in data centers. In Proceedings of the Ninth European Conference on Computer Systems . 1–14. [37] Yazhou Zu, Alireza Ghaffarkhah, Hoang-Vu Dang, Brian Towles, Steven Hand, Safeen Huda, Adekunle Bello, Alexander Kolbasov, Arash Rezaei, Dayou Du, Steve Lacy, Hang Wang, Aaron Wisner, Chris Lewis, and Henri Bahini. 2024. Resiliency at Scale: Man-aging Google’s TPUv4 Machine Learning Supercomputer. In 21st USENIX Symposium on Networked Systems Design and Implemen-tation (NSDI 24) . USENIX Association, Santa Clara, CA, 761–774. 
+
+https://www.usenix.org/conference/nsdi24/presentation/zu

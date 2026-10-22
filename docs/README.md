@@ -48,17 +48,17 @@
 <section class="dpr-home-dashboard-card dpr-home-report-card">
   <div class="dpr-home-dashboard-header">
     <div>
-      <span class="dpr-home-dashboard-kicker">2026-10-21</span>
+      <span class="dpr-home-dashboard-kicker">2026-10-22</span>
       <h3 class="dpr-home-dashboard-title">今日汇总</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">共 2 篇</strong>
+    <strong class="dpr-home-dashboard-count">共 3 篇</strong>
   </div>
   <dl class="dpr-home-dashboard-stats">
     <div class="dpr-home-dashboard-stat"><dt>累计更新</dt><dd>1 次</dd></div>
     <div class="dpr-home-dashboard-stat"><dt>精读</dt><dd>0</dd></div>
-    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>2</dd></div>
+    <div class="dpr-home-dashboard-stat"><dt>速读</dt><dd>3</dd></div>
   </dl>
-  <p class="dpr-home-dashboard-body">最近更新：2026-10-21 22:55:17 UTC<br>状态：成功</p>
+  <p class="dpr-home-dashboard-body">最近更新：2026-10-22 22:10:44 UTC<br>状态：成功</p>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-brief-card">
   <div class="dpr-home-dashboard-header">
@@ -69,7 +69,7 @@
     <strong class="dpr-home-dashboard-count">AI</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<p>今天速读了两篇系统/网络方向论文，聚焦低轨星座星上数据中心组播与 GPU-direct MPI 通信建模。最值得看的是 BIER-DC 提出的无状态组播方案（7.0/10），以及 Orrery 用 SimGrid 对 GPU 直连通信的仿真思路（6.0/10）。建议先读 BIER-DC 了解星上组播如何省状态，再按需翻 Orrery 的建模仿真部分。</p>
+<p>今日速读 3 篇系统与算法方向论文，聚焦异构 LLM 推理流水线调度、有向电话多播近似和可重构数据中心网络故障定位。最值得看的是异构推理的 makespan 精确界与 GPipe 同质性偏差分析，以及 D-Pingmesh 的动态探测思路。普通读者可先浏览这三篇的摘要与结论，再决定是否深入推导或实验部分。</p>
   </div>
 </section>
 <section class="dpr-home-dashboard-card dpr-home-deep-card">
@@ -91,12 +91,12 @@
       <span class="dpr-home-dashboard-kicker">今日累计</span>
       <h3 class="dpr-home-dashboard-title">速读推荐</h3>
     </div>
-    <strong class="dpr-home-dashboard-count">2 篇</strong>
+    <strong class="dpr-home-dashboard-count">3 篇</strong>
   </div>
   <div class="dpr-home-dashboard-body">
-<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="BIER-DC: Stateless Multicast for In-Orbit Space Data Centers in LEO Constellations">BIER-DC: Stateless Multicast for In-Orbit Space Data Centers in LEO Constellations</span></li><li><span class="dpr-home-dashboard-paper-title" title="Orrery: Modeling and Simulation of GPU-direct MPI Communication with SimGrid">Orrery: Modeling and Simulation of GPU-direct MPI Communication with SimGrid</span></li></ul>
+<ul class="dpr-home-dashboard-paper-list"><li><span class="dpr-home-dashboard-paper-title" title="Exact Makespan Bounds and the GPipe Homogeneity Bias for Heterogeneous LLM Inference Pipelines">Exact Makespan Bounds and the GPipe Homogeneity Bias for Heterogeneous LLM Inference Pipelines</span></li><li><span class="dpr-home-dashboard-paper-title" title="Approximating Directed Telephone Multicast">Approximating Directed Telephone Multicast</span></li><li><span class="dpr-home-dashboard-paper-title" title="D-Pingmesh: Dynamic Probing and Fault Localization for Reconfigurable Datacenter Networks">D-Pingmesh: Dynamic Probing and Fault Localization for Reconfigurable Datacenter Networks</span></li></ul>
   </div>
-  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">dcn-comm <strong>2</strong></span></div>
+  <div class="dpr-home-dashboard-tags"><span class="dpr-home-dashboard-tag">dcn-comm <strong>3</strong></span></div>
 </section>
 </div>
 

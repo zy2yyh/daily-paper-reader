@@ -1,0 +1,57 @@
+{
+  "date": "20261022",
+  "date_label": "",
+  "generated_at": "2026-10-22 22:10:44 UTC",
+  "recommend_exists": true,
+  "run_count": 1,
+  "papers": [
+    {
+      "paper_id": "2610.21815v1",
+      "route": "202610/22/2610.21815v1-exact-makespan-bounds-and-the-gpipe-homogeneity-bias-for-heterogeneous-llm-inference-pipelines",
+      "title": "Exact Makespan Bounds and the GPipe Homogeneity Bias for Heterogeneous LLM Inference Pipelines",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "GPU集群上含NCCL通信的微批流水线makespan界",
+      "first_seen_at": "2026-10-22 22:10:44 UTC",
+      "updated_at": "2026-10-22 22:10:44 UTC"
+    },
+    {
+      "paper_id": "2610.27422v1",
+      "route": "202610/22/2610.27422v1-approximating-directed-telephone-multicast",
+      "title": "Approximating Directed Telephone Multicast",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "有向图上最少轮次电话多播调度的组合近似算法",
+      "first_seen_at": "2026-10-22 22:10:44 UTC",
+      "updated_at": "2026-10-22 22:10:44 UTC"
+    },
+    {
+      "paper_id": "2610.29787v1",
+      "route": "202610/22/2610.29787v1-d-pingmesh-dynamic-probing-and-fault-localization-for-reconfigurable-datacenter-networks",
+      "title": "D-Pingmesh: Dynamic Probing and Fault Localization for Reconfigurable Datacenter Networks",
+      "section": "quick",
+      "tags": [
+        {
+          "kind": "query",
+          "label": "dcn-comm"
+        }
+      ],
+      "score": 6.0,
+      "evidence": "与可重构数据中心网络控制面协同设计的探测与故障定位",
+      "first_seen_at": "2026-10-22 22:10:44 UTC",
+      "updated_at": "2026-10-22 22:10:44 UTC"
+    }
+  ]
+}

@@ -1,0 +1,134 @@
+{
+  "mode": "standard",
+  "generated_at": "2026-10-22T22:10:11.919857+00:00",
+  "stats": {
+    "mode": "standard",
+    "tag_count": 1,
+    "deep_divecandidates": 0,
+    "deep_cap": 6,
+    "deep_selected": 0,
+    "quick_candidates": 3,
+    "quick_skim_target": 11,
+    "quick_selected": 3
+  },
+  "deep_dive": [],
+  "quick_skim": [
+    {
+      "id": "2610.21815v1",
+      "source": "arxiv",
+      "title": "Exact Makespan Bounds and the GPipe Homogeneity Bias for Heterogeneous LLM Inference Pipelines",
+      "abstract": "We give an exact critical-path characterization of the makespan of micro-batch pipelines serving LLMs on heterogeneous GPU clusters, quantifying how the classic homogeneous GPipe formula errs. In the pure-forward, communication-free, infinite-buffer setting, T(M) = (M-1)tau_max + Sum_j tau_j, where tau_j is stage j's per-micro-batch service time and M the micro-batch count (Theorem 1). Under asynchronous communication -- modern NCCL-based serving -- it extends to T(M) = Sum_j tau_j + Sum_j d_j + (M-1)tau_max, with Sum_j d_j a purely additive constant (Theorem 2); under blocking communication, T(M) = (M-1)sigma_max + Sum_s sigma_s with sigma_s = tau_s + d_s, so communication enters the steady-state slope iff some d_s > tau_max - tau_s (Theorem 3). These results quantify the GPipe overestimate, decompose the bias into a homogeneity term Sum_j (tau_max - tau_j) and a communication-ignoring term Sum_j d_j, and imply that balancing per-stage compute dominates communication reduction for steady-state throughput. A real system with partial overlap is sandwiched between Theorems 2 and 3, with a closed-form bound on the overlap throughput gain. All claims are validated pointwise (error < 10^-9) on eleven configurations and a 1.6x10^5-point fuzz, including a mixed RTX 5090/3090/GTX 1070 partition. We situate the results in flow-shop scheduling and list open extensions: bandwidth-limited communication, bounded buffers, prefill-decode interleaving.",
+      "authors": [
+        "Zhu Wenbo"
+      ],
+      "primary_category": "cs.DC",
+      "categories": [
+        "cs.DC"
+      ],
+      "published": "2026-10-15T13:03:06+00:00",
+      "link": "https://arxiv.org/pdf/2610.21815v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "makespan bounds for micro-batch pipelines with NCCL communication on GPU clusters",
+      "llm_evidence_cn": "GPU集群上含NCCL通信的微批流水线makespan界",
+      "llm_evidence": "GPU集群上含NCCL通信的微批流水线makespan界",
+      "canonical_evidence": "GPU集群上含NCCL通信的微批流水线makespan界",
+      "llm_tldr_en": "The paper derives exact critical-path makespan bounds for LLM micro-batch pipelines on heterogeneous GPU clusters, showing how NCCL-based asynchronous versus blocking communication reshapes the steady-state throughput model.",
+      "llm_tldr_cn": "在异构GPU集群上服务大模型的微批流水线中，经典GPipe公式因假设同构而失真。作者给出精确的关键路径刻画，分别推导无通信、异步通信（现代NCCL服务）与阻塞通信三种情形下的makespan闭式表达式。结果表明异步通信仅作为可加常数进入，而阻塞通信在满足条件时进入稳态斜率。该工作为流水线并行中的通信调度与性能建模提供了理论依据。",
+      "llm_tldr": "在异构GPU集群上服务大模型的微批流水线中，经典GPipe公式因假设同构而失真。作者给出精确的关键路径刻画，分别推导无通信、异步通信（现代NCCL服务）与阻塞通信三种情形下的makespan闭式表达式。结果表明异步通信仅作为可加常数进入，而阻塞通信在满足条件时进入稳态斜率。该工作为流水线并行中的通信调度与性能建模提供了理论依据。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "communication optimization for distributed training workloads in data center networks",
+      "matched_requirement_id": "req-6",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.27422v1",
+      "source": "arxiv",
+      "title": "Approximating Directed Telephone Multicast",
+      "abstract": "In the telephone model a message starts at a source vertex, and in every round each informed vertex may call one neighbour. Telephone multicast asks for a schedule that informs a given set of $k$ terminals in the fewest rounds. On directed graphs, the best known ratio for this problem was $\\tilde O(\\sqrt k)$, due to Elkin and Kortsarz and to Hathcock, Kortsarz and Ravi.   For every integer $\\ell\\ge2$, we give a deterministic combinatorial algorithm with running time $n^{O(\\ell)}$ that computes a schedule of length $O(\\ell^3\\log k)\\cdot(\\mathrm{OPT}+k^{1/\\ell})$, where $n$ is the number of vertices and $\\mathrm{OPT}$ the optimum. Since $\\mathrm{OPT}\\ge\\log_2(k+1)$, this gives ratio $O(k^ε)$ in time $n^{O(1/ε)}$ for every fixed $ε>0$, and ratio $O(\\log^4k)$ in quasi-polynomial time. The method rests on jump trees with additive vertex loads, a height reduction that bounds the load of every vertex, and a recursive greedy algorithm with an exponential potential. We also show that directed multicast is a special case of the degree-bounded directed Steiner tree problem on a time-expanded digraph. With known algorithms for that problem this gives randomized ratios $O(\\log^2n)$ in time $n^{O(\\log n)}$ and $O(n^ε)$ in time $n^{O(1/ε)}$, which, unlike ours, grow with $n$.   On the hardness side, directed multicast stays $(1-ε)\\ln k$-hard even when $\\mathrm{OPT}=O(\\log k)$, the regime in which the previous algorithms were weakest.",
+      "authors": [
+        "Shahin Kamali",
+        "Seyed-Mohammad Seyed-Javadi"
+      ],
+      "primary_category": "cs.DS",
+      "categories": [
+        "cs.DS"
+      ],
+      "published": "2026-10-20T00:18:07+00:00",
+      "link": "https://arxiv.org/pdf/2610.27422v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "combinatorial approximation algorithm for minimum-round telephone multicast scheduling on directed graphs",
+      "llm_evidence_cn": "有向图上最少轮次电话多播调度的组合近似算法",
+      "llm_evidence": "有向图上最少轮次电话多播调度的组合近似算法",
+      "canonical_evidence": "有向图上最少轮次电话多播调度的组合近似算法",
+      "llm_tldr_en": "Telephone multicast asks for a minimum-round schedule informing k terminals; the paper gives deterministic combinatorial algorithms achieving near-polylogarithmic approximation on directed graphs.",
+      "llm_tldr_cn": "电话模型中每条消息从源点出发，每轮每个已知节点只能呼叫一个邻居，电话多播问题要求以最少轮次通知给定的k个终端。此前有向图上最好比值仅为根号k量级，本文给出对任意整数参数ℓ的确定性组合算法，运行时间为n的O(ℓ)次方，调度长度为O(ℓ³logk)乘以最优值加k的1/ℓ次方。由此可在多项式时间内取得k的ε次方比值，并在准多项式时间内达到对数四次方比值。该结果为图上的一对多信息分发调度提供了更强的理论保证，对集合通信的算法设计有借鉴意义。",
+      "llm_tldr": "电话模型中每条消息从源点出发，每轮每个已知节点只能呼叫一个邻居，电话多播问题要求以最少轮次通知给定的k个终端。此前有向图上最好比值仅为根号k量级，本文给出对任意整数参数ℓ的确定性组合算法，运行时间为n的O(ℓ)次方，调度长度为O(ℓ³logk)乘以最优值加k的1/ℓ次方。由此可在多项式时间内取得k的ε次方比值，并在准多项式时间内达到对数四次方比值。该结果为图上的一对多信息分发调度提供了更强的理论保证，对集合通信的算法设计有借鉴意义。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "algorithms for efficient collective communication operations in distributed environments",
+      "matched_requirement_id": "req-3",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    },
+    {
+      "id": "2610.29787v1",
+      "source": "arxiv",
+      "title": "D-Pingmesh: Dynamic Probing and Fault Localization for Reconfigurable Datacenter Networks",
+      "abstract": "Pingmesh monitors datacenter networks through periodic pings between servers. In reconfigurable datacenter networks, topology engineering (TPE) and traffic engineering (TE) make uniform server-pair probing inefficient: a pinglist wastes budget retesting common paths while missing low-probability interfaces. Frequent control-plane updates further require rapid pinglist refresh, and cause path ambiguity at control-plane boundaries for fault localization. We present D-Pingmesh, a probing and fault-localization system co-designed with the TPE/TE control plane. Its control-plane-aware generator builds task-efficient pinglists by greedily admitting probes with high interface coverage under the current TPE/TE snapshot. An incremental replay-and-repair mechanism updates pinglists across reconfigurations rather than recomputing from scratch. At control-plane boundaries, a Rho-EM localizer jointly infers per-task old/new-path mixture weights and the fault set through EM-style iteration. We evaluate D-Pingmesh on an 8-pod reconfigurable topology under dynamic TPE/TE. At a 0.99 coverage target, D-Pingmesh uses 17.7x fewer tasks than Pingmesh and generates each pinglist about 5.1x faster than RD-Probe. In ns-3 simulation, boundary-aware localization improves micro F1 from 0.871 to 0.953 over the deTector PLL baseline. A testbed deployment demonstrates second-scale fault localization with low host overhead. These results demonstrate that D-Pingmesh is practical for reconfigurable datacenter networks with control-plane-aware monitoring.",
+      "authors": [
+        "Yunze Wei",
+        "Kaicheng Yang",
+        "Xiaohui Xie",
+        "Dunkai Mao",
+        "Peiying Tao",
+        "Yikai Zhao",
+        "Bolong Cui",
+        "Chen Sun",
+        "Bingyang Liu",
+        "Kun Tan",
+        "Kai Chen",
+        "Yong Cui"
+      ],
+      "primary_category": "cs.NI",
+      "categories": [
+        "cs.NI"
+      ],
+      "published": "2026-10-21T14:14:28+00:00",
+      "link": "https://arxiv.org/pdf/2610.29787v1",
+      "tags": [
+        "keyword:dcn-comm",
+        "query:dcn-comm"
+      ],
+      "llm_score": 6.0,
+      "llm_evidence_en": "Probing and fault localization co-designed with the reconfigurable datacenter network control plane",
+      "llm_evidence_cn": "与可重构数据中心网络控制面协同设计的探测与故障定位",
+      "llm_evidence": "与可重构数据中心网络控制面协同设计的探测与故障定位",
+      "canonical_evidence": "与可重构数据中心网络控制面协同设计的探测与故障定位",
+      "llm_tldr_en": "Uniform server-pair pinging is wasteful in reconfigurable datacenter networks where topology and traffic engineering shift constantly. D-Pingmesh builds control-plane-aware pinglists that greedily cover interfaces under each snapshot and adds incremental replay to disambiguate paths, improving coverage and speeding fault localization.",
+      "llm_tldr_cn": "在可重构数据中心网络中，拓扑工程与流量工程频繁调整，使传统均匀服务器对探测既浪费预算又漏掉低概率接口，控制面边界还会造成路径歧义。作者提出 D-Pingmesh，其控制面感知生成器按当前快照贪心挑选高接口覆盖率的探测，并结合增量重放进行故障定位。系统在保证探测效率的同时提升故障定位准确性，为可重构数据中心网络的运维监测提供了新思路。",
+      "llm_tldr": "在可重构数据中心网络中，拓扑工程与流量工程频繁调整，使传统均匀服务器对探测既浪费预算又漏掉低概率接口，控制面边界还会造成路径歧义。作者提出 D-Pingmesh，其控制面感知生成器按当前快照贪心挑选高接口覆盖率的探测，并结合增量重放进行故障定位。系统在保证探测效率的同时提升故障定位准确性，为可重构数据中心网络的运维监测提供了新思路。",
+      "llm_tags": [
+        "query:dcn-comm"
+      ],
+      "matched_query_tag": "query:dcn-comm",
+      "matched_query_text": "data center network architectures and communication mechanisms for large-scale clusters",
+      "matched_requirement_id": "req-1",
+      "selection_source": "fresh_fetch",
+      "quick_tier": "6"
+    }
+  ]
+}
